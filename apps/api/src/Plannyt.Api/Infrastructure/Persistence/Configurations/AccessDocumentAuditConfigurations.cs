@@ -137,6 +137,9 @@ internal sealed class BasicDocumentConfiguration : IEntityTypeConfiguration<Basi
         builder.ToTable("basic_documents", table =>
         {
             table.HasCheckConstraint(
+                "ck_basic_documents_context",
+                "event_id IS NOT NULL OR client_id IS NOT NULL");
+            table.HasCheckConstraint(
                 "ck_basic_documents_size",
                 "size_bytes > 0 AND size_bytes <= 10485760");
         });

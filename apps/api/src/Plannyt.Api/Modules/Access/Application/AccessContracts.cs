@@ -95,4 +95,13 @@ public sealed record PortalEventResponse(
     string CountryCode,
     string? SharedDescription,
     int? EstimatedGuestCount,
-    IReadOnlyList<PortalParticipantResponse> Participants);
+    IReadOnlyList<PortalParticipantResponse> Participants,
+    IReadOnlyList<PortalDocumentResponse> Documents);
+
+public sealed record PortalDocumentResponse(
+    Guid Id,
+    string DocumentType,
+    string FileName,
+    string MimeType,
+    long SizeBytes,
+    DateTimeOffset CreatedAt);

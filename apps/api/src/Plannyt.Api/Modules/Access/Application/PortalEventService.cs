@@ -115,6 +115,23 @@ public sealed class PortalEventService(
                 entity.Participant.DisplayOrder,
                 entity.Participant.SharedDescription))
             .ToListAsync(cancellationToken);
+        var documents = await dbContext.BasicDocuments
+            .AsNoTracking()
+            .Where(entity =>
+                entity.OrganizationId == access.OrganizationId
+                && entity.EventId == eventId
+                && entity.Visibility
+                    == Modules.Documents.Domain.DocumentVisibility.ClientShared
+                && entity.DeletedAt == null)
+            .OrderByDescending(entity => entity.CreatedAt)
+            .Select(entity => new PortalDocumentResponse(
+                entity.Id,
+                entity.DocumentType,
+                entity.FileName,
+                entity.MimeType,
+                entity.SizeBytes,
+                entity.CreatedAt))
+            .ToListAsync(cancellationToken);
         return new PortalEventResponse(
             eventResponse.Id,
             eventResponse.Name,
@@ -126,6 +143,7 @@ public sealed class PortalEventService(
             eventResponse.CountryCode,
             eventResponse.SharedDescription,
             eventResponse.EstimatedGuestCount,
-            participants);
+            participants,
+            documents);
     }
 }

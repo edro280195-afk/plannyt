@@ -22,6 +22,18 @@ public sealed class ConflictException(string detail)
 public sealed class GoneException(string detail)
     : ApiException(StatusCodes.Status410Gone, "El recurso ya no está disponible", detail);
 
+public sealed class PayloadTooLargeException(string detail)
+    : ApiException(
+        StatusCodes.Status413PayloadTooLarge,
+        "El contenido excede el límite permitido",
+        detail);
+
+public sealed class UnsupportedMediaTypeException(string detail)
+    : ApiException(
+        StatusCodes.Status415UnsupportedMediaType,
+        "Tipo de archivo no permitido",
+        detail);
+
 public sealed class UnauthorizedException(string detail)
     : ApiException(StatusCodes.Status401Unauthorized, "No autorizado", detail);
 

@@ -88,6 +88,12 @@ public sealed class BasicDocument : ITenantEntity
     {
         const long maxSizeBytes = 10 * 1024 * 1024;
 
+        if (eventId is null && clientId is null)
+        {
+            throw new DomainRuleException(
+                "El documento debe pertenecer a un evento o cliente.");
+        }
+
         if (sizeBytes is <= 0 or > maxSizeBytes)
         {
             throw new DomainRuleException(

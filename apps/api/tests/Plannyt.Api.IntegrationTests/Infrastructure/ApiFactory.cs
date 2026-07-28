@@ -13,9 +13,21 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         .WithPassword("test-only-password")
         .Build();
 
+    public string StorageRoot { get; } = Path.Combine(
+        Path.GetTempPath(),
+        "plannyt-integration-tests",
+        Guid.NewGuid().ToString("N"));
+
     public Task InitializeAsync() => _postgres.StartAsync();
 
-    Task IAsyncLifetime.DisposeAsync() => _postgres.DisposeAsync().AsTask();
+    async Task IAsyncLifetime.DisposeAsync()
+    {
+        await _postgres.DisposeAsync();
+        if (Directory.Exists(StorageRoot))
+        {
+            Directory.Delete(StorageRoot, true);
+        }
+    }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -26,7 +38,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             {
                 ["ConnectionStrings:DefaultConnection"] = _postgres.GetConnectionString(),
                 ["Database:MigrateOnStartup"] = "true",
-                ["RateLimit:SensitivePermitLimit"] = "1000"
+                ["RateLimit:SensitivePermitLimit"] = "1000",
+                ["FileStorage:RootPath"] = StorageRoot
             });
         });
     }

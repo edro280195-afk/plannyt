@@ -18,6 +18,8 @@ using Plannyt.Api.Modules.Audit.Application;
 using Plannyt.Api.Modules.Crm.Application;
 using Plannyt.Api.Modules.Events.Application;
 using Plannyt.Api.Modules.Events.Domain;
+using Plannyt.Api.Modules.Documents.Application;
+using Plannyt.Api.Modules.Documents.Storage;
 using Plannyt.Api.Modules.Identity.Application;
 using Plannyt.Api.Modules.Identity.Domain;
 using Plannyt.Api.Modules.Identity.Security;
@@ -165,6 +167,9 @@ builder.Services.AddScoped<EventAccessService>();
 builder.Services.AddScoped<PortalAccessService>();
 builder.Services.AddScoped<PortalEventService>();
 builder.Services.AddSingleton<InvitationTokenService>();
+builder.Services.AddScoped<DocumentService>();
+builder.Services.AddSingleton<DocumentFileValidator>();
+builder.Services.AddSingleton<IFileStorage, LocalFileStorage>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException(
@@ -204,6 +209,7 @@ builder.Services
 var app = builder.Build();
 
 DemoSeedGuard.Validate(app.Environment, app.Configuration);
+FileStorageGuard.Validate(app.Environment);
 await DatabaseInitializer.InitializeAsync(app);
 
 app.UseExceptionHandler();
@@ -240,6 +246,7 @@ app.MapOrganizationEndpoints();
 app.MapClientEndpoints();
 app.MapEventEndpoints();
 app.MapAccessEndpoints();
+app.MapDocumentEndpoints();
 
 app.MapGet("/", () => Results.Ok(new
 {
