@@ -49,6 +49,11 @@ import { OrganizationContextService } from '../core/auth/organization-context.se
               <span aria-hidden="true">▱</span> Propuestas
             </a>
           }
+          @if (organization.hasPermission('contracts.view')) {
+            <a routerLink="/app/contracts" routerLinkActive="is-active" (click)="closeMenu()">
+              <span aria-hidden="true">✎</span> Contratos
+            </a>
+          }
           @if (organization.hasPermission('catalog.view')) {
             <a routerLink="/app/catalog" routerLinkActive="is-active" (click)="closeMenu()">
               <span aria-hidden="true">◫</span> Catálogo

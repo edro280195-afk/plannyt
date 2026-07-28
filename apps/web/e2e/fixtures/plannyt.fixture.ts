@@ -11,6 +11,7 @@ interface RecordedRequest {
 interface ApiMock {
   requests: RecordedRequest[];
   useProfile(profile: ProfileKind): void;
+  prepareContractingScenario(): void;
   requestFor(method: string, path: string): RecordedRequest | undefined;
 }
 
@@ -67,6 +68,36 @@ const ownerPermissions = [
   'proposals.view-internal',
   'proposals.manage-comments',
   'proposals.convert-client',
+  'contract-templates.view',
+  'contract-templates.manage',
+  'contracts.view',
+  'contracts.create',
+  'contracts.update-draft',
+  'contracts.publish',
+  'contracts.send',
+  'contracts.cancel',
+  'contracts.upload-external',
+  'contracts.validate-external',
+  'contracts.view-internal',
+  'signatures.view',
+  'signatures.manage-signers',
+  'signatures.create-request',
+  'signatures.revoke-request',
+  'signatures.countersign',
+  'signatures.view-evidence',
+  'payment-plans.view',
+  'payment-plans.create',
+  'payment-plans.update-draft',
+  'payment-plans.activate',
+  'payment-plans.cancel',
+  'payments.view',
+  'payments.create',
+  'payments.approve',
+  'payments.reject',
+  'payments.cancel',
+  'payments.refund',
+  'payments.view-internal',
+  'events.confirm',
 ];
 
 interface CommercialState {
@@ -78,6 +109,16 @@ interface CommercialState {
   proposalCreated: boolean;
   proposalStatus: string;
   proposalVersion: number;
+  contractCreated: boolean;
+  contractPublished: boolean;
+  clientSignerAdded: boolean;
+  clientSigned: boolean;
+  plannerSigned: boolean;
+  planStatus: 'None' | 'Draft' | 'Active';
+  paymentStatus: 'None' | 'PendingReview' | 'Approved';
+  receiptUploaded: boolean;
+  paymentAllocated: boolean;
+  eventConfirmed: boolean;
 }
 
 const eventSummary = {
@@ -140,11 +181,28 @@ export const test = base.extend<PlannytFixtures>({
       proposalCreated: false,
       proposalStatus: 'Draft',
       proposalVersion: 0,
+      contractCreated: false,
+      contractPublished: false,
+      clientSignerAdded: false,
+      clientSigned: false,
+      plannerSigned: false,
+      planStatus: 'None',
+      paymentStatus: 'None',
+      receiptUploaded: false,
+      paymentAllocated: false,
+      eventConfirmed: false,
     };
     const api: ApiMock = {
       requests,
       useProfile(value): void {
         profile = value;
+      },
+      prepareContractingScenario(): void {
+        commercial.prospectCreated = true;
+        commercial.prospectConverted = true;
+        commercial.proposalCreated = true;
+        commercial.proposalStatus = 'Accepted';
+        commercial.proposalVersion = 1;
       },
       requestFor(method, path) {
         return requests.find((request) => request.method === method && request.path === path);
@@ -163,7 +221,7 @@ export const test = base.extend<PlannytFixtures>({
       requests.push({
         method: request.method(),
         path: url.pathname,
-        body: bodyText ? (JSON.parse(bodyText) as unknown) : null,
+        body: parseRecordedBody(bodyText),
       });
       await fulfillApi(route, profile, commercial);
     });
@@ -328,6 +386,131 @@ async function fulfillApi(
 
   if (path === '/api/organizations/org-1/proposals/proposal-1' && method === 'GET') {
     await json(route, proposalDetail(commercial));
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/contract-templates' && method === 'GET') {
+    await json(route, []);
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/contracts' && method === 'GET') {
+    await json(route, commercial.contractCreated ? [contractSummary(commercial)] : []);
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/contracts/from-proposal' && method === 'POST') {
+    commercial.contractCreated = true;
+    await json(route, contractDetail(commercial), 201);
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/contracts/contract-1' && method === 'GET') {
+    await json(route, contractDetail(commercial));
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/contracts/contract-1/publish' && method === 'POST') {
+    commercial.contractPublished = true;
+    await json(route, contractDetail(commercial));
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/contracts/contract-1/signers' && method === 'POST') {
+    commercial.clientSignerAdded = true;
+    await json(route, contractSigners(commercial).at(-1) ?? {}, 201);
+    return;
+  }
+
+  if (
+    path === '/api/organizations/org-1/contracts/contract-1/signers/signer-client/requests' &&
+    method === 'POST'
+  ) {
+    await json(route, {
+      id: 'signature-request-1',
+      contractVersionId: 'contract-version-1',
+      contractSignerId: 'signer-client',
+      expiresAt: '2027-02-07T12:00:00Z',
+      signingUrl: 'http://127.0.0.1:4200/sign/signature-token',
+    });
+    return;
+  }
+
+  if (
+    path === '/api/organizations/org-1/contracts/contract-1/signers/signer-planner/sign' &&
+    method === 'POST'
+  ) {
+    commercial.plannerSigned = true;
+    await json(route, contractDetail(commercial));
+    return;
+  }
+
+  if (path === '/api/public/signatures/signature-token' && method === 'GET') {
+    await json(route, publicSignature(commercial));
+    return;
+  }
+
+  if (path === '/api/public/signatures/signature-token/sign' && method === 'POST') {
+    commercial.clientSigned = true;
+    await json(route, publicSignature(commercial));
+    return;
+  }
+
+  if (path === '/api/public/signatures/rejected-token/decline' && method === 'POST') {
+    await json(route, {});
+    return;
+  }
+
+  if (path === '/api/public/signatures/rejected-token' && method === 'GET') {
+    await json(route, { ...publicSignature(commercial), canSign: true });
+    return;
+  }
+
+  if (
+    path === '/api/organizations/org-1/events/event-1/contracting-readiness' &&
+    method === 'GET'
+  ) {
+    await json(route, contractingReadiness(commercial));
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/events/event-1/confirm' && method === 'POST') {
+    commercial.eventConfirmed = true;
+    await json(route, contractingReadiness(commercial));
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/payment-plans' && method === 'GET') {
+    await json(route, commercial.planStatus === 'None' ? [] : [paymentPlan(commercial)]);
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/payment-plans' && method === 'POST') {
+    commercial.planStatus = 'Draft';
+    await json(route, paymentPlan(commercial), 201);
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/payment-plans/plan-1/activate' && method === 'POST') {
+    commercial.planStatus = 'Active';
+    await json(route, paymentPlan(commercial));
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/payments' && method === 'GET') {
+    await json(route, commercial.paymentStatus === 'None' ? [] : [paymentRecord(commercial)]);
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/payments/payment-1/approve' && method === 'POST') {
+    commercial.paymentStatus = 'Approved';
+    await json(route, paymentRecord(commercial));
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/payments/payment-1/allocations' && method === 'POST') {
+    commercial.paymentAllocated = true;
+    await json(route, paymentRecord(commercial));
     return;
   }
 
@@ -506,6 +689,43 @@ async function fulfillApi(
     return;
   }
 
+  if (path === '/api/client-portal/events/event-1/contracting-readiness' && method === 'GET') {
+    await json(route, contractingReadiness(commercial));
+    return;
+  }
+
+  if (path === '/api/client-portal/contracts' && method === 'GET') {
+    await json(route, commercial.contractCreated ? [portalContractSummary(commercial)] : []);
+    return;
+  }
+
+  if (path === '/api/client-portal/contracts/contract-1' && method === 'GET') {
+    await json(route, portalContract(commercial));
+    return;
+  }
+
+  if (path === '/api/client-portal/payment-plans' && method === 'GET') {
+    await json(route, commercial.planStatus === 'None' ? [] : [paymentPlan(commercial)]);
+    return;
+  }
+
+  if (path === '/api/client-portal/payments' && method === 'GET') {
+    await json(route, commercial.paymentStatus === 'None' ? [] : [portalPayment(commercial)]);
+    return;
+  }
+
+  if (path === '/api/client-portal/payments' && method === 'POST') {
+    commercial.paymentStatus = 'PendingReview';
+    await json(route, portalPayment(commercial), 201);
+    return;
+  }
+
+  if (path === '/api/client-portal/payments/payment-1/receipt' && method === 'POST') {
+    commercial.receiptUploaded = true;
+    await json(route, paymentReceipt());
+    return;
+  }
+
   await problem(route, 404, `Ruta simulada no definida: ${method} ${path}`);
 }
 
@@ -595,6 +815,16 @@ function portalProposal(): object {
       proposalCreated: true,
       proposalStatus: 'Sent',
       proposalVersion: 1,
+      contractCreated: false,
+      contractPublished: false,
+      clientSignerAdded: false,
+      clientSigned: false,
+      plannerSigned: false,
+      planStatus: 'None',
+      paymentStatus: 'None',
+      receiptUploaded: false,
+      paymentAllocated: false,
+      eventConfirmed: false,
     }),
     recipientName: 'Ana Martínez',
   };
@@ -830,6 +1060,368 @@ function publicProposal(commercial: CommercialState): object {
     ],
     comments: [],
   };
+}
+
+function contractStatus(commercial: CommercialState): string {
+  if (commercial.clientSigned && commercial.plannerSigned) {
+    return 'Completed';
+  }
+  if (commercial.clientSigned || commercial.plannerSigned) {
+    return 'PartiallySigned';
+  }
+  return commercial.contractPublished ? 'Ready' : 'Draft';
+}
+
+function contractSummary(commercial: CommercialState): object {
+  return {
+    id: 'contract-1',
+    eventId: 'event-1',
+    clientId: 'client-1',
+    contractNumber: 'C-20260728-ABC123',
+    name: 'Contrato de prestación de servicios',
+    sourceType: 'GeneratedFromProposal',
+    status: contractStatus(commercial),
+    currentVersionNumber: 1,
+    contractGrandTotal: 14500,
+    currencyCode: 'MXN',
+    updatedAt: '2026-07-28T12:00:00Z',
+  };
+}
+
+function contractVersion(commercial: CommercialState): object {
+  return {
+    id: 'contract-version-1',
+    versionNumber: 1,
+    templateId: null,
+    sourceProposalVersionId: 'version-1',
+    renderedContent:
+      '<h1>Contrato de prestación de servicios</h1><p>Documento completo para Ana Martínez.</p>',
+    documentFileName: commercial.contractPublished ? 'contrato-C-20260728-ABC123-v1.pdf' : null,
+    documentSizeBytes: commercial.contractPublished ? 4096 : null,
+    documentSha256: commercial.contractPublished
+      ? 'c7a2f5e89d9e7f6ef912bb62ca014678e2fd42ca8fbd67fe84fd5fb667ae1111'
+      : null,
+    consentText:
+      'Declaro que revisé el documento y acepto utilizar medios electrónicos para firmarlo.',
+    validUntil: '2027-02-07T12:00:00Z',
+    createdAt: '2026-07-28T12:00:00Z',
+    publishedAt: commercial.contractPublished ? '2026-07-28T13:00:00Z' : null,
+    supersededAt: null,
+  };
+}
+
+function contractParties(): object[] {
+  return [
+    {
+      id: 'party-planner',
+      partyType: 'PlannerOrganization',
+      clientId: null,
+      organizationPartyId: 'org-1',
+      displayName: 'Armonía Eventos',
+      legalName: null,
+      taxId: null,
+      address: null,
+      sortOrder: 0,
+    },
+    {
+      id: 'party-client',
+      partyType: 'Client',
+      clientId: 'client-1',
+      organizationPartyId: null,
+      displayName: 'Ana Martínez',
+      legalName: null,
+      taxId: null,
+      address: null,
+      sortOrder: 1,
+    },
+  ];
+}
+
+function contractSigners(commercial: CommercialState): object[] {
+  const signers: object[] = [
+    {
+      id: 'signer-planner',
+      contractPartyId: 'party-planner',
+      personId: null,
+      userAccountId: 'user-1',
+      name: 'Mariana Torres',
+      email: 'mariana@armonia.mx',
+      signerRole: 'Representante de la organización',
+      signingOrder: 2,
+      isRequired: true,
+      status: commercial.plannerSigned ? 'Signed' : 'Pending',
+      signedAt: commercial.plannerSigned ? '2026-07-28T15:00:00Z' : null,
+      declinedAt: null,
+    },
+  ];
+  if (commercial.clientSignerAdded) {
+    signers.push({
+      id: 'signer-client',
+      contractPartyId: 'party-client',
+      personId: null,
+      userAccountId: 'user-2',
+      name: 'Ana Martínez',
+      email: 'ana@example.com',
+      signerRole: 'Cliente contratante',
+      signingOrder: 1,
+      isRequired: true,
+      status: commercial.clientSigned ? 'Signed' : 'Invited',
+      signedAt: commercial.clientSigned ? '2026-07-28T14:00:00Z' : null,
+      declinedAt: null,
+    });
+  }
+  return signers;
+}
+
+function contractRequirements(): object {
+  return {
+    requireAcceptedProposal: true,
+    requireCompletedContract: true,
+    depositRequirementType: 'PercentageOfContract',
+    depositRequirementValue: 20,
+    requiredDepositAmount: 2900,
+    currencyCode: 'MXN',
+    confirmationMode: 'ManualAfterRequirements',
+    createdAt: '2026-07-28T12:00:00Z',
+  };
+}
+
+function contractDetail(commercial: CommercialState): object {
+  return {
+    ...contractSummary(commercial),
+    organizationId: 'org-1',
+    acceptedProposalId: 'proposal-1',
+    acceptedProposalVersionId: 'version-1',
+    versions: [contractVersion(commercial)],
+    parties: contractParties(),
+    signers: contractSigners(commercial),
+    requirements: contractRequirements(),
+    createdAt: '2026-07-28T12:00:00Z',
+    completedAt:
+      commercial.clientSigned && commercial.plannerSigned ? '2026-07-28T15:00:00Z' : null,
+    cancelledAt: null,
+    cancellationReason: null,
+  };
+}
+
+function publicSignature(commercial: CommercialState): object {
+  return {
+    contractId: 'contract-1',
+    contractVersionId: 'contract-version-1',
+    contractSignerId: 'signer-client',
+    contractNumber: 'C-20260728-ABC123',
+    name: 'Contrato de prestación de servicios',
+    versionNumber: 1,
+    organizationName: 'Armonía Eventos',
+    signerName: 'Ana Martínez',
+    signerEmail: 'ana@example.com',
+    parties: ['Armonía Eventos', 'Ana Martínez'],
+    renderedContent:
+      '<h1>Contrato de prestación de servicios</h1><p>Documento completo para Ana Martínez.</p>',
+    validUntil: '2027-02-07T12:00:00Z',
+    consentText:
+      'Declaro que revisé el documento y acepto utilizar medios electrónicos para firmarlo.',
+    documentSha256: 'c7a2f5e89d9e7f6ef912bb62ca014678e2fd42ca8fbd67fe84fd5fb667ae1111',
+    signers: contractSigners(commercial).map((signer) => {
+      const value = signer as {
+        signerRole: string;
+        status: string;
+        signedAt: string | null;
+      };
+      return {
+        signerRole: value.signerRole,
+        status: value.status,
+        signedAt: value.signedAt,
+      };
+    }),
+    canSign: !commercial.clientSigned,
+  };
+}
+
+function paymentPlan(commercial: CommercialState): object {
+  const approvedAmount = commercial.paymentAllocated ? 2900 : 0;
+  return {
+    id: 'plan-1',
+    eventId: 'event-1',
+    clientId: 'client-1',
+    contractId: 'contract-1',
+    proposalVersionId: 'version-1',
+    currencyCode: 'MXN',
+    totalAmount: 14500,
+    status: commercial.planStatus,
+    approvedAmount,
+    pendingAmount: 14500 - approvedAmount,
+    installments: [
+      {
+        id: 'installment-deposit',
+        sequenceNumber: 1,
+        description: 'Anticipo de contratación',
+        dueDate: '2026-08-04',
+        amount: 2900,
+        approvedAmount,
+        pendingAmount: 2900 - approvedAmount,
+        installmentType: 'Deposit',
+        status: commercial.paymentAllocated ? 'Paid' : 'Pending',
+      },
+      {
+        id: 'installment-final',
+        sequenceNumber: 2,
+        description: 'Pago final',
+        dueDate: '2027-01-30',
+        amount: 11600,
+        approvedAmount: 0,
+        pendingAmount: 11600,
+        installmentType: 'FinalPayment',
+        status: 'Pending',
+      },
+    ],
+    createdAt: '2026-07-28T12:00:00Z',
+    updatedAt: '2026-07-28T12:00:00Z',
+  };
+}
+
+function paymentReceipt(): object {
+  return {
+    documentId: 'receipt-document-1',
+    fileName: 'comprobante.png',
+    mimeType: 'image/png',
+    sizeBytes: 128,
+    createdAt: '2026-07-28T16:00:00Z',
+  };
+}
+
+function paymentRecord(commercial: CommercialState): object {
+  return {
+    id: 'payment-1',
+    eventId: 'event-1',
+    clientId: 'client-1',
+    paymentPlanId: 'plan-1',
+    paymentDate: '2026-07-28',
+    amount: 2900,
+    currencyCode: 'MXN',
+    method: 'BankTransfer',
+    reference: 'SPEI-123',
+    status: commercial.paymentStatus,
+    notesShared: 'Anticipo del evento',
+    internalNotes: 'Visible solo para finanzas',
+    submittedByClient: true,
+    rejectionReason: null,
+    allocations: commercial.paymentAllocated
+      ? [{ id: 'allocation-1', paymentInstallmentId: 'installment-deposit', amount: 2900 }]
+      : [],
+    receipts: commercial.receiptUploaded ? [paymentReceipt()] : [],
+    createdAt: '2026-07-28T16:00:00Z',
+    updatedAt: '2026-07-28T16:00:00Z',
+  };
+}
+
+function portalPayment(commercial: CommercialState): object {
+  const record = paymentRecord(commercial) as {
+    id: string;
+    paymentDate: string;
+    amount: number;
+    currencyCode: string;
+    method: string;
+    reference: string | null;
+    status: string;
+    notesShared: string | null;
+    rejectionReason: string | null;
+    receipts: object[];
+    createdAt: string;
+  };
+  return {
+    id: record.id,
+    paymentDate: record.paymentDate,
+    amount: record.amount,
+    currencyCode: record.currencyCode,
+    method: record.method,
+    reference: record.reference,
+    status: record.status,
+    notesShared: record.notesShared,
+    rejectionReason: record.rejectionReason,
+    receipts: record.receipts,
+    createdAt: record.createdAt,
+  };
+}
+
+function contractingReadiness(commercial: CommercialState): object {
+  const contractCompleted = commercial.clientSigned && commercial.plannerSigned;
+  const depositSatisfied = commercial.paymentAllocated;
+  const readyForConfirmation = contractCompleted && depositSatisfied;
+  const missingRequirements: string[] = [];
+  if (!contractCompleted) {
+    missingRequirements.push('Contrato completado');
+  }
+  if (!depositSatisfied) {
+    missingRequirements.push('Anticipo cubierto');
+  }
+  return {
+    proposalAccepted: true,
+    contractCompleted,
+    requiredDepositAmount: 2900,
+    approvedDepositAmount: depositSatisfied ? 2900 : 0,
+    depositSatisfied,
+    missingRequiredSigners: contractCompleted
+      ? 0
+      : Number(!commercial.clientSigned) + Number(!commercial.plannerSigned),
+    missingRequirements,
+    readyForConfirmation,
+    confirmationMode: 'ManualAfterRequirements',
+    eventStatus: commercial.eventConfirmed ? 'Confirmed' : 'Preliminary',
+  };
+}
+
+function portalContractSummary(commercial: CommercialState): object {
+  return {
+    id: 'contract-1',
+    eventId: 'event-1',
+    contractNumber: 'C-20260728-ABC123',
+    name: 'Contrato de prestación de servicios',
+    status: contractStatus(commercial),
+    currentVersionNumber: 1,
+    hasPendingSignature: commercial.clientSignerAdded && !commercial.clientSigned,
+    hasFinalDocument: commercial.clientSigned && commercial.plannerSigned,
+  };
+}
+
+function portalContract(commercial: CommercialState): object {
+  return {
+    id: 'contract-1',
+    eventId: 'event-1',
+    contractNumber: 'C-20260728-ABC123',
+    name: 'Contrato de prestación de servicios',
+    status: contractStatus(commercial),
+    version: contractVersion(commercial),
+    parties: contractParties(),
+    signers: contractSigners(commercial).map((signer) => {
+      const value = signer as {
+        signerRole: string;
+        status: string;
+        signedAt: string | null;
+      };
+      return {
+        signerRole: value.signerRole,
+        status: value.status,
+        signedAt: value.signedAt,
+      };
+    }),
+    pendingSignerId:
+      commercial.clientSignerAdded && !commercial.clientSigned ? 'signer-client' : null,
+    pendingSignerName:
+      commercial.clientSignerAdded && !commercial.clientSigned ? 'Ana Martínez' : null,
+    hasFinalDocument: commercial.clientSigned && commercial.plannerSigned,
+  };
+}
+
+function parseRecordedBody(bodyText: string | null): unknown {
+  if (!bodyText) {
+    return null;
+  }
+  try {
+    return JSON.parse(bodyText) as unknown;
+  } catch {
+    return bodyText;
+  }
 }
 
 async function json(route: Route, value: object | object[], status = 200): Promise<void> {

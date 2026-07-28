@@ -2,9 +2,14 @@ import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { forkJoin } from 'rxjs';
 import { ApiService } from '../../core/api/api.service';
 import { getApiErrorMessage } from '../../core/errors/api-error';
-import { DocumentResponse, PortalEventDetail } from '../../core/models/api.models';
+import {
+  ContractingReadiness,
+  DocumentResponse,
+  PortalEventDetail,
+} from '../../core/models/api.models';
 import { ToastService } from '../../core/ui/toast.service';
 
 @Component({
@@ -27,6 +32,43 @@ import { ToastService } from '../../core/ui/toast.service';
             <p>{{ currentEvent.city }}, {{ currentEvent.countryCode }}</p>
           </div>
         </header>
+
+        @if (readiness(); as state) {
+          <section class="panel portal-contracting-summary">
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">Contratación</span>
+                <h2>Estado de tu evento</h2>
+              </div>
+              <span class="status-chip" [attr.data-status]="state.eventStatus">
+                {{ state.eventStatus === 'Confirmed' ? 'Confirmado' : 'Preliminar' }}
+              </span>
+            </div>
+            <div class="readiness-grid">
+              <div [class.is-complete]="state.proposalAccepted">
+                <span>{{ state.proposalAccepted ? '✓' : '1' }}</span>
+                <strong>Propuesta</strong>
+                <small>{{ state.proposalAccepted ? 'Aceptada' : 'Pendiente' }}</small>
+              </div>
+              <div [class.is-complete]="state.contractCompleted">
+                <span>{{ state.contractCompleted ? '✓' : '2' }}</span>
+                <strong>Contrato</strong>
+                <small>{{ state.contractCompleted ? 'Completado' : 'Pendiente' }}</small>
+              </div>
+              <div [class.is-complete]="state.depositSatisfied">
+                <span>{{ state.depositSatisfied ? '✓' : '3' }}</span>
+                <strong>Anticipo</strong>
+                <small>
+                  {{ state.approvedDepositAmount }} de {{ state.requiredDepositAmount }}
+                </small>
+              </div>
+            </div>
+            <div class="button-row">
+              <a class="btn btn--secondary" routerLink="/portal/contracts">Ver contratos</a>
+              <a class="btn btn--secondary" routerLink="/portal/payments">Ver pagos</a>
+            </div>
+          </section>
+        }
 
         <section class="portal-detail-grid">
           <article class="card card--padded portal-story">
@@ -124,13 +166,19 @@ export class PortalEventDetailPage {
       throw new Error('La ruta requiere un evento.');
     })();
   protected readonly event = signal<PortalEventDetail | null>(null);
+  protected readonly readiness = signal<ContractingReadiness | null>(null);
 
   constructor() {
-    this.api
-      .getPortalEvent(this.eventId)
+    forkJoin({
+      event: this.api.getPortalEvent(this.eventId),
+      readiness: this.api.getPortalContractingReadiness(this.eventId),
+    })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (event) => this.event.set(event),
+        next: ({ event, readiness }) => {
+          this.event.set(event);
+          this.readiness.set(readiness);
+        },
         error: (error: unknown) => this.toast.error(getApiErrorMessage(error)),
       });
   }

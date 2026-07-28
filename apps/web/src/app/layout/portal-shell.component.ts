@@ -19,6 +19,8 @@ import { AuthService } from '../core/auth/auth.service';
         <nav class="portal-nav" aria-label="Navegación del portal">
           <a routerLink="/portal/events">Eventos</a>
           <a routerLink="/portal/proposals">Propuestas</a>
+          <a routerLink="/portal/contracts">Contratos</a>
+          <a routerLink="/portal/payments">Pagos</a>
         </nav>
         <div class="portal-header__actions">
           <span class="hide-mobile">{{ auth.me()?.email }}</span>

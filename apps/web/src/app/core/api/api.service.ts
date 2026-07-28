@@ -11,6 +11,10 @@ import {
   ClientMatchSuggestion,
   ClientResponse,
   ClientType,
+  ContractListItem,
+  ContractResponse,
+  ContractTemplate,
+  ContractingReadiness,
   ConvertProspectResponse,
   Coupon,
   CouponRequest,
@@ -36,6 +40,9 @@ import {
   OrganizationRole,
   PackageRequest,
   PagedResponse,
+  PaymentMethod,
+  PaymentPlan,
+  PaymentRecord,
   ProposalComment,
   ProposalDraftRequest,
   ProposalListItem,
@@ -49,10 +56,16 @@ import {
   ProspectStatus,
   PortalEvent,
   PortalEventDetail,
+  PortalContract,
+  PortalContractListItem,
+  PortalPaymentRecord,
+  PublicSignatureContract,
   RegisterAndAcceptInvitationRequest,
   RegisterPlannerRequest,
   ServiceCatalogItem,
   ServiceCatalogItemRequest,
+  SignatureRequestLink,
+  SigningMethod,
   UpdateClientRequest,
   UpdateOrganizationRequest,
   UpsertParticipantRequest,
@@ -719,6 +732,455 @@ export class ApiService {
     return this.http.get(`${this.baseUrl}/client-portal/proposals/${proposalId}/pdf`, {
       responseType: 'blob',
     });
+  }
+
+  getContractTemplates(organizationId: string): Observable<ContractTemplate[]> {
+    return this.http.get<ContractTemplate[]>(
+      `${this.organizationUrl(organizationId)}/contract-templates`,
+    );
+  }
+
+  createContractTemplate(
+    organizationId: string,
+    request: {
+      name: string;
+      description: string | null;
+      content: string;
+      isDefault: boolean;
+      isActive: boolean;
+    },
+  ): Observable<ContractTemplate> {
+    return this.http.post<ContractTemplate>(
+      `${this.organizationUrl(organizationId)}/contract-templates`,
+      request,
+    );
+  }
+
+  updateContractTemplate(
+    organizationId: string,
+    templateId: string,
+    request: {
+      name: string;
+      description: string | null;
+      content: string;
+      isDefault: boolean;
+      isActive: boolean;
+    },
+  ): Observable<ContractTemplate> {
+    return this.http.put<ContractTemplate>(
+      `${this.organizationUrl(organizationId)}/contract-templates/${templateId}`,
+      request,
+    );
+  }
+
+  previewContractTemplate(
+    organizationId: string,
+    request: {
+      content: string;
+      eventId: string | null;
+      clientId: string | null;
+      proposalVersionId: string | null;
+      contractId: string | null;
+      validUntil: string | null;
+    },
+  ): Observable<{
+    renderedContent: string;
+    unknownVariables: string[];
+    missingVariables: string[];
+    canPublish: boolean;
+  }> {
+    return this.http.post<{
+      renderedContent: string;
+      unknownVariables: string[];
+      missingVariables: string[];
+      canPublish: boolean;
+    }>(`${this.organizationUrl(organizationId)}/contract-templates/preview`, request);
+  }
+
+  getContracts(organizationId: string, eventId?: string): Observable<ContractListItem[]> {
+    const params = eventId ? new HttpParams().set('eventId', eventId) : undefined;
+    return this.http.get<ContractListItem[]>(`${this.organizationUrl(organizationId)}/contracts`, {
+      params,
+    });
+  }
+
+  getContract(organizationId: string, contractId: string): Observable<ContractResponse> {
+    return this.http.get<ContractResponse>(
+      `${this.organizationUrl(organizationId)}/contracts/${contractId}`,
+    );
+  }
+
+  createContractFromProposal(
+    organizationId: string,
+    request: {
+      proposalId: string;
+      name: string;
+      templateId: string | null;
+      content: string | null;
+      consentText: string;
+      validUntil: string | null;
+    },
+  ): Observable<ContractResponse> {
+    return this.http.post<ContractResponse>(
+      `${this.organizationUrl(organizationId)}/contracts/from-proposal`,
+      request,
+    );
+  }
+
+  createExternalContract(
+    organizationId: string,
+    request: {
+      eventId: string;
+      clientId: string;
+      name: string;
+      contractGrandTotal: number;
+      currencyCode: string;
+      validUntil: string | null;
+      file: File;
+    },
+  ): Observable<ContractResponse> {
+    const form = new FormData();
+    form.append('eventId', request.eventId);
+    form.append('clientId', request.clientId);
+    form.append('name', request.name);
+    form.append('contractGrandTotal', String(request.contractGrandTotal));
+    form.append('currencyCode', request.currencyCode);
+    if (request.validUntil) {
+      form.append('validUntil', request.validUntil);
+    }
+    form.append('file', request.file);
+    return this.http.post<ContractResponse>(
+      `${this.organizationUrl(organizationId)}/contracts/external`,
+      form,
+    );
+  }
+
+  updateContractDraft(
+    organizationId: string,
+    contractId: string,
+    request: {
+      name: string;
+      templateId: string | null;
+      content: string;
+      consentText: string;
+      validUntil: string | null;
+    },
+  ): Observable<ContractResponse> {
+    return this.http.put<ContractResponse>(
+      `${this.organizationUrl(organizationId)}/contracts/${contractId}/draft`,
+      request,
+    );
+  }
+
+  publishContract(organizationId: string, contractId: string): Observable<unknown> {
+    return this.http.post(
+      `${this.organizationUrl(organizationId)}/contracts/${contractId}/publish`,
+      null,
+    );
+  }
+
+  validateExternalContract(
+    organizationId: string,
+    contractId: string,
+    signedAt: string,
+  ): Observable<ContractResponse> {
+    return this.http.post<ContractResponse>(
+      `${this.organizationUrl(organizationId)}/contracts/${contractId}/validate-external`,
+      { signedAt },
+    );
+  }
+
+  downloadContractVersion(
+    organizationId: string,
+    contractId: string,
+    versionId: string,
+  ): Observable<Blob> {
+    return this.http.get(
+      `${this.organizationUrl(organizationId)}/contracts/${contractId}/versions/${versionId}/pdf`,
+      { responseType: 'blob' },
+    );
+  }
+
+  downloadFinalContract(organizationId: string, contractId: string): Observable<Blob> {
+    return this.http.get(`${this.organizationUrl(organizationId)}/contracts/${contractId}/final`, {
+      responseType: 'blob',
+    });
+  }
+
+  addContractSigner(
+    organizationId: string,
+    contractId: string,
+    request: {
+      contractPartyId: string;
+      personId: string | null;
+      userAccountId: string | null;
+      name: string;
+      email: string;
+      signerRole: string;
+      signingOrder: number;
+      isRequired: boolean;
+    },
+  ): Observable<ContractResponse['signers'][number]> {
+    return this.http.post<ContractResponse['signers'][number]>(
+      `${this.organizationUrl(organizationId)}/contracts/${contractId}/signers`,
+      request,
+    );
+  }
+
+  createSignatureRequest(
+    organizationId: string,
+    contractId: string,
+    signerId: string,
+  ): Observable<SignatureRequestLink> {
+    return this.http.post<SignatureRequestLink>(
+      `${this.organizationUrl(organizationId)}/contracts/${contractId}/signers/${signerId}/requests`,
+      { expiresAt: null },
+    );
+  }
+
+  signAsOrganization(
+    organizationId: string,
+    contractId: string,
+    signerId: string,
+    declaredSignerName: string,
+  ): Observable<ContractResponse> {
+    return this.http.post<ContractResponse>(
+      `${this.organizationUrl(organizationId)}/contracts/${contractId}/signers/${signerId}/sign`,
+      {
+        signingMethod: 'AuthenticatedConfirmation',
+        declaredSignerName,
+        acceptElectronicMeans: true,
+        confirmDisplayedVersion: true,
+        signatureDataUrl: null,
+      },
+    );
+  }
+
+  getContractingReadiness(
+    organizationId: string,
+    eventId: string,
+  ): Observable<ContractingReadiness> {
+    return this.http.get<ContractingReadiness>(
+      `${this.eventUrl(organizationId, eventId)}/contracting-readiness`,
+    );
+  }
+
+  getPortalContractingReadiness(eventId: string): Observable<ContractingReadiness> {
+    return this.http.get<ContractingReadiness>(
+      `${this.baseUrl}/client-portal/events/${eventId}/contracting-readiness`,
+    );
+  }
+
+  confirmContractedEvent(
+    organizationId: string,
+    eventId: string,
+  ): Observable<ContractingReadiness> {
+    return this.http.post<ContractingReadiness>(
+      `${this.eventUrl(organizationId, eventId)}/confirm`,
+      null,
+    );
+  }
+
+  getPaymentPlans(organizationId: string, eventId?: string): Observable<PaymentPlan[]> {
+    const params = eventId ? new HttpParams().set('eventId', eventId) : undefined;
+    return this.http.get<PaymentPlan[]>(`${this.organizationUrl(organizationId)}/payment-plans`, {
+      params,
+    });
+  }
+
+  createPaymentPlan(
+    organizationId: string,
+    request: {
+      eventId: string;
+      clientId: string;
+      contractId: string | null;
+      proposalVersionId: string | null;
+      currencyCode: string;
+      totalAmount: number;
+      installments: {
+        sequenceNumber: number;
+        description: string;
+        dueDate: string;
+        amount: number;
+        installmentType: 'Deposit' | 'ScheduledPayment' | 'FinalPayment' | 'AdditionalCharge';
+      }[];
+    },
+  ): Observable<PaymentPlan> {
+    return this.http.post<PaymentPlan>(
+      `${this.organizationUrl(organizationId)}/payment-plans`,
+      request,
+    );
+  }
+
+  activatePaymentPlan(organizationId: string, planId: string): Observable<PaymentPlan> {
+    return this.http.post<PaymentPlan>(
+      `${this.organizationUrl(organizationId)}/payment-plans/${planId}/activate`,
+      null,
+    );
+  }
+
+  getPayments(organizationId: string, eventId?: string): Observable<PaymentRecord[]> {
+    const params = eventId ? new HttpParams().set('eventId', eventId) : undefined;
+    return this.http.get<PaymentRecord[]>(`${this.organizationUrl(organizationId)}/payments`, {
+      params,
+    });
+  }
+
+  createPayment(
+    organizationId: string,
+    request: {
+      eventId: string;
+      clientId: string;
+      paymentPlanId: string | null;
+      paymentDate: string;
+      amount: number;
+      currencyCode: string;
+      method: PaymentMethod;
+      reference: string | null;
+      notesShared: string | null;
+      internalNotes: string | null;
+    },
+  ): Observable<PaymentRecord> {
+    return this.http.post<PaymentRecord>(
+      `${this.organizationUrl(organizationId)}/payments`,
+      request,
+    );
+  }
+
+  approvePayment(organizationId: string, paymentId: string): Observable<PaymentRecord> {
+    return this.http.post<PaymentRecord>(
+      `${this.organizationUrl(organizationId)}/payments/${paymentId}/approve`,
+      null,
+    );
+  }
+
+  rejectPayment(
+    organizationId: string,
+    paymentId: string,
+    reason: string,
+  ): Observable<PaymentRecord> {
+    return this.http.post<PaymentRecord>(
+      `${this.organizationUrl(organizationId)}/payments/${paymentId}/reject`,
+      { reason },
+    );
+  }
+
+  allocatePayment(
+    organizationId: string,
+    paymentId: string,
+    allocations: { paymentInstallmentId: string; amount: number }[],
+  ): Observable<PaymentRecord> {
+    return this.http.post<PaymentRecord>(
+      `${this.organizationUrl(organizationId)}/payments/${paymentId}/allocations`,
+      allocations,
+    );
+  }
+
+  getPublicSignature(token: string): Observable<PublicSignatureContract> {
+    return this.http.get<PublicSignatureContract>(
+      `${this.baseUrl}/public/signatures/${encodeURIComponent(token)}`,
+    );
+  }
+
+  submitPublicSignature(
+    token: string,
+    request: {
+      signingMethod: SigningMethod;
+      declaredSignerName: string;
+      acceptElectronicMeans: boolean;
+      confirmDisplayedVersion: boolean;
+      signatureDataUrl: string | null;
+    },
+  ): Observable<PublicSignatureContract> {
+    return this.http.post<PublicSignatureContract>(
+      `${this.baseUrl}/public/signatures/${encodeURIComponent(token)}/sign`,
+      request,
+    );
+  }
+
+  declinePublicSignature(token: string, reason: string | null): Observable<void> {
+    return this.http.post<void>(
+      `${this.baseUrl}/public/signatures/${encodeURIComponent(token)}/decline`,
+      { reason },
+    );
+  }
+
+  downloadPublicContractPdf(token: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/public/signatures/${encodeURIComponent(token)}/pdf`, {
+      responseType: 'blob',
+    });
+  }
+
+  getPortalContracts(): Observable<PortalContractListItem[]> {
+    return this.http.get<PortalContractListItem[]>(`${this.baseUrl}/client-portal/contracts`);
+  }
+
+  getPortalContract(contractId: string): Observable<PortalContract> {
+    return this.http.get<PortalContract>(`${this.baseUrl}/client-portal/contracts/${contractId}`);
+  }
+
+  downloadPortalContract(contractId: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/client-portal/contracts/${contractId}/pdf`, {
+      responseType: 'blob',
+    });
+  }
+
+  downloadPortalFinalContract(contractId: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/client-portal/contracts/${contractId}/final`, {
+      responseType: 'blob',
+    });
+  }
+
+  signPortalContract(
+    contractId: string,
+    signerId: string,
+    declaredSignerName: string,
+  ): Observable<PublicSignatureContract> {
+    return this.http.post<PublicSignatureContract>(
+      `${this.baseUrl}/client-portal/contracts/${contractId}/signers/${signerId}/sign`,
+      {
+        signingMethod: 'AuthenticatedConfirmation',
+        declaredSignerName,
+        acceptElectronicMeans: true,
+        confirmDisplayedVersion: true,
+        signatureDataUrl: null,
+      },
+    );
+  }
+
+  getPortalPaymentPlans(eventId?: string): Observable<PaymentPlan[]> {
+    const params = eventId ? new HttpParams().set('eventId', eventId) : undefined;
+    return this.http.get<PaymentPlan[]>(`${this.baseUrl}/client-portal/payment-plans`, { params });
+  }
+
+  getPortalPayments(eventId?: string): Observable<PortalPaymentRecord[]> {
+    const params = eventId ? new HttpParams().set('eventId', eventId) : undefined;
+    return this.http.get<PortalPaymentRecord[]>(`${this.baseUrl}/client-portal/payments`, {
+      params,
+    });
+  }
+
+  createPortalPayment(request: {
+    paymentPlanId: string;
+    paymentDate: string;
+    amount: number;
+    method: PaymentMethod;
+    reference: string | null;
+    notesShared: string | null;
+  }): Observable<PortalPaymentRecord> {
+    return this.http.post<PortalPaymentRecord>(`${this.baseUrl}/client-portal/payments`, request);
+  }
+
+  uploadPortalPaymentReceipt(
+    paymentId: string,
+    file: File,
+  ): Observable<PortalPaymentRecord['receipts'][number]> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<PortalPaymentRecord['receipts'][number]>(
+      `${this.baseUrl}/client-portal/payments/${paymentId}/receipt`,
+      form,
+    );
   }
 
   private organizationUrl(organizationId: string): string {

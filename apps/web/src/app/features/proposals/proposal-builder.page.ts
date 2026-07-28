@@ -329,6 +329,17 @@ import { ToastService } from '../../core/ui/toast.service';
                 {{ saving() ? 'Guardando…' : proposal() ? 'Guardar borrador' : 'Crear borrador' }}
               </button>
               @if (proposal(); as current) {
+                @if (
+                  current.status === 'Accepted' && organization.hasPermission('contracts.create')
+                ) {
+                  <a
+                    class="btn btn--primary btn--full"
+                    [routerLink]="['/app/contracts']"
+                    [queryParams]="{ proposalId: current.id }"
+                  >
+                    Generar contrato
+                  </a>
+                }
                 <button
                   class="btn btn--secondary btn--full"
                   type="button"

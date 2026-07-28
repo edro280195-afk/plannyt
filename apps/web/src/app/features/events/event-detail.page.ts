@@ -54,11 +54,18 @@ type EventTab = 'overview' | 'clients' | 'participants' | 'access' | 'documents'
               {{ currentEvent.countryCode }}
             </p>
           </div>
-          @if (organization.hasPermission('events.update')) {
-            <a class="btn btn--secondary" [routerLink]="['/app/events', eventId, 'edit']">
-              Editar detalles
-            </a>
-          }
+          <div class="page-header__actions">
+            @if (organization.hasPermission('contracts.view')) {
+              <a class="btn btn--primary" [routerLink]="['/app/events', eventId, 'contracting']">
+                Contratación
+              </a>
+            }
+            @if (organization.hasPermission('events.update')) {
+              <a class="btn btn--secondary" [routerLink]="['/app/events', eventId, 'edit']">
+                Editar detalles
+              </a>
+            }
+          </div>
         </header>
 
         <nav class="tabs" aria-label="Secciones del evento">

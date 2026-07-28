@@ -686,3 +686,266 @@ export interface ProposalPublicResponse {
   lines: ProposalPublicLine[];
   comments: ProposalPublicComment[];
 }
+
+export type ContractStatus =
+  | 'Draft'
+  | 'Ready'
+  | 'Sent'
+  | 'Viewed'
+  | 'PartiallySigned'
+  | 'FullySigned'
+  | 'Completed'
+  | 'Declined'
+  | 'Expired'
+  | 'Cancelled';
+export type ContractSourceType = 'GeneratedFromProposal' | 'Manual' | 'ExternalUpload';
+export type ContractPartyType = 'PlannerOrganization' | 'Client' | 'Other';
+export type ContractSignerStatus =
+  'Pending' | 'Invited' | 'Viewed' | 'Signed' | 'Declined' | 'Expired' | 'Revoked';
+export type SigningMethod = 'Drawn' | 'Typed' | 'AuthenticatedConfirmation' | 'External';
+export type DepositRequirementType = 'None' | 'FixedAmount' | 'PercentageOfContract';
+export type ConfirmationMode = 'Automatic' | 'ManualAfterRequirements';
+
+export interface ContractTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  content: string;
+  contentFormat: 'SanitizedHtml';
+  isDefault: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+}
+
+export interface ContractParty {
+  id: string;
+  partyType: ContractPartyType;
+  clientId: string | null;
+  organizationPartyId: string | null;
+  displayName: string;
+  legalName: string | null;
+  taxId: string | null;
+  address: string | null;
+  sortOrder: number;
+}
+
+export interface ContractSigner {
+  id: string;
+  contractPartyId: string;
+  personId: string | null;
+  userAccountId: string | null;
+  name: string;
+  email: string;
+  signerRole: string;
+  signingOrder: number;
+  isRequired: boolean;
+  status: ContractSignerStatus;
+  signedAt: string | null;
+  declinedAt: string | null;
+}
+
+export interface ContractVersion {
+  id: string;
+  versionNumber: number;
+  templateId: string | null;
+  sourceProposalVersionId: string | null;
+  renderedContent: string;
+  documentFileName: string | null;
+  documentSizeBytes: number | null;
+  documentSha256: string | null;
+  consentText: string;
+  validUntil: string | null;
+  createdAt: string;
+  publishedAt: string | null;
+  supersededAt: string | null;
+}
+
+export interface ContractRequirements {
+  requireAcceptedProposal: boolean;
+  requireCompletedContract: boolean;
+  depositRequirementType: DepositRequirementType;
+  depositRequirementValue: number;
+  requiredDepositAmount: number;
+  currencyCode: string;
+  confirmationMode: ConfirmationMode;
+  createdAt: string;
+}
+
+export interface ContractListItem {
+  id: string;
+  eventId: string;
+  clientId: string;
+  contractNumber: string;
+  name: string;
+  sourceType: ContractSourceType;
+  status: ContractStatus;
+  currentVersionNumber: number;
+  contractGrandTotal: number;
+  currencyCode: string;
+  updatedAt: string;
+}
+
+export interface ContractResponse extends ContractListItem {
+  organizationId: string;
+  acceptedProposalId: string | null;
+  acceptedProposalVersionId: string | null;
+  versions: ContractVersion[];
+  parties: ContractParty[];
+  signers: ContractSigner[];
+  requirements: ContractRequirements;
+  createdAt: string;
+  completedAt: string | null;
+  cancelledAt: string | null;
+  cancellationReason: string | null;
+}
+
+export interface SignatureRequestLink {
+  id: string;
+  contractVersionId: string;
+  contractSignerId: string;
+  expiresAt: string;
+  signingUrl: string;
+}
+
+export interface PublicSignatureContract {
+  contractId: string;
+  contractVersionId: string;
+  contractSignerId: string;
+  contractNumber: string;
+  name: string;
+  versionNumber: number;
+  organizationName: string;
+  signerName: string;
+  signerEmail: string;
+  parties: string[];
+  renderedContent: string;
+  validUntil: string | null;
+  consentText: string;
+  documentSha256: string;
+  signers: { signerRole: string; status: ContractSignerStatus; signedAt: string | null }[];
+  canSign: boolean;
+}
+
+export interface ContractingReadiness {
+  proposalAccepted: boolean;
+  contractCompleted: boolean;
+  requiredDepositAmount: number;
+  approvedDepositAmount: number;
+  depositSatisfied: boolean;
+  missingRequiredSigners: number;
+  missingRequirements: string[];
+  readyForConfirmation: boolean;
+  confirmationMode: ConfirmationMode;
+  eventStatus: EventStatus;
+}
+
+export type PaymentPlanStatus = 'Draft' | 'Active' | 'Completed' | 'Cancelled';
+export type InstallmentType = 'Deposit' | 'ScheduledPayment' | 'FinalPayment' | 'AdditionalCharge';
+export type PaymentInstallmentStatus =
+  'Pending' | 'PartiallyPaid' | 'Paid' | 'Overdue' | 'Cancelled';
+export type PaymentMethod =
+  'Cash' | 'BankTransfer' | 'Deposit' | 'CardExternal' | 'Check' | 'Other';
+export type PaymentRecordStatus =
+  'PendingReview' | 'Approved' | 'Rejected' | 'Cancelled' | 'Refunded';
+
+export interface PaymentInstallment {
+  id: string;
+  sequenceNumber: number;
+  description: string;
+  dueDate: string;
+  amount: number;
+  approvedAmount: number;
+  pendingAmount: number;
+  installmentType: InstallmentType;
+  status: PaymentInstallmentStatus;
+}
+
+export interface PaymentPlan {
+  id: string;
+  eventId: string;
+  clientId: string;
+  contractId: string | null;
+  proposalVersionId: string | null;
+  currencyCode: string;
+  totalAmount: number;
+  status: PaymentPlanStatus;
+  approvedAmount: number;
+  pendingAmount: number;
+  installments: PaymentInstallment[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaymentRecord {
+  id: string;
+  eventId: string;
+  clientId: string;
+  paymentPlanId: string | null;
+  paymentDate: string;
+  amount: number;
+  currencyCode: string;
+  method: PaymentMethod;
+  reference: string | null;
+  status: PaymentRecordStatus;
+  notesShared: string | null;
+  internalNotes: string | null;
+  submittedByClient: boolean;
+  rejectionReason: string | null;
+  allocations: { id: string; paymentInstallmentId: string; amount: number }[];
+  receipts: {
+    documentId: string;
+    fileName: string;
+    mimeType: string;
+    sizeBytes: number;
+    createdAt: string;
+  }[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PortalContractListItem {
+  id: string;
+  eventId: string;
+  contractNumber: string;
+  name: string;
+  status: ContractStatus;
+  currentVersionNumber: number;
+  hasPendingSignature: boolean;
+  hasFinalDocument: boolean;
+}
+
+export interface PortalContract {
+  id: string;
+  eventId: string;
+  contractNumber: string;
+  name: string;
+  status: ContractStatus;
+  version: ContractVersion;
+  parties: ContractParty[];
+  signers: { signerRole: string; status: ContractSignerStatus; signedAt: string | null }[];
+  pendingSignerId: string | null;
+  pendingSignerName: string | null;
+  hasFinalDocument: boolean;
+}
+
+export interface PortalPaymentRecord {
+  id: string;
+  paymentDate: string;
+  amount: number;
+  currencyCode: string;
+  method: PaymentMethod;
+  reference: string | null;
+  status: PaymentRecordStatus;
+  notesShared: string | null;
+  rejectionReason: string | null;
+  receipts: {
+    documentId: string;
+    fileName: string;
+    mimeType: string;
+    sizeBytes: number;
+    createdAt: string;
+  }[];
+  createdAt: string;
+}

@@ -499,6 +499,273 @@ describe('ApiService', () => {
     expectRequest('POST', `${baseUrl}/public/proposals/private/comments`, publicComment);
   });
 
+  it('maps contract publication, signatures and readiness', () => {
+    service.getContracts('org-1', 'event-1').subscribe();
+    expectRequest('GET', `${organizationUrl}/contracts?eventId=event-1`);
+    service
+      .createContractFromProposal('org-1', {
+        proposalId: 'proposal-1',
+        name: 'Contrato',
+        templateId: null,
+        content: null,
+        consentText: 'Acepto medios electrónicos.',
+        validUntil: null,
+      })
+      .subscribe();
+    expectRequest('POST', `${organizationUrl}/contracts/from-proposal`, {
+      proposalId: 'proposal-1',
+      name: 'Contrato',
+      templateId: null,
+      content: null,
+      consentText: 'Acepto medios electrónicos.',
+      validUntil: null,
+    });
+    service.publishContract('org-1', 'contract-1').subscribe();
+    expectRequest('POST', `${organizationUrl}/contracts/contract-1/publish`, null);
+    service.createSignatureRequest('org-1', 'contract-1', 'signer-1').subscribe();
+    expectRequest('POST', `${organizationUrl}/contracts/contract-1/signers/signer-1/requests`, {
+      expiresAt: null,
+    });
+    service.getContractingReadiness('org-1', 'event-1').subscribe();
+    expectRequest('GET', `${eventUrl}/contracting-readiness`);
+    service.confirmContractedEvent('org-1', 'event-1').subscribe();
+    expectRequest('POST', `${eventUrl}/confirm`, null);
+  });
+
+  it('maps public signature and portal payment without leaking an organization id', () => {
+    service.getPublicSignature('token/private').subscribe();
+    expectRequest('GET', `${baseUrl}/public/signatures/token%2Fprivate`);
+    service
+      .submitPublicSignature('token/private', {
+        signingMethod: 'Typed',
+        declaredSignerName: 'Ana Martínez',
+        acceptElectronicMeans: true,
+        confirmDisplayedVersion: true,
+        signatureDataUrl: null,
+      })
+      .subscribe();
+    expectRequest('POST', `${baseUrl}/public/signatures/token%2Fprivate/sign`, {
+      signingMethod: 'Typed',
+      declaredSignerName: 'Ana Martínez',
+      acceptElectronicMeans: true,
+      confirmDisplayedVersion: true,
+      signatureDataUrl: null,
+    });
+    service.getPortalContractingReadiness('event-1').subscribe();
+    expectRequest('GET', `${baseUrl}/client-portal/events/event-1/contracting-readiness`);
+    service.getPortalContracts().subscribe();
+    expectRequest('GET', `${baseUrl}/client-portal/contracts`);
+    service.getPortalPaymentPlans().subscribe();
+    expectRequest('GET', `${baseUrl}/client-portal/payment-plans`);
+    service
+      .createPortalPayment({
+        paymentPlanId: 'plan-1',
+        paymentDate: '2026-07-28',
+        amount: 2000,
+        method: 'BankTransfer',
+        reference: 'SPEI-123',
+        notesShared: null,
+      })
+      .subscribe();
+    expectRequest('POST', `${baseUrl}/client-portal/payments`, {
+      paymentPlanId: 'plan-1',
+      paymentDate: '2026-07-28',
+      amount: 2000,
+      method: 'BankTransfer',
+      reference: 'SPEI-123',
+      notesShared: null,
+    });
+  });
+
+  it('maps the remaining contract administration operations', () => {
+    const template = {
+      name: 'Servicios',
+      description: null,
+      content: '<h1>{{contract.number}}</h1>',
+      isDefault: true,
+      isActive: true,
+    };
+    service.getContractTemplates('org-1').subscribe();
+    expectRequest('GET', `${organizationUrl}/contract-templates`);
+    service.createContractTemplate('org-1', template).subscribe();
+    expectRequest('POST', `${organizationUrl}/contract-templates`, template);
+    service.updateContractTemplate('org-1', 'template-1', template).subscribe();
+    expectRequest('PUT', `${organizationUrl}/contract-templates/template-1`, template);
+    const preview = {
+      content: template.content,
+      eventId: 'event-1',
+      clientId: 'client-1',
+      proposalVersionId: 'version-1',
+      contractId: null,
+      validUntil: null,
+    };
+    service.previewContractTemplate('org-1', preview).subscribe();
+    expectRequest('POST', `${organizationUrl}/contract-templates/preview`, preview);
+
+    service.getContracts('org-1').subscribe();
+    expectRequest('GET', `${organizationUrl}/contracts`);
+    service.getContract('org-1', 'contract-1').subscribe();
+    expectRequest('GET', `${organizationUrl}/contracts/contract-1`);
+    const draft = {
+      name: 'Contrato',
+      templateId: 'template-1',
+      content: '<p>Contenido</p>',
+      consentText: 'Acepto.',
+      validUntil: null,
+    };
+    service.updateContractDraft('org-1', 'contract-1', draft).subscribe();
+    expectRequest('PUT', `${organizationUrl}/contracts/contract-1/draft`, draft);
+
+    const externalFile = new File(['pdf'], 'externo.pdf', {
+      type: 'application/pdf',
+    });
+    service
+      .createExternalContract('org-1', {
+        eventId: 'event-1',
+        clientId: 'client-1',
+        name: 'Contrato externo',
+        contractGrandTotal: 10000,
+        currencyCode: 'MXN',
+        validUntil: null,
+        file: externalFile,
+      })
+      .subscribe();
+    const external = controller.expectOne(`${organizationUrl}/contracts/external`);
+    expect(external.request.method).toBe('POST');
+    const externalForm = external.request.body as FormData;
+    expect(externalForm.get('eventId')).toBe('event-1');
+    expect(externalForm.get('file')).toBe(externalFile);
+    external.flush({});
+
+    service.validateExternalContract('org-1', 'contract-1', '2026-07-28T12:00:00Z').subscribe();
+    expectRequest('POST', `${organizationUrl}/contracts/contract-1/validate-external`, {
+      signedAt: '2026-07-28T12:00:00Z',
+    });
+    service.downloadContractVersion('org-1', 'contract-1', 'version-1').subscribe();
+    expectBlobRequest(`${organizationUrl}/contracts/contract-1/versions/version-1/pdf`);
+    service.downloadFinalContract('org-1', 'contract-1').subscribe();
+    expectBlobRequest(`${organizationUrl}/contracts/contract-1/final`);
+
+    const signer = {
+      contractPartyId: 'party-1',
+      personId: null,
+      userAccountId: null,
+      name: 'Ana Martínez',
+      email: 'ana@example.com',
+      signerRole: 'Cliente',
+      signingOrder: 1,
+      isRequired: true,
+    };
+    service.addContractSigner('org-1', 'contract-1', signer).subscribe();
+    expectRequest('POST', `${organizationUrl}/contracts/contract-1/signers`, signer);
+    service.signAsOrganization('org-1', 'contract-1', 'signer-1', 'Mariana Torres').subscribe();
+    expectRequest('POST', `${organizationUrl}/contracts/contract-1/signers/signer-1/sign`, {
+      signingMethod: 'AuthenticatedConfirmation',
+      declaredSignerName: 'Mariana Torres',
+      acceptElectronicMeans: true,
+      confirmDisplayedVersion: true,
+      signatureDataUrl: null,
+    });
+  });
+
+  it('maps plans, payments and every portal contract operation', () => {
+    service.getPaymentPlans('org-1', 'event-1').subscribe();
+    expectRequest('GET', `${organizationUrl}/payment-plans?eventId=event-1`);
+    const plan = {
+      eventId: 'event-1',
+      clientId: 'client-1',
+      contractId: 'contract-1',
+      proposalVersionId: 'version-1',
+      currencyCode: 'MXN',
+      totalAmount: 10000,
+      installments: [
+        {
+          sequenceNumber: 1,
+          description: 'Anticipo',
+          dueDate: '2026-08-01',
+          amount: 2000,
+          installmentType: 'Deposit' as const,
+        },
+        {
+          sequenceNumber: 2,
+          description: 'Final',
+          dueDate: '2027-01-01',
+          amount: 8000,
+          installmentType: 'FinalPayment' as const,
+        },
+      ],
+    };
+    service.createPaymentPlan('org-1', plan).subscribe();
+    expectRequest('POST', `${organizationUrl}/payment-plans`, plan);
+    service.activatePaymentPlan('org-1', 'plan-1').subscribe();
+    expectRequest('POST', `${organizationUrl}/payment-plans/plan-1/activate`, null);
+
+    service.getPayments('org-1', 'event-1').subscribe();
+    expectRequest('GET', `${organizationUrl}/payments?eventId=event-1`);
+    const payment = {
+      eventId: 'event-1',
+      clientId: 'client-1',
+      paymentPlanId: 'plan-1',
+      paymentDate: '2026-07-28',
+      amount: 2000,
+      currencyCode: 'MXN',
+      method: 'BankTransfer' as const,
+      reference: 'SPEI-123',
+      notesShared: null,
+      internalNotes: null,
+    };
+    service.createPayment('org-1', payment).subscribe();
+    expectRequest('POST', `${organizationUrl}/payments`, payment);
+    service.approvePayment('org-1', 'payment-1').subscribe();
+    expectRequest('POST', `${organizationUrl}/payments/payment-1/approve`, null);
+    service.rejectPayment('org-1', 'payment-1', 'No localizado').subscribe();
+    expectRequest('POST', `${organizationUrl}/payments/payment-1/reject`, {
+      reason: 'No localizado',
+    });
+    service
+      .allocatePayment('org-1', 'payment-1', [
+        { paymentInstallmentId: 'installment-1', amount: 2000 },
+      ])
+      .subscribe();
+    expectRequest('POST', `${organizationUrl}/payments/payment-1/allocations`, [
+      { paymentInstallmentId: 'installment-1', amount: 2000 },
+    ]);
+
+    service.declinePublicSignature('token', 'No acepto').subscribe();
+    expectRequest('POST', `${baseUrl}/public/signatures/token/decline`, {
+      reason: 'No acepto',
+    });
+    service.downloadPublicContractPdf('token').subscribe();
+    expectBlobRequest(`${baseUrl}/public/signatures/token/pdf`);
+    service.getPortalContract('contract-1').subscribe();
+    expectRequest('GET', `${baseUrl}/client-portal/contracts/contract-1`);
+    service.downloadPortalContract('contract-1').subscribe();
+    expectBlobRequest(`${baseUrl}/client-portal/contracts/contract-1/pdf`);
+    service.downloadPortalFinalContract('contract-1').subscribe();
+    expectBlobRequest(`${baseUrl}/client-portal/contracts/contract-1/final`);
+    service.signPortalContract('contract-1', 'signer-1', 'Ana Martínez').subscribe();
+    expectRequest('POST', `${baseUrl}/client-portal/contracts/contract-1/signers/signer-1/sign`, {
+      signingMethod: 'AuthenticatedConfirmation',
+      declaredSignerName: 'Ana Martínez',
+      acceptElectronicMeans: true,
+      confirmDisplayedVersion: true,
+      signatureDataUrl: null,
+    });
+    service.getPortalPaymentPlans('event-1').subscribe();
+    expectRequest('GET', `${baseUrl}/client-portal/payment-plans?eventId=event-1`);
+    service.getPortalPayments('event-1').subscribe();
+    expectRequest('GET', `${baseUrl}/client-portal/payments?eventId=event-1`);
+
+    const receiptFile = new File(['image'], 'comprobante.png', {
+      type: 'image/png',
+    });
+    service.uploadPortalPaymentReceipt('payment-1', receiptFile).subscribe();
+    const receipt = controller.expectOne(`${baseUrl}/client-portal/payments/payment-1/receipt`);
+    expect(receipt.request.method).toBe('POST');
+    expect((receipt.request.body as FormData).get('file')).toBe(receiptFile);
+    receipt.flush({});
+  });
+
   function expectRequest(method: string, url: string, body?: unknown): TestRequest {
     const request = controller.expectOne(url);
     expect(request.request.method).toBe(method);

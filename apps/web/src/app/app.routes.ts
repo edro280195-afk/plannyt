@@ -65,6 +65,14 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'sign/:token',
+    title: 'Firma de contrato · Plannyt',
+    loadComponent: () =>
+      import('./features/contracts/public-signature.page').then(
+        (module) => module.PublicSignaturePage,
+      ),
+  },
+  {
     path: 'app',
     canActivate: [authGuard, professionalGuard],
     loadComponent: () =>
@@ -186,12 +194,50 @@ export const routes: Routes = [
           import('./features/events/event-editor.page').then((module) => module.EventEditorPage),
       },
       {
+        path: 'events/:id/contracting',
+        title: 'Contratación del evento · Plannyt',
+        canActivate: [permissionGuard],
+        data: { permission: 'contracts.view' },
+        loadComponent: () =>
+          import('./features/contracts/event-contracting.page').then(
+            (module) => module.EventContractingPage,
+          ),
+      },
+      {
         path: 'events/:id',
         title: 'Evento · Plannyt',
         canActivate: [permissionGuard],
         data: { permission: 'events.view' },
         loadComponent: () =>
           import('./features/events/event-detail.page').then((module) => module.EventDetailPage),
+      },
+      {
+        path: 'contracts',
+        title: 'Contratos · Plannyt',
+        canActivate: [permissionGuard],
+        data: { permission: 'contracts.view' },
+        loadComponent: () =>
+          import('./features/contracts/contracts.page').then((module) => module.ContractsPage),
+      },
+      {
+        path: 'contracts/:id',
+        title: 'Detalle del contrato · Plannyt',
+        canActivate: [permissionGuard],
+        data: { permission: 'contracts.view' },
+        loadComponent: () =>
+          import('./features/contracts/contract-detail.page').then(
+            (module) => module.ContractDetailPage,
+          ),
+      },
+      {
+        path: 'contract-templates',
+        title: 'Plantillas de contrato · Plannyt',
+        canActivate: [permissionGuard],
+        data: { permission: 'contract-templates.view' },
+        loadComponent: () =>
+          import('./features/contracts/contract-templates.page').then(
+            (module) => module.ContractTemplatesPage,
+          ),
       },
       {
         path: 'team',
@@ -249,6 +295,30 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/portal/portal-proposal-detail.page').then(
             (module) => module.PortalProposalDetailPage,
+          ),
+      },
+      {
+        path: 'contracts',
+        title: 'Mis contratos · Plannyt',
+        loadComponent: () =>
+          import('./features/portal/portal-contracts.page').then(
+            (module) => module.PortalContractsPage,
+          ),
+      },
+      {
+        path: 'contracts/:id',
+        title: 'Contrato compartido · Plannyt',
+        loadComponent: () =>
+          import('./features/portal/portal-contract-detail.page').then(
+            (module) => module.PortalContractDetailPage,
+          ),
+      },
+      {
+        path: 'payments',
+        title: 'Mis pagos · Plannyt',
+        loadComponent: () =>
+          import('./features/portal/portal-payments.page').then(
+            (module) => module.PortalPaymentsPage,
           ),
       },
     ],
