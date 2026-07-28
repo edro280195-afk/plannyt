@@ -190,3 +190,58 @@ stateDiagram-v2
 `Archived` no admite cambios normales. Una restauración futura requerirá permiso
 especial y auditoría. `ArchivedAt` solo contiene valor cuando el estado es
 `Archived`.
+
+## Modelo comercial del Sprint 1A
+
+```mermaid
+erDiagram
+    ORGANIZATION ||--o{ PROSPECT : posee
+    PROSPECT ||--o{ PROSPECT_ACTIVITY : registra
+    PROSPECT ||--o{ PROSPECT_STATUS_HISTORY : cambia
+    PROSPECT o|--o| CLIENT : convierte
+
+    ORGANIZATION ||--o{ SERVICE_CATALOG_ITEM : ofrece
+    ORGANIZATION ||--o{ PACKAGE : ofrece
+    PACKAGE ||--o{ PACKAGE_ITEM : contiene
+    SERVICE_CATALOG_ITEM ||--o{ PACKAGE_ITEM : integra
+    ORGANIZATION ||--o{ COUPON : emite
+
+    ORGANIZATION ||--o{ PROPOSAL : posee
+    PROSPECT o|--o{ PROPOSAL : recibe
+    CLIENT o|--o{ PROPOSAL : recibe
+    EVENT o|--o{ PROPOSAL : contextualiza
+    PROPOSAL ||--o{ PROPOSAL_DRAFT_LINE : edita
+    PROPOSAL ||--o{ PROPOSAL_VERSION : publica
+    PROPOSAL_VERSION ||--o{ PROPOSAL_LINE : congela
+    PROPOSAL_VERSION ||--o{ PROPOSAL_COMMENT : conversa
+    PROPOSAL_LINE o|--o{ PROPOSAL_COMMENT : contextualiza
+    PROPOSAL_VERSION ||--o{ PROPOSAL_SHARE_LINK : comparte
+```
+
+### Prospect y actividad
+
+`Prospect` puede existir sin cuenta ni cliente. Su estado solo cambia mediante
+`ProspectStatusTransitionService`: `New`, `Contacted`, `Qualified`,
+`Opportunity`, `ProposalDraft`, `ProposalSent`, `Negotiation`, `Won`, `Lost` y
+`Archived`. Llegar a `Lost` exige motivo. Cada transición produce historial.
+`ProspectActivity` conserva notas, comunicaciones, reuniones y seguimientos con
+visibilidad `Internal` o `ClientShared`.
+
+### Catálogo y cupones
+
+`ServiceCatalogItem` define precio fijo, desde, por unidad o personalizado y su
+comportamiento fiscal. `Package` agrupa servicios mediante `PackageItem`.
+`Coupon` controla vigencia, estado y máximo de usos. El uso se registra al
+aceptar una versión que guardó ese cupón.
+
+### Proposal, borrador y versión
+
+`Proposal` requiere prospecto o cliente. Su borrador y líneas son reemplazables
+mientras la propuesta sea editable. Publicar crea `ProposalVersion` y
+`ProposalLine`; no existe comando para actualizarlas. La versión guarda totales,
+vigencia, texto compartido y resultados de descuentos y cupón. Los opcionales
+conservan su precio, pero no integran el total general.
+
+La aceptación guarda `AcceptedVersionId` y fecha. El servicio público comprueba
+que la versión del token siga siendo la vigente. Estados vencido, cancelado,
+aceptado o versión sustituida impiden una nueva decisión.

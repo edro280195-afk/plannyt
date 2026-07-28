@@ -157,3 +157,82 @@ administrativa para ocultar propiedades después.
 
 Problem Details incluye `type`, `title`, `status`, `detail` seguro,
 `correlationId` y errores de campo cuando corresponda.
+
+## API comercial del Sprint 1A
+
+### Prospectos
+
+| Método | Ruta |
+|---|---|
+| GET, POST | `/organizations/{organizationId}/prospects` |
+| GET, PUT | `/organizations/{organizationId}/prospects/{prospectId}` |
+| POST | `/organizations/{organizationId}/prospects/{prospectId}/status` |
+| POST | `/organizations/{organizationId}/prospects/{prospectId}/archive` |
+| POST | `/organizations/{organizationId}/prospects/{prospectId}/activities` |
+| POST | `/organizations/{organizationId}/prospects/{prospectId}/activities/{activityId}/complete` |
+| GET | `/organizations/{organizationId}/prospects/{prospectId}/client-matches` |
+| POST | `/organizations/{organizationId}/prospects/{prospectId}/convert` |
+| POST | `/organizations/{organizationId}/prospects/{prospectId}/preliminary-event` |
+
+La lista acepta búsqueda, estado, responsable, tipo de evento y rango de fecha.
+Los cambios de estado pasan por la máquina de dominio. Conversión exige escoger
+un cliente existente o confirmar expresamente la creación ante coincidencias.
+
+### Catálogo
+
+| Método | Ruta |
+|---|---|
+| GET, POST | `/organizations/{organizationId}/catalog/services` |
+| PUT | `/organizations/{organizationId}/catalog/services/{serviceId}` |
+| POST | `/organizations/{organizationId}/catalog/services/{serviceId}/archive` |
+| GET, POST | `/organizations/{organizationId}/catalog/packages` |
+| PUT | `/organizations/{organizationId}/catalog/packages/{packageId}` |
+| POST | `/organizations/{organizationId}/catalog/packages/{packageId}/archive` |
+| GET, POST | `/organizations/{organizationId}/catalog/coupons` |
+| PUT | `/organizations/{organizationId}/catalog/coupons/{couponId}` |
+
+### Administración de propuestas
+
+| Método | Ruta |
+|---|---|
+| GET, POST | `/organizations/{organizationId}/proposals` |
+| GET | `/organizations/{organizationId}/proposals/{proposalId}` |
+| PUT | `/organizations/{organizationId}/proposals/{proposalId}/draft` |
+| POST | `/organizations/{organizationId}/proposals/{proposalId}/publish` |
+| POST | `/organizations/{organizationId}/proposals/{proposalId}/send` |
+| POST | `/organizations/{organizationId}/proposals/{proposalId}/cancel` |
+| POST | `/organizations/{organizationId}/proposals/{proposalId}/duplicate` |
+| POST | `/organizations/{organizationId}/proposals/{proposalId}/comments` |
+| POST | `/organizations/{organizationId}/proposals/{proposalId}/comments/{commentId}/resolve` |
+| GET | `/organizations/{organizationId}/proposals/{proposalId}/versions/{versionId}/pdf` |
+| POST | `/organizations/{organizationId}/proposals/{proposalId}/preliminary-event` |
+
+Crear y actualizar reciben líneas de borrador. Publicar recalcula todos los
+importes en el servidor y crea la versión inmutable. Enviar requiere una versión
+publicada y devuelve el enlace una sola vez.
+
+### Acceso compartido
+
+| Método | Ruta |
+|---|---|
+| GET | `/public/proposals/{token}` |
+| GET | `/public/proposals/{token}/pdf` |
+| POST | `/public/proposals/{token}/comments` |
+| POST | `/public/proposals/{token}/request-changes` |
+| POST | `/public/proposals/{token}/accept` |
+| POST | `/public/proposals/{token}/reject` |
+
+Son rutas anónimas limitadas por frecuencia. Un enlace revocado o vencido
+devuelve `410`; una versión sustituida no puede decidirse. Los DTO públicos y
+administrativos son contratos distintos.
+
+### Portal de cliente
+
+| Método | Ruta |
+|---|---|
+| GET | `/client-portal/proposals` |
+| GET | `/client-portal/proposals/{proposalId}` |
+| GET | `/client-portal/proposals/{proposalId}/pdf` |
+
+El portal deriva los clientes accesibles desde la cuenta autenticada. No permite
+editar importes ni consultar notas internas.

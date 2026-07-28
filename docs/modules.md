@@ -61,3 +61,38 @@ visibles y documentos compartidos. No expone DTO administrativos.
   debe contener reglas de negocio.
 - Una sola Web API, un solo `DbContext`, una sola base de datos y una sola
   secuencia de migraciones sirven a todos los módulos iniciales.
+
+## Módulos implementados en el Sprint 1A
+
+### CRM comercial
+
+Administra prospectos, asignación, pipeline, actividades, seguimientos e
+historial de estados. Sugiere coincidencias de clientes por correo o teléfono,
+pero la conversión siempre es explícita y conserva el prospecto.
+
+### Catálogo comercial
+
+Administra servicios, paquetes con conceptos y cupones. Sus precios son
+referencias para nuevos borradores. Archivar o editar el catálogo no modifica
+versiones publicadas.
+
+### Propuestas
+
+Administra borrador, cálculo, publicación inmutable, envío, comentarios,
+solicitud de cambios, aceptación, rechazo, duplicación y PDF. Puede relacionar
+prospecto, cliente y evento preliminar. No contiene contratos, firma ni pagos.
+
+### Vista compartida y portal
+
+La ruta pública `/proposal/:token` funciona sin cuenta y solo sobre una versión
+exacta. Las cuentas cliente también pueden consultar propuestas relacionadas
+desde `/portal/proposals`.
+
+## Dependencias del corte comercial
+
+- Propuestas consulta CRM y catálogo para validar referencias tenant-aware.
+- El snapshot publicado no depende del estado posterior del catálogo.
+- CRM crea o relaciona `Client` mediante una operación de conversión auditada.
+- CRM y propuestas pueden crear o relacionar únicamente eventos `Preliminary`.
+- Eventos no conoce tokens ni reglas de propuesta.
+- La aceptación comercial no llama una transición de confirmación del evento.

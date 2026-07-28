@@ -122,3 +122,26 @@ contenido de archivo y cuerpos completos.
 - Habilitarlo fuera de Development hace fallar el arranque.
 - `.env.example` contiene valores ficticios.
 - `.env`, certificados, claves y almacenamiento local quedan fuera de Git.
+
+## Seguridad de propuestas compartidas
+
+- El token compartido se crea con aleatoriedad criptográfica y solo se persiste
+  mediante hash.
+- Cada enlace apunta a una propuesta y versión exactas, vence, puede revocarse y
+  se invalida al compartir una revisión nueva.
+- Consulta, comentario y decisiones públicas usan rate limiting por origen.
+- El DTO público se construye por proyección permitida: no contiene notas
+  internas, responsables, permisos, costos internos ni metadata de auditoría.
+- Aceptar, rechazar o solicitar cambios vuelve a validar enlace, vigencia,
+  estado, versión vigente y relación interna antes de escribir.
+- Comentarios se validan, Angular escapa su salida y no se renderiza HTML
+  proporcionado por el usuario.
+- El PDF se genera a partir del mismo DTO público de una versión inmutable.
+- Auditoría registra el identificador de enlace o versión, nunca el token ni la
+  URL compartida.
+
+## Riesgos residuales
+
+Quien reciba el enlace puede reenviarlo mientras siga vigente. La mitigación del
+Sprint 1A es alcance mínimo, expiración, revocación, sustitución y rate limiting.
+Autenticación adicional del prospecto y firma son decisiones de sprints futuros.

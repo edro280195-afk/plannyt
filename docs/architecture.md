@@ -150,3 +150,31 @@ No se crean ensamblados o carpetas para módulos futuros.
 Correo, Cloudinary, WhatsApp, mapas, redes sociales, IA y cobros quedan fuera. Sus
 futuras implementaciones deberán conectarse mediante contratos explícitos sin
 alterar el núcleo del evento ni la autorización multi-tenant.
+
+## Extensión comercial del Sprint 1A
+
+CRM, catálogo y propuestas se incorporan como módulos del mismo monolito. El
+flujo conserva la dirección de dependencias:
+
+```mermaid
+flowchart LR
+    CRM["CRM · Prospect"] --> Proposal["Propuestas · borrador"]
+    Catalog["Catálogo · servicios, paquetes y cupones"] --> Proposal
+    Proposal --> Version["ProposalVersion + snapshots"]
+    Version --> Share["Enlace privado / portal"]
+    Version --> Pdf["IProposalPdfGenerator"]
+    CRM --> Client["Client existente o nuevo"]
+    Proposal --> Event["Event Preliminary"]
+```
+
+- `ProposalDraftLine` es mutable; `ProposalVersion` y `ProposalLine` son
+  inmutables por diseño.
+- `ProposalTotalsCalculator` recalcula líneas, descuentos compartidos, cupones,
+  impuestos y redondeos en el servidor.
+- `IProposalPdfGenerator` genera un PDF interno desde el DTO de una versión; no
+  usa servicios externos.
+- La vista pública usa token con hash, vencimiento, revocación, rate limiting y
+  un DTO sin notas internas.
+- El portal autenticado reutiliza la proyección pública, nunca la administrativa.
+- Aceptar no confirma el evento: contrato, firma y pagos siguen fuera del
+  sistema hasta el Sprint 1B.

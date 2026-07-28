@@ -146,3 +146,48 @@ ni modificación del evento durante este sprint.
 9. Impedir la autoelevación y proteger al único Owner activo.
 
 Los permisos efectivos no se guardan completos en el JWT.
+
+## Permisos comerciales del Sprint 1A
+
+### Prospectos
+
+- `prospects.view`
+- `prospects.create`
+- `prospects.update`
+- `prospects.assign`
+- `prospects.change-status`
+- `prospects.archive`
+- `prospects.private-notes.view`
+- `prospects.private-notes.manage`
+
+### Catálogo
+
+- `catalog.view`
+- `catalog.manage`
+- `packages.view`
+- `packages.manage`
+- `coupons.view`
+- `coupons.manage`
+
+### Propuestas
+
+- `proposals.view`
+- `proposals.create`
+- `proposals.update-draft`
+- `proposals.publish`
+- `proposals.send`
+- `proposals.cancel`
+- `proposals.view-internal`
+- `proposals.manage-comments`
+- `proposals.convert-client`
+
+Owner y OrganizationAdmin reciben todo. Planner administra el flujo completo.
+Commercial administra prospectos y propuestas y consulta el catálogo.
+Coordinator actualiza prospectos, borradores y comentarios, pero no publica ni
+envía. Assistant consulta sin notas internas. Finance consulta catálogo,
+propuestas y datos internos sin modificarlos. Los grants explícitos siguen
+aplicándose encima de esta matriz y `Deny` conserva precedencia.
+
+El acceso público por token no recibe permisos de organización: sus operaciones
+están limitadas en el propio enlace, estado y versión. El portal autenticado
+consulta únicamente propuestas asociadas a sus clientes accesibles.

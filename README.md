@@ -2,7 +2,9 @@
 
 Plataforma multi-tenant para planners, agencias y clientes de eventos. El
 Sprint 0 incluye identidad y sesiones, organización y permisos, CRM básico,
-eventos, invitaciones, portal del cliente, documentos locales y auditoría.
+eventos, invitaciones, portal del cliente, documentos locales y auditoría. El
+Sprint 1A agrega pipeline de prospectos, catálogo, propuestas versionadas, vista
+compartida, PDF, conversión a cliente y eventos preliminares.
 
 ## Versiones requeridas
 
@@ -150,6 +152,7 @@ y móvil. La cobertura frontend exige al menos 85% global.
 - [Seguridad](docs/security.md)
 - [Plan técnico](docs/implementation-plan.md)
 - [Decisiones arquitectónicas](docs/decisions/README.md)
+- [Reporte del Sprint 1A](docs/sprint-reports/sprint-1a.md)
 
-El repositorio no tiene remoto configurado y los commits del Sprint 0 son
-únicamente locales.
+Las entregas se organizan en commits lógicos locales. El push se realiza solo
+cuando el responsable del repositorio lo solicita.

@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-Todos los ADR de esta carpeta están aceptados para el Sprint 0.
+Todos los ADR de esta carpeta están aceptados para los Sprint 0 y 1A.
 
 1. [Monolito modular](0001-monolito-modular.md)
 2. [PostgreSQL](0002-postgresql.md)
@@ -18,3 +18,8 @@ Todos los ADR de esta carpeta están aceptados para el Sprint 0.
 14. [Máquina de estados del evento](0014-maquina-estados-evento.md)
 15. [Invitaciones de organización y evento](0015-invitaciones-organizacion-evento.md)
 16. [Documentos locales detrás de IFileStorage](0016-documentos-locales-ifilestorage.md)
+17. [Versionado inmutable de propuestas](0017-versionado-inmutable-propuestas.md)
+18. [Snapshots de conceptos comerciales](0018-snapshots-conceptos-comerciales.md)
+19. [Acceso público por token de propuesta](0019-acceso-publico-token-propuesta.md)
+20. [Conversión explícita de prospecto a cliente](0020-conversion-prospecto-cliente.md)
+21. [Separación entre aceptación y contratación](0021-aceptacion-vs-contratacion.md)

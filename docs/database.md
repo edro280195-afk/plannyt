@@ -166,3 +166,46 @@ pruebas crean datos propios. Al habilitarse, el seed idempotente crea:
 
 La cuenta de cliente usa la misma contraseña local configurada para la planner.
 Ninguna contraseña demo real se conserva en Git.
+
+## Tablas comerciales del Sprint 1A
+
+### CRM
+
+- `prospects`
+- `prospect_status_history`
+- `prospect_activities`
+
+### Catálogo
+
+- `service_catalog_items`
+- `packages`
+- `package_items`
+- `coupons`
+
+### Propuestas
+
+- `proposals`
+- `proposal_draft_lines`
+- `proposal_versions`
+- `proposal_lines`
+- `proposal_comments`
+- `proposal_share_links`
+
+La migración `AddCommercialCrmAndProposals` agrega estas tablas y actualiza el
+snapshot de EF Core sin modificar ni eliminar tablas del Sprint 0.
+
+## Invariantes comerciales
+
+- Prospectos, actividades, historial, catálogo y propuestas siempre incluyen
+  `organization_id`.
+- Las relaciones hacia prospecto, cliente, evento, usuario, servicio, paquete,
+  cupón y versión usan claves tenant-aware cuando corresponde.
+- `proposal_number` es único dentro de la organización.
+- `(proposal_id, version_number)` es único y positivo.
+- `proposal_share_links.token_hash` es único; el token original no se guarda.
+- Cantidades, precios, descuentos, tasas y totales no pueden ser negativos.
+- Un descuento porcentual no supera 100.
+- `current_uses` no puede ser negativo y la vigencia del cupón tiene inicio
+  anterior al fin.
+- Los registros históricos no tienen borrado en cascada desde el catálogo.
+- El borrador puede reemplazarse; líneas y totales publicados solo se insertan.

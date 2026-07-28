@@ -95,3 +95,15 @@ Los diez bloques están implementados. La entrega se valida con:
 - E2E de los flujos críticos en Chromium de escritorio y móvil.
 - Migraciones EF Core aplicadas y modelo sin cambios pendientes.
 - Auditoría de paquetes de producción sin vulnerabilidades conocidas.
+
+## Sprint 1A completado
+
+El siguiente incremento se ejecutó en cuatro cortes:
+
+1. CRM comercial, máquina de estados, actividades y conversión.
+2. Catálogo de servicios, paquetes, cupones y persistencia tenant-aware.
+3. Borrador, cálculo, versiones inmutables, token compartido, comentarios y PDF.
+4. Pipeline, constructor, vista pública, portal, pruebas y documentación.
+
+La aceptación termina en estado comercial `Accepted`; contratación, firma,
+anticipo y confirmación del evento quedan como frontera explícita del Sprint 1B.
