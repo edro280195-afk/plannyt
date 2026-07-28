@@ -5,8 +5,6 @@ namespace Plannyt.Api.Modules.Identity.Application;
 
 public static class AuthEndpoints
 {
-    private const string RefreshCookieName = "plannyt_refresh";
-
     public static IEndpointRouteBuilder MapAuthEndpoints(
         this IEndpointRouteBuilder endpoints)
     {
@@ -20,6 +18,7 @@ public static class AuthEndpoints
                     RegisterPlannerRequest request,
                     HttpContext context,
                     AuthService authService,
+                    RefreshCookieService cookieService,
                     CancellationToken cancellationToken) =>
                 {
                     var result = await authService.RegisterPlannerAsync(
@@ -27,7 +26,7 @@ public static class AuthEndpoints
                         GetIpAddress(context),
                         GetUserAgent(context),
                         cancellationToken);
-                    SetRefreshCookie(context.Response, result);
+                    cookieService.Set(context.Response, result);
                     return Results.Created("/api/auth/me", result.Response);
                 })
             .AllowAnonymous()
@@ -39,6 +38,7 @@ public static class AuthEndpoints
                     LoginRequest request,
                     HttpContext context,
                     AuthService authService,
+                    RefreshCookieService cookieService,
                     CancellationToken cancellationToken) =>
                 {
                     var result = await authService.LoginAsync(
@@ -46,7 +46,7 @@ public static class AuthEndpoints
                         GetIpAddress(context),
                         GetUserAgent(context),
                         cancellationToken);
-                    SetRefreshCookie(context.Response, result);
+                    cookieService.Set(context.Response, result);
                     return Results.Ok(result.Response);
                 })
             .AllowAnonymous()
@@ -58,16 +58,18 @@ public static class AuthEndpoints
                     HttpContext context,
                     AuthService authService,
                     CookieRequestGuard requestGuard,
+                    RefreshCookieService cookieService,
                     CancellationToken cancellationToken) =>
                 {
                     requestGuard.Validate(context);
-                    var refreshToken = context.Request.Cookies[RefreshCookieName];
+                    var refreshToken =
+                        context.Request.Cookies[RefreshCookieService.CookieName];
                     var result = await authService.RefreshAsync(
                         refreshToken ?? string.Empty,
                         GetIpAddress(context),
                         GetUserAgent(context),
                         cancellationToken);
-                    SetRefreshCookie(context.Response, result);
+                    cookieService.Set(context.Response, result);
                     return Results.Ok(result.Response);
                 })
             .AllowAnonymous()
@@ -79,13 +81,14 @@ public static class AuthEndpoints
                     HttpContext context,
                     AuthService authService,
                     CookieRequestGuard requestGuard,
+                    RefreshCookieService cookieService,
                     CancellationToken cancellationToken) =>
                 {
                     requestGuard.Validate(context);
                     await authService.LogoutAsync(
-                        context.Request.Cookies[RefreshCookieName],
+                        context.Request.Cookies[RefreshCookieService.CookieName],
                         cancellationToken);
-                    DeleteRefreshCookie(context.Response);
+                    cookieService.Delete(context.Response);
                     return Results.NoContent();
                 })
             .AllowAnonymous();
@@ -97,13 +100,14 @@ public static class AuthEndpoints
                     ICurrentUser currentUser,
                     AuthService authService,
                     CookieRequestGuard requestGuard,
+                    RefreshCookieService cookieService,
                     CancellationToken cancellationToken) =>
                 {
                     requestGuard.Validate(context);
                     await authService.LogoutAllAsync(
                         currentUser.UserAccountId,
                         cancellationToken);
-                    DeleteRefreshCookie(context.Response);
+                    cookieService.Delete(context.Response);
                     return Results.NoContent();
                 })
             .RequireAuthorization();
@@ -121,38 +125,6 @@ public static class AuthEndpoints
 
         return endpoints;
     }
-
-    private static void SetRefreshCookie(
-        HttpResponse response,
-        AuthSessionResult result)
-    {
-        var options = CreateCookieOptions();
-        if (result.IsPersistent)
-        {
-            options.Expires = result.RefreshTokenExpiresAt;
-            options.MaxAge = result.RefreshTokenExpiresAt - DateTimeOffset.UtcNow;
-        }
-
-        response.Cookies.Append(
-            RefreshCookieName,
-            result.RefreshToken,
-            options);
-    }
-
-    private static void DeleteRefreshCookie(HttpResponse response) =>
-        response.Cookies.Delete(
-            RefreshCookieName,
-            CreateCookieOptions());
-
-    private static CookieOptions CreateCookieOptions() =>
-        new()
-        {
-            HttpOnly = true,
-            Secure = true,
-            SameSite = SameSiteMode.Lax,
-            Path = "/api/auth",
-            IsEssential = true
-        };
 
     private static string? GetIpAddress(HttpContext context) =>
         context.Connection.RemoteIpAddress?.ToString();

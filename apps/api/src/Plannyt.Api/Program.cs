@@ -11,6 +11,9 @@ using Plannyt.Api.BuildingBlocks.Configuration;
 using Plannyt.Api.BuildingBlocks.Errors;
 using Plannyt.Api.BuildingBlocks.Http;
 using Plannyt.Api.Infrastructure.Persistence;
+using Plannyt.Api.Modules.Access.Application;
+using Plannyt.Api.Modules.Access.Authorization;
+using Plannyt.Api.Modules.Access.Security;
 using Plannyt.Api.Modules.Audit.Application;
 using Plannyt.Api.Modules.Crm.Application;
 using Plannyt.Api.Modules.Events.Application;
@@ -150,12 +153,18 @@ builder.Services.AddScoped<OrganizationSlugGenerator>();
 builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<CookieRequestGuard>();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+builder.Services.AddScoped<RefreshCookieService>();
 builder.Services.AddSingleton<TokenService>();
 builder.Services.AddScoped<TenantAccessService>();
 builder.Services.AddScoped<OrganizationService>();
 builder.Services.AddScoped<ClientService>();
 builder.Services.AddScoped<EventService>();
 builder.Services.AddScoped<EventStatusTransitionService>();
+builder.Services.AddScoped<InvitationService>();
+builder.Services.AddScoped<EventAccessService>();
+builder.Services.AddScoped<PortalAccessService>();
+builder.Services.AddScoped<PortalEventService>();
+builder.Services.AddSingleton<InvitationTokenService>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException(
@@ -230,6 +239,7 @@ app.MapAuthEndpoints();
 app.MapOrganizationEndpoints();
 app.MapClientEndpoints();
 app.MapEventEndpoints();
+app.MapAccessEndpoints();
 
 app.MapGet("/", () => Results.Ok(new
 {

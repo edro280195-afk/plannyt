@@ -19,6 +19,9 @@ public sealed class ForbiddenException(string detail)
 public sealed class ConflictException(string detail)
     : ApiException(StatusCodes.Status409Conflict, "Conflicto", detail);
 
+public sealed class GoneException(string detail)
+    : ApiException(StatusCodes.Status410Gone, "El recurso ya no está disponible", detail);
+
 public sealed class UnauthorizedException(string detail)
     : ApiException(StatusCodes.Status401Unauthorized, "No autorizado", detail);
 

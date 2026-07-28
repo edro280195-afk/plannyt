@@ -37,6 +37,7 @@ en cookie `HttpOnly`, `Secure`, `SameSite=Lax`, limitada a rutas de autenticaci�
 | PUT | `/organizations/{organizationId}` |
 | GET | `/organizations/{organizationId}/members` |
 | POST | `/organizations/{organizationId}/members/invitations` |
+| DELETE | `/organizations/{organizationId}/members/invitations/{invitationId}` |
 | DELETE | `/organizations/{organizationId}/members/{membershipId}` |
 
 ## Clientes
@@ -87,6 +88,7 @@ asignación directa de `Status` en el DTO general de edición.
 |---|---|---|
 | GET | `/organizations/{organizationId}/events/{eventId}/access` | Lista accesos |
 | POST | `/organizations/{organizationId}/events/{eventId}/access/invitations` | Crea enlace |
+| DELETE | `/organizations/{organizationId}/events/{eventId}/access/invitations/{invitationId}` | Revoca invitación |
 | DELETE | `/organizations/{organizationId}/events/{eventId}/access/{accessId}` | Revoca |
 | GET | `/access-invitations/{token}` | Vista pública segura |
 | POST | `/access-invitations/{token}/register-and-accept` | Registro y aceptación |
@@ -95,6 +97,11 @@ asignación directa de `Status` en el DTO general de edición.
 La creación devuelve la URL completa exactamente una vez. Regenerar crea un token
 nuevo e invalida el anterior. El correo normalizado de una cuenta existente debe
 coincidir con el objetivo.
+
+El enlace público usa `/invite/{token}` en el frontend. El token original nunca se
+guarda en base de datos, auditoría ni logs; únicamente se conserva su hash. Las
+invitaciones vencen en siete días y las aceptadas, revocadas o reemplazadas no
+pueden reutilizarse.
 
 ## Documentos administrativos
 
