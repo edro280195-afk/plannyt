@@ -65,4 +65,20 @@ public sealed class Organization
             countryCode,
             currencyCode,
             now);
+
+    public void Update(
+        string name,
+        OrganizationType organizationType,
+        string timeZone,
+        string countryCode,
+        string currencyCode,
+        DateTimeOffset now)
+    {
+        Name = name;
+        OrganizationType = organizationType;
+        TimeZone = timeZone;
+        CountryCode = countryCode;
+        CurrencyCode = currencyCode;
+        UpdatedAt = now;
+    }
 }

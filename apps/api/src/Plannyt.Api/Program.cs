@@ -15,6 +15,8 @@ using Plannyt.Api.Modules.Audit.Application;
 using Plannyt.Api.Modules.Identity.Application;
 using Plannyt.Api.Modules.Identity.Domain;
 using Plannyt.Api.Modules.Identity.Security;
+using Plannyt.Api.Modules.Organizations.Application;
+using Plannyt.Api.Modules.Organizations.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -142,6 +144,8 @@ builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<CookieRequestGuard>();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 builder.Services.AddSingleton<TokenService>();
+builder.Services.AddScoped<TenantAccessService>();
+builder.Services.AddScoped<OrganizationService>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException(
@@ -206,6 +210,7 @@ app.MapHealthChecks("/health/live", new HealthCheckOptions
 
 app.MapHealthChecks("/health/ready").AllowAnonymous();
 app.MapAuthEndpoints();
+app.MapOrganizationEndpoints();
 
 app.MapGet("/", () => Results.Ok(new
 {
