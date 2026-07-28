@@ -1,0 +1,20 @@
+# Architecture Decision Records
+
+Todos los ADR de esta carpeta están aceptados para el Sprint 0.
+
+1. [Monolito modular](0001-monolito-modular.md)
+2. [PostgreSQL](0002-postgresql.md)
+3. [Estrategia multi-tenant](0003-estrategia-multi-tenant.md)
+4. [Persona separada de cuenta](0004-persona-separada-de-cuenta.md)
+5. [Roles, permisos y alcance](0005-roles-permisos-y-alcance.md)
+6. [Portal como vista autorizada](0006-portal-como-vista-autorizada.md)
+7. [Proveedor de almacenamiento desacoplado](0007-proveedor-almacenamiento-desacoplado.md)
+8. [Fechas UTC y zona horaria](0008-fechas-utc-y-zona-horaria.md)
+9. [Sesiones y refresh tokens rotativos](0009-sesiones-refresh-rotativos.md)
+10. [Tokens en el frontend](0010-tokens-frontend.md)
+11. [Person privado por organización](0011-person-privado-por-organizacion.md)
+12. [Tenant explícito mediante ruta](0012-tenant-explicito-mediante-ruta.md)
+13. [Precedencia de permisos](0013-precedencia-permisos.md)
+14. [Máquina de estados del evento](0014-maquina-estados-evento.md)
+15. [Invitaciones de organización y evento](0015-invitaciones-organizacion-evento.md)
+16. [Documentos locales detrás de IFileStorage](0016-documentos-locales-ifilestorage.md)
