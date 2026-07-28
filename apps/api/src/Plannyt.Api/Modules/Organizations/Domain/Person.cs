@@ -84,4 +84,24 @@ public sealed class Person : ITenantEntity
             preferredLanguage,
             timeZone,
             now);
+
+    public void UpdateProfile(
+        string firstName,
+        string lastName,
+        string displayName,
+        string? contactEmail,
+        string? contactPhone,
+        string preferredLanguage,
+        string timeZone,
+        DateTimeOffset now)
+    {
+        FirstName = firstName;
+        LastName = lastName;
+        DisplayName = displayName;
+        ContactEmail = contactEmail;
+        ContactPhone = contactPhone;
+        PreferredLanguage = preferredLanguage;
+        TimeZone = timeZone;
+        UpdatedAt = now;
+    }
 }

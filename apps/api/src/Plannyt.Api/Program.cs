@@ -12,6 +12,7 @@ using Plannyt.Api.BuildingBlocks.Errors;
 using Plannyt.Api.BuildingBlocks.Http;
 using Plannyt.Api.Infrastructure.Persistence;
 using Plannyt.Api.Modules.Audit.Application;
+using Plannyt.Api.Modules.Crm.Application;
 using Plannyt.Api.Modules.Identity.Application;
 using Plannyt.Api.Modules.Identity.Domain;
 using Plannyt.Api.Modules.Identity.Security;
@@ -56,6 +57,11 @@ builder.Services
     .BindConfiguration(FrontendOptions.SectionName)
     .ValidateDataAnnotations()
     .ValidateOnStart();
+builder.Services
+    .AddOptions<RateLimitOptions>()
+    .BindConfiguration(RateLimitOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
 
 var jwtOptions = builder.Configuration
     .GetRequiredSection(JwtOptions.SectionName)
@@ -65,7 +71,6 @@ var corsOptions = builder.Configuration
     .GetRequiredSection(CorsOptions.SectionName)
     .Get<CorsOptions>()
     ?? throw new InvalidOperationException("No se encontró la configuración CORS.");
-
 builder.Services.AddProblemDetails(options =>
 {
     options.CustomizeProblemDetails = context =>
@@ -146,6 +151,7 @@ builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 builder.Services.AddSingleton<TokenService>();
 builder.Services.AddScoped<TenantAccessService>();
 builder.Services.AddScoped<OrganizationService>();
+builder.Services.AddScoped<ClientService>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException(
@@ -160,15 +166,22 @@ builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.AddPolicy(RateLimitPolicies.Sensitive, httpContext =>
-        RateLimitPartition.GetFixedWindowLimiter(
+    {
+        var permitLimit = httpContext.RequestServices
+            .GetRequiredService<
+                Microsoft.Extensions.Options.IOptions<RateLimitOptions>>()
+            .Value
+            .SensitivePermitLimit;
+        return RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 10,
+                PermitLimit = permitLimit,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
                 AutoReplenishment = true
-            }));
+            });
+    });
 });
 
 builder.Services
@@ -211,6 +224,7 @@ app.MapHealthChecks("/health/live", new HealthCheckOptions
 app.MapHealthChecks("/health/ready").AllowAnonymous();
 app.MapAuthEndpoints();
 app.MapOrganizationEndpoints();
+app.MapClientEndpoints();
 
 app.MapGet("/", () => Results.Ok(new
 {

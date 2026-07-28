@@ -48,6 +48,13 @@ en cookie `HttpOnly`, `Secure`, `SameSite=Lax`, limitada a rutas de autenticaci√
 | GET | `/organizations/{organizationId}/clients/{clientId}` |
 | PUT | `/organizations/{organizationId}/clients/{clientId}` |
 | POST | `/organizations/{organizationId}/clients/{clientId}/archive` |
+| GET | `/organizations/{organizationId}/clients/{clientId}/contacts` |
+| POST | `/organizations/{organizationId}/clients/{clientId}/contacts` |
+| PUT | `/organizations/{organizationId}/clients/{clientId}/contacts/{contactId}` |
+
+Los clientes `Person` crean un perfil privado `Person` dentro del tenant. Los
+clientes `Company` mantienen sus contactos como perfiles privados relacionados
+mediante `ClientContact`; solo puede existir un contacto principal por cliente.
 
 ## Eventos
 

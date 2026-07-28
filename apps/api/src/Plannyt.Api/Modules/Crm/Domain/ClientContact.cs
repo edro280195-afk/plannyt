@@ -58,4 +58,11 @@ public sealed class ClientContact : ITenantEntity
             contactRole,
             isPrimary,
             now);
+
+    public void Update(string contactRole, bool isPrimary, DateTimeOffset now)
+    {
+        ContactRole = contactRole;
+        IsPrimary = isPrimary;
+        UpdatedAt = now;
+    }
 }

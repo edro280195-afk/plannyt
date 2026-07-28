@@ -25,7 +25,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["ConnectionStrings:DefaultConnection"] = _postgres.GetConnectionString(),
-                ["Database:MigrateOnStartup"] = "true"
+                ["Database:MigrateOnStartup"] = "true",
+                ["RateLimit:SensitivePermitLimit"] = "1000"
             });
         });
     }
