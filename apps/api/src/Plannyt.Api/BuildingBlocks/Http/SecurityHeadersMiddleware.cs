@@ -14,6 +14,14 @@ public sealed class SecurityHeadersMiddleware(RequestDelegate next)
                 "camera=(), geolocation=(), microphone=(), payment=(), usb=()";
             headers.ContentSecurityPolicy =
                 "default-src 'none'; frame-ancestors 'none'; base-uri 'none'";
+            if (context.Request.Path.StartsWithSegments(
+                    "/api/public/invitations"))
+            {
+                headers.CacheControl = "no-store, private";
+                headers.Pragma = "no-cache";
+                headers["Referrer-Policy"] = "no-referrer";
+                headers["X-Robots-Tag"] = "noindex, nofollow, noarchive";
+            }
             return Task.CompletedTask;
         });
 

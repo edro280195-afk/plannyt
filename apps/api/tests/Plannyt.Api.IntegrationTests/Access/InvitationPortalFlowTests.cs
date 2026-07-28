@@ -246,6 +246,87 @@ public sealed class InvitationPortalFlowTests(ApiFactory factory)
         Assert.Equal(HttpStatusCode.Gone, response.StatusCode);
     }
 
+    [Fact]
+    public async Task PortalGuestCollaboration_ExposesSafeDtoAndCannotPublish()
+    {
+        var planner = await TestSessionFactory.RegisterPlannerAsync(
+            factory,
+            "portal-guests");
+        var eventId = await CreateEventAsync(planner);
+        var invitation = await CreateEventInvitationAsync(
+            planner,
+            eventId,
+            $"portal-guests-{Guid.NewGuid():N}@example.invalid");
+        using var acceptance = await factory.CreateClient().PostAsJsonAsync(
+            $"/api/access-invitations/{invitation.Token}/register-and-accept",
+            new
+            {
+                password = "Correct-Horse-Battery-Staple-123!",
+                firstName = "Cliente",
+                lastName = "Colaborador",
+                preferredLanguage = "es",
+                timeZone = "America/Matamoros"
+            });
+        acceptance.EnsureSuccessStatusCode();
+        var auth = await acceptance.Content.ReadFromJsonAsync<JsonElement>();
+        var clientToken = auth.GetProperty("accessToken").GetString()
+            ?? throw new InvalidOperationException("No se recibió access token.");
+        using var groupRequest = TestSessionFactory.CreateAuthorizedRequest(
+            HttpMethod.Post,
+            $"/api/client-portal/events/{eventId}/guest-experience/groups",
+            clientToken,
+            JsonContent.Create(new
+            {
+                groupType = "Family",
+                displayName = "Familia Portal",
+                allowedGuestCount = 2,
+                allowUnnamedCompanions = false,
+                maxUnnamedCompanions = 0
+            }));
+        using var groupResponse = await factory.CreateClient().SendAsync(groupRequest);
+        Assert.Equal(HttpStatusCode.Created, groupResponse.StatusCode);
+        var group = await groupResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var groupId = group.GetProperty("id").GetGuid();
+        using var guestRequest = TestSessionFactory.CreateAuthorizedRequest(
+            HttpMethod.Post,
+            $"/api/client-portal/events/{eventId}/guest-experience/guests",
+            clientToken,
+            JsonContent.Create(new
+            {
+                invitationGroupId = groupId,
+                firstName = "Elena",
+                lastName = "Portal",
+                guestType = "Family",
+                ageCategory = "Adult",
+                isPrimaryContact = true,
+                isVip = false,
+                sortOrder = 0
+            }));
+        using var guestResponse = await factory.CreateClient().SendAsync(guestRequest);
+        Assert.Equal(HttpStatusCode.Created, guestResponse.StatusCode);
+
+        using var workspaceRequest = TestSessionFactory.CreateAuthorizedRequest(
+            HttpMethod.Get,
+            $"/api/client-portal/events/{eventId}/guest-experience",
+            clientToken);
+        using var workspaceResponse = await factory.CreateClient().SendAsync(workspaceRequest);
+        Assert.Equal(HttpStatusCode.OK, workspaceResponse.StatusCode);
+        var workspace = await workspaceResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var serialized = workspace.ToString();
+        Assert.DoesNotContain("contactEmail", serialized, StringComparison.Ordinal);
+        Assert.DoesNotContain("contactPhone", serialized, StringComparison.Ordinal);
+        Assert.DoesNotContain("internalNotes", serialized, StringComparison.Ordinal);
+        Assert.DoesNotContain("organizationId", serialized, StringComparison.Ordinal);
+
+        using var publishRequest = TestSessionFactory.CreateAuthorizedRequest(
+            HttpMethod.Post,
+            $"/api/organizations/{planner.OrganizationId}/events/{eventId}/invitations/designs/{Guid.NewGuid()}/publish",
+            clientToken,
+            JsonContent.Create(new { bypassApprovalForTesting = false }));
+        using var publishResponse = await factory.CreateClient().SendAsync(publishRequest);
+        Assert.Equal(HttpStatusCode.Forbidden, publishResponse.StatusCode);
+    }
+
     private async Task<InvitationLink> CreateEventInvitationAsync(
         TestSession planner,
         Guid eventId,

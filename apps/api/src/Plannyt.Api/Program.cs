@@ -26,9 +26,12 @@ using Plannyt.Api.Modules.Documents.Application;
 using Plannyt.Api.Modules.Documents.Storage;
 using Plannyt.Api.Modules.Events.Application;
 using Plannyt.Api.Modules.Events.Domain;
+using Plannyt.Api.Modules.Guests.Application;
 using Plannyt.Api.Modules.Identity.Application;
 using Plannyt.Api.Modules.Identity.Domain;
 using Plannyt.Api.Modules.Identity.Security;
+using Plannyt.Api.Modules.Invitations.Application;
+using Plannyt.Api.Modules.Invitations.Security;
 using Plannyt.Api.Modules.Organizations.Application;
 using Plannyt.Api.Modules.Organizations.Authorization;
 using Plannyt.Api.Modules.Payments.Application;
@@ -78,6 +81,16 @@ builder.Services
 builder.Services
     .AddOptions<RateLimitOptions>()
     .BindConfiguration(RateLimitOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services
+    .AddOptions<GuestPlanOptions>()
+    .BindConfiguration(GuestPlanOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services
+    .AddOptions<GuestAccessTokenOptions>()
+    .BindConfiguration(GuestAccessTokenOptions.SectionName)
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
@@ -195,6 +208,14 @@ builder.Services.AddScoped<EventAccessService>();
 builder.Services.AddScoped<PortalAccessService>();
 builder.Services.AddScoped<PortalEventService>();
 builder.Services.AddSingleton<InvitationTokenService>();
+builder.Services.AddScoped<GuestService>();
+builder.Services.AddScoped<GuestCsvImportService>();
+builder.Services.AddScoped<GuestPlanLimitService>();
+builder.Services.AddScoped<InvitationDesignService>();
+builder.Services.AddScoped<GuestLinkService>();
+builder.Services.AddScoped<PublicInvitationService>();
+builder.Services.AddScoped<PortalGuestCollaborationService>();
+builder.Services.AddSingleton<GuestAccessTokenService>();
 builder.Services.AddScoped<DocumentService>();
 builder.Services.AddSingleton<DocumentFileValidator>();
 builder.Services.AddSingleton<IFileStorage, LocalFileStorage>();
@@ -239,6 +260,7 @@ var app = builder.Build();
 DemoSeedGuard.Validate(app.Environment, app.Configuration);
 FileStorageGuard.Validate(app.Environment);
 await DatabaseInitializer.InitializeAsync(app);
+await InvitationTemplateInitializer.InitializeAsync(app);
 await DemoDataInitializer.InitializeAsync(app);
 
 app.UseExceptionHandler();
@@ -280,6 +302,9 @@ app.MapContractEndpoints();
 app.MapPaymentEndpoints();
 app.MapEventEndpoints();
 app.MapAccessEndpoints();
+app.MapGuestEndpoints();
+app.MapInvitationDesignEndpoints();
+app.MapPortalGuestEndpoints();
 app.MapDocumentEndpoints();
 
 app.MapGet("/", () => Results.Ok(new

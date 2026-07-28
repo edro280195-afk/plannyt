@@ -91,6 +91,44 @@ public static class Permissions
     public const string ParticipantsView = "participants.view";
     public const string ParticipantsManage = "participants.manage";
 
+    public const string GuestsView = "guests.view";
+    public const string GuestsCreate = "guests.create";
+    public const string GuestsUpdate = "guests.update";
+    public const string GuestsArchive = "guests.archive";
+    public const string GuestsImport = "guests.import";
+    public const string GuestsExport = "guests.export";
+    public const string GuestsViewPrivate = "guests.view-private";
+    public const string GuestsManageTags = "guests.manage-tags";
+
+    public const string InvitationGroupsView = "invitation-groups.view";
+    public const string InvitationGroupsCreate = "invitation-groups.create";
+    public const string InvitationGroupsUpdate = "invitation-groups.update";
+    public const string InvitationGroupsArchive = "invitation-groups.archive";
+    public const string InvitationGroupsManageCapacity =
+        "invitation-groups.manage-capacity";
+    public const string InvitationGroupsViewPrivate =
+        "invitation-groups.view-private";
+
+    public const string InvitationDesignsView = "invitation-designs.view";
+    public const string InvitationDesignsCreate = "invitation-designs.create";
+    public const string InvitationDesignsUpdateDraft =
+        "invitation-designs.update-draft";
+    public const string InvitationDesignsSubmitReview =
+        "invitation-designs.submit-review";
+    public const string InvitationDesignsApprove = "invitation-designs.approve";
+    public const string InvitationDesignsPublish = "invitation-designs.publish";
+    public const string InvitationDesignsPublishTesting =
+        "invitation-designs.publish-testing";
+    public const string InvitationDesignsArchive = "invitation-designs.archive";
+    public const string InvitationDesignsManageTemplates =
+        "invitation-designs.manage-templates";
+
+    public const string GuestLinksView = "guest-links.view";
+    public const string GuestLinksGenerate = "guest-links.generate";
+    public const string GuestLinksRegenerate = "guest-links.regenerate";
+    public const string GuestLinksRevoke = "guest-links.revoke";
+    public const string GuestLinksMarkShared = "guest-links.mark-shared";
+
     public const string DocumentsViewShared = "documents.view-shared";
     public const string DocumentsUploadShared = "documents.upload-shared";
     public const string DocumentsViewInternal = "documents.view-internal";
@@ -178,6 +216,34 @@ public static class Permissions
         EventsConfirm,
         ParticipantsView,
         ParticipantsManage,
+        GuestsView,
+        GuestsCreate,
+        GuestsUpdate,
+        GuestsArchive,
+        GuestsImport,
+        GuestsExport,
+        GuestsViewPrivate,
+        GuestsManageTags,
+        InvitationGroupsView,
+        InvitationGroupsCreate,
+        InvitationGroupsUpdate,
+        InvitationGroupsArchive,
+        InvitationGroupsManageCapacity,
+        InvitationGroupsViewPrivate,
+        InvitationDesignsView,
+        InvitationDesignsCreate,
+        InvitationDesignsUpdateDraft,
+        InvitationDesignsSubmitReview,
+        InvitationDesignsApprove,
+        InvitationDesignsPublish,
+        InvitationDesignsPublishTesting,
+        InvitationDesignsArchive,
+        InvitationDesignsManageTemplates,
+        GuestLinksView,
+        GuestLinksGenerate,
+        GuestLinksRegenerate,
+        GuestLinksRevoke,
+        GuestLinksMarkShared,
         DocumentsViewShared,
         DocumentsUploadShared,
         DocumentsViewInternal,

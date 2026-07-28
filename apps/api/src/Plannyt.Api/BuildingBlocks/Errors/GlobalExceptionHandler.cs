@@ -59,6 +59,11 @@ public sealed class GlobalExceptionHandler(
             problemDetails.Extensions["errors"] = validationException.Errors;
         }
 
+        if (exception is PublicInvitationUnavailableException unavailableException)
+        {
+            problemDetails.Extensions["reason"] = unavailableException.Reason;
+        }
+
         return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
         {
             HttpContext = httpContext,

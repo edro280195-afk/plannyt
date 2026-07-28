@@ -6,7 +6,9 @@ using Plannyt.Api.Modules.Contracts.Domain;
 using Plannyt.Api.Modules.Crm.Domain;
 using Plannyt.Api.Modules.Documents.Domain;
 using Plannyt.Api.Modules.Events.Domain;
+using Plannyt.Api.Modules.Guests.Domain;
 using Plannyt.Api.Modules.Identity.Domain;
+using Plannyt.Api.Modules.Invitations.Domain;
 using Plannyt.Api.Modules.Organizations.Domain;
 using Plannyt.Api.Modules.Payments.Domain;
 using Plannyt.Api.Modules.Proposals.Domain;
@@ -103,6 +105,31 @@ public sealed class PlannytDbContext(DbContextOptions<PlannytDbContext> options)
 
     public DbSet<EventParticipant> EventParticipants => Set<EventParticipant>();
 
+    public DbSet<InvitationGroup> InvitationGroups => Set<InvitationGroup>();
+
+    public DbSet<EventGuest> EventGuests => Set<EventGuest>();
+
+    public DbSet<GuestTag> GuestTags => Set<GuestTag>();
+
+    public DbSet<InvitationGroupTag> InvitationGroupTags => Set<InvitationGroupTag>();
+
+    public DbSet<GuestImportBatch> GuestImportBatches => Set<GuestImportBatch>();
+
+    public DbSet<EventGuestExperience> EventGuestExperiences =>
+        Set<EventGuestExperience>();
+
+    public DbSet<InvitationDesign> InvitationDesigns => Set<InvitationDesign>();
+
+    public DbSet<InvitationDesignVersion> InvitationDesignVersions =>
+        Set<InvitationDesignVersion>();
+
+    public DbSet<InvitationDesignComment> InvitationDesignComments =>
+        Set<InvitationDesignComment>();
+
+    public DbSet<InvitationTemplate> InvitationTemplates => Set<InvitationTemplate>();
+
+    public DbSet<GuestAccessLink> GuestAccessLinks => Set<GuestAccessLink>();
+
     public DbSet<EventAccess> EventAccesses => Set<EventAccess>();
 
     public DbSet<AccessInvitation> AccessInvitations => Set<AccessInvitation>();
@@ -148,6 +175,34 @@ public sealed class PlannytDbContext(DbContextOptions<PlannytDbContext> options)
             {
                 throw new InvalidOperationException(
                     "Una versión de contrato publicada es inmutable.");
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<InvitationDesignVersion>()
+                     .Where(entry =>
+                         entry.State is EntityState.Modified or EntityState.Deleted))
+        {
+            if (entry.State == EntityState.Modified
+                && entry.Properties.Any(property =>
+                    property.IsModified
+                    && property.Metadata.Name is
+                        nameof(InvitationDesignVersion.ThemeSnapshotJson)
+                        or nameof(InvitationDesignVersion.ContentSnapshotJson)
+                        or nameof(InvitationDesignVersion.VersionNumber)))
+            {
+                throw new InvalidOperationException(
+                    "El contenido de una versión de invitación es inmutable.");
+            }
+
+            var approvedAt = entry.OriginalValues
+                .GetValue<DateTimeOffset?>(nameof(InvitationDesignVersion.ApprovedAt));
+            var publishedAt = entry.OriginalValues
+                .GetValue<DateTimeOffset?>(nameof(InvitationDesignVersion.PublishedAt));
+            if (entry.State == EntityState.Deleted
+                && (approvedAt is not null || publishedAt is not null))
+            {
+                throw new InvalidOperationException(
+                    "Una versión aprobada o publicada no puede eliminarse.");
             }
         }
     }

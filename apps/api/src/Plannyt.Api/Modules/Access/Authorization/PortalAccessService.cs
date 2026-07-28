@@ -78,6 +78,7 @@ public sealed class PortalAccessService(
             access.OrganizationId,
             access.EventId,
             access.Id,
+            currentUser.UserAccountId,
             access.BaseRole,
             permissions);
     }
@@ -87,5 +88,6 @@ public sealed record PortalEventAccess(
     Guid OrganizationId,
     Guid EventId,
     Guid EventAccessId,
+    Guid UserAccountId,
     EventAccessRole Role,
     IReadOnlySet<string> Permissions);

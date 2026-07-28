@@ -37,6 +37,15 @@ public sealed class UnsupportedMediaTypeException(string detail)
 public sealed class UnauthorizedException(string detail)
     : ApiException(StatusCodes.Status401Unauthorized, "No autorizado", detail);
 
+public sealed class PublicInvitationUnavailableException(
+    int statusCode,
+    string reason,
+    string detail)
+    : ApiException(statusCode, "Invitación no disponible", detail)
+{
+    public string Reason { get; } = reason;
+}
+
 public sealed class RequestValidationException(
     IReadOnlyDictionary<string, string[]> errors)
     : ApiException(
