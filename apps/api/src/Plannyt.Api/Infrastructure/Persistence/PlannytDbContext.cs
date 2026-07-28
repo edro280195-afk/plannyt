@@ -1,11 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using Plannyt.Api.Modules.Access.Domain;
 using Plannyt.Api.Modules.Audit.Domain;
+using Plannyt.Api.Modules.Catalog.Domain;
 using Plannyt.Api.Modules.Crm.Domain;
 using Plannyt.Api.Modules.Documents.Domain;
 using Plannyt.Api.Modules.Events.Domain;
 using Plannyt.Api.Modules.Identity.Domain;
 using Plannyt.Api.Modules.Organizations.Domain;
+using Plannyt.Api.Modules.Proposals.Domain;
 
 namespace Plannyt.Api.Infrastructure.Persistence;
 
@@ -28,6 +30,34 @@ public sealed class PlannytDbContext(DbContextOptions<PlannytDbContext> options)
     public DbSet<Client> Clients => Set<Client>();
 
     public DbSet<ClientContact> ClientContacts => Set<ClientContact>();
+
+    public DbSet<Prospect> Prospects => Set<Prospect>();
+
+    public DbSet<ProspectStatusHistory> ProspectStatusHistory =>
+        Set<ProspectStatusHistory>();
+
+    public DbSet<ProspectActivity> ProspectActivities => Set<ProspectActivity>();
+
+    public DbSet<ServiceCatalogItem> ServiceCatalogItems =>
+        Set<ServiceCatalogItem>();
+
+    public DbSet<Package> Packages => Set<Package>();
+
+    public DbSet<PackageItem> PackageItems => Set<PackageItem>();
+
+    public DbSet<Coupon> Coupons => Set<Coupon>();
+
+    public DbSet<Proposal> Proposals => Set<Proposal>();
+
+    public DbSet<ProposalDraftLine> ProposalDraftLines => Set<ProposalDraftLine>();
+
+    public DbSet<ProposalVersion> ProposalVersions => Set<ProposalVersion>();
+
+    public DbSet<ProposalLine> ProposalLines => Set<ProposalLine>();
+
+    public DbSet<ProposalComment> ProposalComments => Set<ProposalComment>();
+
+    public DbSet<ProposalShareLink> ProposalShareLinks => Set<ProposalShareLink>();
 
     public DbSet<Event> Events => Set<Event>();
 

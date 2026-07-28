@@ -16,6 +16,32 @@ public static class Permissions
     public const string ClientsPrivateNotesView = "clients.private-notes.view";
     public const string ClientsPrivateNotesManage = "clients.private-notes.manage";
 
+    public const string ProspectsView = "prospects.view";
+    public const string ProspectsCreate = "prospects.create";
+    public const string ProspectsUpdate = "prospects.update";
+    public const string ProspectsAssign = "prospects.assign";
+    public const string ProspectsChangeStatus = "prospects.change-status";
+    public const string ProspectsArchive = "prospects.archive";
+    public const string ProspectsPrivateNotesView = "prospects.private-notes.view";
+    public const string ProspectsPrivateNotesManage = "prospects.private-notes.manage";
+
+    public const string CatalogView = "catalog.view";
+    public const string CatalogManage = "catalog.manage";
+    public const string PackagesView = "packages.view";
+    public const string PackagesManage = "packages.manage";
+    public const string CouponsView = "coupons.view";
+    public const string CouponsManage = "coupons.manage";
+
+    public const string ProposalsView = "proposals.view";
+    public const string ProposalsCreate = "proposals.create";
+    public const string ProposalsUpdateDraft = "proposals.update-draft";
+    public const string ProposalsPublish = "proposals.publish";
+    public const string ProposalsSend = "proposals.send";
+    public const string ProposalsCancel = "proposals.cancel";
+    public const string ProposalsViewInternal = "proposals.view-internal";
+    public const string ProposalsManageComments = "proposals.manage-comments";
+    public const string ProposalsConvertClient = "proposals.convert-client";
+
     public const string EventsView = "events.view";
     public const string EventsCreate = "events.create";
     public const string EventsUpdate = "events.update";
@@ -52,6 +78,29 @@ public static class Permissions
         ClientsArchive,
         ClientsPrivateNotesView,
         ClientsPrivateNotesManage,
+        ProspectsView,
+        ProspectsCreate,
+        ProspectsUpdate,
+        ProspectsAssign,
+        ProspectsChangeStatus,
+        ProspectsArchive,
+        ProspectsPrivateNotesView,
+        ProspectsPrivateNotesManage,
+        CatalogView,
+        CatalogManage,
+        PackagesView,
+        PackagesManage,
+        CouponsView,
+        CouponsManage,
+        ProposalsView,
+        ProposalsCreate,
+        ProposalsUpdateDraft,
+        ProposalsPublish,
+        ProposalsSend,
+        ProposalsCancel,
+        ProposalsViewInternal,
+        ProposalsManageComments,
+        ProposalsConvertClient,
         EventsView,
         EventsCreate,
         EventsUpdate,

@@ -95,4 +95,28 @@ public sealed class EffectivePermissionResolverTests
 
         Assert.DoesNotContain(Permissions.ClientsArchive, result);
     }
+
+    [Fact]
+    public void CommercialRole_CanManageProspectsAndProposals()
+    {
+        var permissions = RolePermissionCatalog.GetFor(
+            OrganizationRole.Commercial);
+
+        Assert.Contains(Permissions.ProspectsCreate, permissions);
+        Assert.Contains(Permissions.ProspectsChangeStatus, permissions);
+        Assert.Contains(Permissions.ProposalsCreate, permissions);
+        Assert.Contains(Permissions.ProposalsPublish, permissions);
+        Assert.Contains(Permissions.ProposalsSend, permissions);
+    }
+
+    [Fact]
+    public void AssistantRole_CannotViewInternalProposalData()
+    {
+        var permissions = RolePermissionCatalog.GetFor(
+            OrganizationRole.Assistant);
+
+        Assert.Contains(Permissions.ProposalsView, permissions);
+        Assert.DoesNotContain(Permissions.ProposalsViewInternal, permissions);
+        Assert.DoesNotContain(Permissions.ProposalsUpdateDraft, permissions);
+    }
 }
