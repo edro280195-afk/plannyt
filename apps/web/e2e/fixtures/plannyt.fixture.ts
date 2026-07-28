@@ -44,7 +44,41 @@ const ownerPermissions = [
   'documents.view-internal',
   'documents.upload-internal',
   'documents.delete',
+  'prospects.view',
+  'prospects.create',
+  'prospects.update',
+  'prospects.assign',
+  'prospects.change-status',
+  'prospects.archive',
+  'prospects.private-notes.view',
+  'prospects.private-notes.manage',
+  'catalog.view',
+  'catalog.manage',
+  'packages.view',
+  'packages.manage',
+  'coupons.view',
+  'coupons.manage',
+  'proposals.view',
+  'proposals.create',
+  'proposals.update-draft',
+  'proposals.publish',
+  'proposals.send',
+  'proposals.cancel',
+  'proposals.view-internal',
+  'proposals.manage-comments',
+  'proposals.convert-client',
 ];
+
+interface CommercialState {
+  prospectCreated: boolean;
+  prospectConverted: boolean;
+  activityCreated: boolean;
+  serviceCreated: boolean;
+  packageCreated: boolean;
+  proposalCreated: boolean;
+  proposalStatus: string;
+  proposalVersion: number;
+}
 
 const eventSummary = {
   id: 'event-1',
@@ -97,6 +131,16 @@ export const test = base.extend<PlannytFixtures>({
   api: async ({ page }, use) => {
     let profile: ProfileKind = 'anonymous';
     const requests: RecordedRequest[] = [];
+    const commercial: CommercialState = {
+      prospectCreated: false,
+      prospectConverted: false,
+      activityCreated: false,
+      serviceCreated: false,
+      packageCreated: false,
+      proposalCreated: false,
+      proposalStatus: 'Draft',
+      proposalVersion: 0,
+    };
     const api: ApiMock = {
       requests,
       useProfile(value): void {
@@ -121,7 +165,7 @@ export const test = base.extend<PlannytFixtures>({
         path: url.pathname,
         body: bodyText ? (JSON.parse(bodyText) as unknown) : null,
       });
-      await fulfillApi(route, profile);
+      await fulfillApi(route, profile, commercial);
     });
 
     await use(api);
@@ -130,7 +174,11 @@ export const test = base.extend<PlannytFixtures>({
 
 export { expect };
 
-async function fulfillApi(route: Route, profile: ProfileKind): Promise<void> {
+async function fulfillApi(
+  route: Route,
+  profile: ProfileKind,
+  commercial: CommercialState,
+): Promise<void> {
   const request = route.request();
   const url = new URL(request.url());
   const path = url.pathname;
@@ -180,6 +228,159 @@ async function fulfillApi(route: Route, profile: ProfileKind): Promise<void> {
     return;
   }
 
+  if (path === '/api/organizations/org-1/prospects' && method === 'GET') {
+    await json(route, {
+      items: commercial.prospectCreated ? [prospectSummary(commercial)] : [],
+      page: 1,
+      pageSize: 100,
+      totalCount: commercial.prospectCreated ? 1 : 0,
+    });
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/prospects' && method === 'POST') {
+    commercial.prospectCreated = true;
+    await json(route, prospectDetail(commercial), 201);
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/prospects/prospect-1' && method === 'GET') {
+    await json(route, prospectDetail(commercial));
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/prospects/prospect-1/activities' && method === 'POST') {
+    commercial.activityCreated = true;
+    await json(route, prospectActivity(), 201);
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/prospects/prospect-1/client-matches' && method === 'GET') {
+    await json(route, []);
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/prospects/prospect-1/convert' && method === 'POST') {
+    commercial.prospectConverted = true;
+    await json(route, {
+      prospectId: 'prospect-1',
+      clientId: 'client-1',
+      createdNewClient: true,
+    });
+    return;
+  }
+
+  if (
+    path === '/api/organizations/org-1/prospects/prospect-1/preliminary-event' &&
+    method === 'POST'
+  ) {
+    await json(route, {
+      prospectId: 'prospect-1',
+      eventId: 'event-preliminary',
+      createdNewEvent: true,
+    });
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/catalog/services' && method === 'GET') {
+    await json(route, commercial.serviceCreated ? [catalogService()] : []);
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/catalog/services' && method === 'POST') {
+    commercial.serviceCreated = true;
+    await json(route, catalogService(), 201);
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/catalog/packages' && method === 'GET') {
+    await json(route, commercial.packageCreated ? [catalogPackage()] : []);
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/catalog/packages' && method === 'POST') {
+    commercial.packageCreated = true;
+    await json(route, catalogPackage(), 201);
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/catalog/coupons' && method === 'GET') {
+    await json(route, []);
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/proposals' && method === 'GET') {
+    await json(route, {
+      items: commercial.proposalCreated ? [proposalSummary(commercial)] : [],
+      page: 1,
+      pageSize: 100,
+      totalCount: commercial.proposalCreated ? 1 : 0,
+    });
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/proposals' && method === 'POST') {
+    commercial.proposalCreated = true;
+    commercial.proposalStatus = 'Draft';
+    await json(route, proposalDetail(commercial), 201);
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/proposals/proposal-1' && method === 'GET') {
+    await json(route, proposalDetail(commercial));
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/proposals/proposal-1/draft' && method === 'PUT') {
+    commercial.proposalStatus = 'Negotiation';
+    await json(route, proposalDetail(commercial));
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/proposals/proposal-1/publish' && method === 'POST') {
+    commercial.proposalVersion += 1;
+    commercial.proposalStatus = 'Ready';
+    await json(route, proposalVersion(commercial.proposalVersion));
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/proposals/proposal-1/send' && method === 'POST') {
+    commercial.proposalStatus = 'Sent';
+    await json(route, {
+      id: `share-${commercial.proposalVersion}`,
+      proposalVersionId: `version-${commercial.proposalVersion}`,
+      expiresAt: '2027-02-01T12:00:00Z',
+      shareUrl: `http://127.0.0.1:4200/proposal/public-token-${commercial.proposalVersion}`,
+    });
+    return;
+  }
+
+  if (path.startsWith('/api/public/proposals/public-token-') && method === 'GET') {
+    await json(route, publicProposal(commercial));
+    return;
+  }
+
+  if (path.endsWith('/request-changes') && path.startsWith('/api/public/proposals/')) {
+    commercial.proposalStatus = 'ChangesRequested';
+    await json(route, publicProposal(commercial));
+    return;
+  }
+
+  if (path.endsWith('/accept') && path.startsWith('/api/public/proposals/')) {
+    commercial.proposalStatus = 'Accepted';
+    await json(route, publicProposal(commercial));
+    return;
+  }
+
+  if (
+    path.endsWith('/comments') &&
+    path.startsWith('/api/public/proposals/') &&
+    method === 'POST'
+  ) {
+    await json(route, publicComment(), 201);
+    return;
+  }
+
   if (path === '/api/organizations/org-1/clients' && method === 'POST') {
     await json(route, clientDetail, 201);
     return;
@@ -207,6 +408,16 @@ async function fulfillApi(route: Route, profile: ProfileKind): Promise<void> {
 
   if (path === '/api/organizations/org-1/events/event-1') {
     await json(route, eventDetail);
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/events/event-preliminary') {
+    await json(route, {
+      ...eventDetail,
+      id: 'event-preliminary',
+      name: 'Boda de María y Carlos',
+      status: 'Preliminary',
+    });
     return;
   }
 
@@ -285,6 +496,16 @@ async function fulfillApi(route: Route, profile: ProfileKind): Promise<void> {
     return;
   }
 
+  if (path === '/api/client-portal/proposals' && method === 'GET') {
+    await json(route, [portalProposalSummary()]);
+    return;
+  }
+
+  if (path === '/api/client-portal/proposals/proposal-1' && method === 'GET') {
+    await json(route, portalProposal());
+    return;
+  }
+
   await problem(route, 404, `Ruta simulada no definida: ${method} ${path}`);
 }
 
@@ -343,6 +564,271 @@ function portalEvent(): object {
     countryCode: eventSummary.countryCode,
     sharedDescription: eventSummary.sharedDescription,
     estimatedGuestCount: eventSummary.estimatedGuestCount,
+  };
+}
+
+function portalProposalSummary(): object {
+  return {
+    id: 'proposal-1',
+    proposalNumber: 'P-20260728-ABC123',
+    prospectId: null,
+    clientId: 'client-1',
+    eventId: 'event-1',
+    targetDisplayName: 'Ana Martínez',
+    status: 'Sent',
+    currentVersionNumber: 1,
+    currencyCode: 'MXN',
+    validUntil: '2027-02-01T12:00:00Z',
+    grandTotal: 14500,
+    updatedAt: '2026-07-28T12:00:00Z',
+  };
+}
+
+function portalProposal(): object {
+  return {
+    ...publicProposal({
+      prospectCreated: false,
+      prospectConverted: true,
+      activityCreated: false,
+      serviceCreated: true,
+      packageCreated: true,
+      proposalCreated: true,
+      proposalStatus: 'Sent',
+      proposalVersion: 1,
+    }),
+    recipientName: 'Ana Martínez',
+  };
+}
+
+function prospectSummary(commercial: CommercialState): object {
+  return {
+    id: 'prospect-1',
+    displayName: 'María Hernández',
+    email: 'maria@example.com',
+    phone: '+52 899 123 4567',
+    eventTypeInterest: 'Boda',
+    estimatedEventDate: '2027-02-14',
+    estimatedBudget: 180000,
+    currencyCode: 'MXN',
+    assignedUserId: 'user-1',
+    status: commercial.prospectConverted ? 'Won' : 'Opportunity',
+    updatedAt: '2026-07-28T12:00:00Z',
+  };
+}
+
+function prospectActivity(): object {
+  return {
+    id: 'activity-1',
+    activityType: 'FollowUp',
+    subject: 'Enviar opciones iniciales',
+    description: 'Compartir catálogo de producción.',
+    scheduledAt: '2026-08-01T16:00:00Z',
+    completedAt: null,
+    assignedUserId: 'user-1',
+    visibility: 'Internal',
+    createdBy: 'user-1',
+    createdAt: '2026-07-28T12:00:00Z',
+  };
+}
+
+function prospectDetail(commercial: CommercialState): object {
+  return {
+    ...prospectSummary(commercial),
+    firstName: 'María',
+    lastName: 'Hernández',
+    companyName: null,
+    source: 'Instagram',
+    estimatedGuestCount: 140,
+    city: 'Matamoros',
+    notes: 'Prefiere contacto por WhatsApp.',
+    lostReason: null,
+    convertedClientId: commercial.prospectConverted ? 'client-1' : null,
+    activities: commercial.activityCreated ? [prospectActivity()] : [],
+    statusHistory: [],
+    createdAt: '2026-07-28T12:00:00Z',
+    archivedAt: null,
+  };
+}
+
+function catalogService(): object {
+  return {
+    id: 'service-1',
+    name: 'Producción integral',
+    description: 'Planeación y coordinación.',
+    category: 'Producción',
+    pricingType: 'Fixed',
+    basePrice: 12500,
+    currencyCode: 'MXN',
+    taxBehavior: 'Exclusive',
+    isNegotiable: true,
+    isActive: true,
+    sortOrder: 0,
+    updatedAt: '2026-07-28T12:00:00Z',
+    archivedAt: null,
+  };
+}
+
+function catalogPackage(): object {
+  return {
+    id: 'package-1',
+    name: 'Celebración esencial',
+    description: 'Paquete inicial.',
+    basePrice: 12500,
+    currencyCode: 'MXN',
+    isNegotiable: false,
+    isActive: true,
+    items: [
+      {
+        id: 'package-item-1',
+        serviceCatalogItemId: 'service-1',
+        serviceName: 'Producción integral',
+        quantity: 1,
+        isOptional: false,
+        includedPrice: 12500,
+        sortOrder: 0,
+      },
+    ],
+    updatedAt: '2026-07-28T12:00:00Z',
+    archivedAt: null,
+  };
+}
+
+function draftLine(): object {
+  return {
+    id: 'draft-line-1',
+    description: 'Producción integral',
+    serviceCatalogItemId: 'service-1',
+    packageId: null,
+    quantity: 1,
+    unitPrice: 12500,
+    discountType: 'None',
+    discountValue: 0,
+    taxRate: 16,
+    lineSubtotal: 12500,
+    lineDiscount: 0,
+    lineTax: 2000,
+    lineTotal: 14500,
+    isOptional: false,
+    sortOrder: 0,
+  };
+}
+
+function totals(): object {
+  return {
+    subtotal: 12500,
+    discountTotal: 0,
+    generalDiscountTotal: 0,
+    couponDiscountTotal: 0,
+    taxTotal: 2000,
+    grandTotal: 14500,
+  };
+}
+
+function proposalVersion(versionNumber: number): object {
+  return {
+    id: `version-${versionNumber}`,
+    versionNumber,
+    totals: totals(),
+    currencyCode: 'MXN',
+    validUntil: '2027-02-01T12:00:00Z',
+    sharedIntroduction: 'Una propuesta preparada especialmente para tu evento.',
+    sharedTerms: 'Vigencia de catorce días.',
+    couponCode: null,
+    lines: [draftLine()],
+    publishedAt: '2026-07-28T12:00:00Z',
+  };
+}
+
+function proposalSummary(commercial: CommercialState): object {
+  return {
+    id: 'proposal-1',
+    proposalNumber: 'P-20260728-ABC123',
+    prospectId: 'prospect-1',
+    clientId: null,
+    eventId: null,
+    targetDisplayName: 'María Hernández',
+    status: commercial.proposalStatus,
+    currentVersionNumber: commercial.proposalVersion,
+    currencyCode: 'MXN',
+    validUntil: '2027-02-01T12:00:00Z',
+    grandTotal: commercial.proposalVersion ? 14500 : null,
+    updatedAt: '2026-07-28T12:00:00Z',
+  };
+}
+
+function proposalDetail(commercial: CommercialState): object {
+  return {
+    ...proposalSummary(commercial),
+    sharedIntroduction: 'Una propuesta preparada especialmente para tu evento.',
+    sharedTerms: 'Vigencia de catorce días.',
+    internalNotes: null,
+    generalDiscountType: 'None',
+    generalDiscountValue: 0,
+    couponId: null,
+    draftTotals: totals(),
+    draftLines: commercial.proposalCreated ? [draftLine()] : [],
+    versions: Array.from({ length: commercial.proposalVersion }, (_, index) => ({
+      id: `version-${index + 1}`,
+      versionNumber: index + 1,
+      grandTotal: 14500,
+      currencyCode: 'MXN',
+      validUntil: '2027-02-01T12:00:00Z',
+      publishedAt: '2026-07-28T12:00:00Z',
+    })),
+    comments: [],
+    acceptedVersionId:
+      commercial.proposalStatus === 'Accepted' ? `version-${commercial.proposalVersion}` : null,
+    acceptedAt: commercial.proposalStatus === 'Accepted' ? '2026-07-28T14:00:00Z' : null,
+    rejectedAt: null,
+    createdAt: '2026-07-28T12:00:00Z',
+    updatedAt: '2026-07-28T12:00:00Z',
+  };
+}
+
+function publicComment(): object {
+  return {
+    id: 'comment-1',
+    proposalVersionId: 'version-1',
+    proposalLineId: null,
+    authorUserId: null,
+    authorDisplayName: 'María Hernández',
+    content: 'Quisiera ajustar un concepto.',
+    visibility: 'ClientShared',
+    status: 'Pending',
+    parentCommentId: null,
+    createdAt: '2026-07-28T13:00:00Z',
+  };
+}
+
+function publicProposal(commercial: CommercialState): object {
+  return {
+    proposalId: 'proposal-1',
+    versionId: `version-${commercial.proposalVersion}`,
+    proposalNumber: 'P-20260728-ABC123',
+    versionNumber: commercial.proposalVersion,
+    organizationName: 'Armonía Eventos',
+    recipientName: 'María Hernández',
+    eventSummary: 'Boda · 14/02/2027 · Matamoros',
+    status: commercial.proposalStatus,
+    currencyCode: 'MXN',
+    validUntil: '2027-02-01T12:00:00Z',
+    sharedIntroduction: 'Una propuesta preparada especialmente para tu evento.',
+    sharedTerms: 'Vigencia de catorce días.',
+    totals: totals(),
+    lines: [
+      {
+        id: 'line-1',
+        description: 'Producción integral',
+        quantity: 1,
+        unitPrice: 12500,
+        lineDiscount: 0,
+        lineTax: 2000,
+        lineTotal: 14500,
+        isOptional: false,
+        sortOrder: 0,
+      },
+    ],
+    comments: [],
   };
 }
 

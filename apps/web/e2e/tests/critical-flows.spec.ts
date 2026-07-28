@@ -120,6 +120,18 @@ test.describe('flujos críticos de Plannyt', () => {
     await expect(page.getByText('user-1')).toHaveCount(0);
   });
 
+  test('consulta una propuesta compartida dentro del portal', async ({ page, api }) => {
+    api.useProfile('portal');
+
+    await page.goto('/portal/proposals');
+
+    await expect(page.getByRole('heading', { name: 'Mis propuestas' })).toBeVisible();
+    await page.getByRole('link', { name: /P-20260728-ABC123/ }).click();
+    await expect(page).toHaveURL(/\/portal\/proposals\/proposal-1$/);
+    await expect(page.getByRole('heading', { name: 'Ana Martínez' })).toBeVisible();
+    await expect(page.getByText('Producción integral')).toBeVisible();
+  });
+
   test('oculta navegación y acciones sin permisos efectivos', async ({ page, api }) => {
     api.useProfile('limited');
 

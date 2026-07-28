@@ -57,6 +57,14 @@ export const routes: Routes = [
       import('./features/invitations/invitation.page').then((module) => module.InvitationPage),
   },
   {
+    path: 'proposal/:token',
+    title: 'Propuesta privada · Plannyt',
+    loadComponent: () =>
+      import('./features/proposals/public-proposal.page').then(
+        (module) => module.PublicProposalPage,
+      ),
+  },
+  {
     path: 'app',
     canActivate: [authGuard, professionalGuard],
     loadComponent: () =>
@@ -74,6 +82,60 @@ export const routes: Routes = [
         title: 'Inicio · Plannyt',
         loadComponent: () =>
           import('./features/dashboard/dashboard.page').then((module) => module.DashboardPage),
+      },
+      {
+        path: 'prospects',
+        title: 'Pipeline comercial · Plannyt',
+        canActivate: [permissionGuard],
+        data: { permission: 'prospects.view' },
+        loadComponent: () =>
+          import('./features/prospects/prospects.page').then((module) => module.ProspectsPage),
+      },
+      {
+        path: 'prospects/:id',
+        title: 'Prospecto · Plannyt',
+        canActivate: [permissionGuard],
+        data: { permission: 'prospects.view' },
+        loadComponent: () =>
+          import('./features/prospects/prospect-detail.page').then(
+            (module) => module.ProspectDetailPage,
+          ),
+      },
+      {
+        path: 'catalog',
+        title: 'Catálogo comercial · Plannyt',
+        canActivate: [permissionGuard],
+        data: { permission: 'catalog.view' },
+        loadComponent: () =>
+          import('./features/catalog/catalog.page').then((module) => module.CatalogPage),
+      },
+      {
+        path: 'proposals',
+        title: 'Propuestas · Plannyt',
+        canActivate: [permissionGuard],
+        data: { permission: 'proposals.view' },
+        loadComponent: () =>
+          import('./features/proposals/proposals.page').then((module) => module.ProposalsPage),
+      },
+      {
+        path: 'proposals/new',
+        title: 'Nueva propuesta · Plannyt',
+        canActivate: [permissionGuard],
+        data: { permission: 'proposals.create' },
+        loadComponent: () =>
+          import('./features/proposals/proposal-builder.page').then(
+            (module) => module.ProposalBuilderPage,
+          ),
+      },
+      {
+        path: 'proposals/:id',
+        title: 'Propuesta · Plannyt',
+        canActivate: [permissionGuard],
+        data: { permission: 'proposals.view' },
+        loadComponent: () =>
+          import('./features/proposals/proposal-builder.page').then(
+            (module) => module.ProposalBuilderPage,
+          ),
       },
       {
         path: 'clients',
@@ -171,6 +233,22 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/portal/portal-event-detail.page').then(
             (module) => module.PortalEventDetailPage,
+          ),
+      },
+      {
+        path: 'proposals',
+        title: 'Mis propuestas · Plannyt',
+        loadComponent: () =>
+          import('./features/portal/portal-proposals.page').then(
+            (module) => module.PortalProposalsPage,
+          ),
+      },
+      {
+        path: 'proposals/:id',
+        title: 'Propuesta compartida · Plannyt',
+        loadComponent: () =>
+          import('./features/portal/portal-proposal-detail.page').then(
+            (module) => module.PortalProposalDetailPage,
           ),
       },
     ],

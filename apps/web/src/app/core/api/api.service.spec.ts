@@ -277,6 +277,228 @@ describe('ApiService', () => {
     expectBlobRequest(`${baseUrl}/client-portal/events/event-1/documents/document-1/download`);
   });
 
+  it('maps CRM, catalog and proposal operations', () => {
+    service
+      .getProspects('org-1', {
+        search: 'María',
+        status: 'Opportunity',
+        page: 1,
+        pageSize: 100,
+      })
+      .subscribe();
+    expectRequest(
+      'GET',
+      `${organizationUrl}/prospects?page=1&pageSize=100&search=Mar%C3%ADa&status=Opportunity`,
+    );
+    service.changeProspectStatus('org-1', 'prospect-1', 'Qualified', null).subscribe();
+    expectRequest('POST', `${organizationUrl}/prospects/prospect-1/status`, {
+      newStatus: 'Qualified',
+      reason: null,
+    });
+    service.getCatalogServices('org-1').subscribe();
+    expectRequest('GET', `${organizationUrl}/catalog/services`);
+    service.getPackages('org-1').subscribe();
+    expectRequest('GET', `${organizationUrl}/catalog/packages`);
+    service.getCoupons('org-1').subscribe();
+    expectRequest('GET', `${organizationUrl}/catalog/coupons`);
+    service.getProposals('org-1', 'P-2026', 'Sent').subscribe();
+    expectRequest(
+      'GET',
+      `${organizationUrl}/proposals?page=1&pageSize=100&search=P-2026&status=Sent`,
+    );
+    service.publishProposal('org-1', 'proposal-1').subscribe();
+    expectRequest('POST', `${organizationUrl}/proposals/proposal-1/publish`, null);
+    service.sendProposal('org-1', 'proposal-1', null).subscribe();
+    expectRequest('POST', `${organizationUrl}/proposals/proposal-1/send`, { expiresAt: null });
+  });
+
+  it('maps private proposal access without an organization context', () => {
+    const token = 'private/token';
+    const publicUrl = `${baseUrl}/public/proposals/private%2Ftoken`;
+
+    service.getPublicProposal(token).subscribe();
+    expectRequest('GET', publicUrl);
+    service.decidePublicProposal(token, 'accept', 'María', 'De acuerdo').subscribe();
+    expectRequest('POST', `${publicUrl}/accept`, {
+      authorDisplayName: 'María',
+      reason: 'De acuerdo',
+    });
+    service.downloadPublicProposalPdf(token).subscribe();
+    expectBlobRequest(`${publicUrl}/pdf`);
+    service.getPortalProposals().subscribe();
+    expectRequest('GET', `${baseUrl}/client-portal/proposals`);
+    service.getPortalProposal('proposal-1').subscribe();
+    expectRequest('GET', `${baseUrl}/client-portal/proposals/proposal-1`);
+    service.downloadPortalProposalPdf('proposal-1').subscribe();
+    expectBlobRequest(`${baseUrl}/client-portal/proposals/proposal-1/pdf`);
+  });
+
+  it('maps complete prospect management operations', () => {
+    const prospect = {
+      displayName: 'María Hernández',
+      firstName: 'María',
+      lastName: 'Hernández',
+      companyName: null,
+      email: 'maria@example.com',
+      phone: null,
+      source: 'Instagram',
+      eventTypeInterest: 'Boda',
+      estimatedEventDate: '2027-02-14',
+      estimatedGuestCount: 140,
+      estimatedBudget: 180000,
+      currencyCode: 'MXN',
+      city: 'Matamoros',
+      notes: null,
+      assignedUserId: null,
+    };
+    const activity = {
+      activityType: 'FollowUp' as const,
+      subject: 'Llamar',
+      description: null,
+      scheduledAt: null,
+      completedAt: null,
+      assignedUserId: null,
+      visibility: 'Internal' as const,
+    };
+
+    service.getProspect('org-1', 'prospect-1').subscribe();
+    expectRequest('GET', `${organizationUrl}/prospects/prospect-1`);
+    service.createProspect('org-1', prospect).subscribe();
+    expectRequest('POST', `${organizationUrl}/prospects`, prospect);
+    service.updateProspect('org-1', 'prospect-1', prospect).subscribe();
+    expectRequest('PUT', `${organizationUrl}/prospects/prospect-1`, prospect);
+    service.addProspectActivity('org-1', 'prospect-1', activity).subscribe();
+    expectRequest('POST', `${organizationUrl}/prospects/prospect-1/activities`, activity);
+    service.completeProspectActivity('org-1', 'prospect-1', 'activity-1').subscribe();
+    expectRequest(
+      'POST',
+      `${organizationUrl}/prospects/prospect-1/activities/activity-1/complete`,
+      null,
+    );
+    service.getProspectMatches('org-1', 'prospect-1').subscribe();
+    expectRequest('GET', `${organizationUrl}/prospects/prospect-1/client-matches`);
+    service
+      .convertProspect('org-1', 'prospect-1', {
+        existingClientId: null,
+        newClientType: 'Person',
+        confirmCreateDespiteMatches: true,
+      })
+      .subscribe();
+    expectRequest('POST', `${organizationUrl}/prospects/prospect-1/convert`, {
+      existingClientId: null,
+      newClientType: 'Person',
+      confirmCreateDespiteMatches: true,
+    });
+    const preliminary = {
+      existingEventId: null,
+      name: 'Boda',
+      eventType: 'Wedding',
+      startDateTime: '2027-02-14T18:00:00Z',
+      timeZone: 'America/Matamoros',
+      city: 'Matamoros',
+      countryCode: 'MX',
+      estimatedGuestCount: 140,
+    };
+    service.linkProspectPreliminaryEvent('org-1', 'prospect-1', preliminary).subscribe();
+    expectRequest('POST', `${organizationUrl}/prospects/prospect-1/preliminary-event`, preliminary);
+  });
+
+  it('maps catalog mutations and proposal drafts', () => {
+    const catalogService = {
+      name: 'Producción',
+      description: null,
+      category: 'Operación',
+      pricingType: 'Fixed' as const,
+      basePrice: 1000,
+      currencyCode: 'MXN',
+      taxBehavior: 'Exclusive' as const,
+      isNegotiable: true,
+      isActive: true,
+      sortOrder: 0,
+    };
+    const catalogPackage = {
+      name: 'Esencial',
+      description: null,
+      basePrice: 1000,
+      currencyCode: 'MXN',
+      isNegotiable: false,
+      isActive: true,
+      items: [],
+    };
+    const coupon = {
+      code: 'NUEVO',
+      description: null,
+      discountType: 'Percentage' as const,
+      discountValue: 10,
+      startsAt: '2026-07-01T00:00:00Z',
+      endsAt: '2026-08-01T00:00:00Z',
+      maximumUses: null,
+      isActive: true,
+    };
+    const draft = {
+      prospectId: 'prospect-1',
+      clientId: null,
+      eventId: null,
+      currencyCode: 'MXN',
+      validUntil: '2026-08-01T00:00:00Z',
+      sharedIntroduction: null,
+      sharedTerms: null,
+      internalNotes: null,
+      generalDiscountType: 'None' as const,
+      generalDiscountValue: 0,
+      couponId: null,
+      lines: [
+        {
+          description: 'Producción',
+          serviceCatalogItemId: 'service-1',
+          packageId: null,
+          quantity: 1,
+          unitPrice: 1000,
+          discountType: 'None' as const,
+          discountValue: 0,
+          taxRate: 16,
+          isOptional: false,
+          sortOrder: 0,
+        },
+      ],
+    };
+
+    service.createCatalogService('org-1', catalogService).subscribe();
+    expectRequest('POST', `${organizationUrl}/catalog/services`, catalogService);
+    service.updateCatalogService('org-1', 'service-1', catalogService).subscribe();
+    expectRequest('PUT', `${organizationUrl}/catalog/services/service-1`, catalogService);
+    service.createPackage('org-1', catalogPackage).subscribe();
+    expectRequest('POST', `${organizationUrl}/catalog/packages`, catalogPackage);
+    service.createCoupon('org-1', coupon).subscribe();
+    expectRequest('POST', `${organizationUrl}/catalog/coupons`, coupon);
+    service.getProposal('org-1', 'proposal-1').subscribe();
+    expectRequest('GET', `${organizationUrl}/proposals/proposal-1`);
+    service.createProposal('org-1', draft).subscribe();
+    expectRequest('POST', `${organizationUrl}/proposals`, draft);
+    service.updateProposalDraft('org-1', 'proposal-1', draft).subscribe();
+    expectRequest('PUT', `${organizationUrl}/proposals/proposal-1/draft`, draft);
+    service.downloadAdminProposalPdf('org-1', 'proposal-1', 'version-1').subscribe();
+    expectBlobRequest(`${organizationUrl}/proposals/proposal-1/versions/version-1/pdf`);
+    const comment = {
+      proposalVersionId: 'version-1',
+      proposalLineId: null,
+      authorDisplayName: 'Mariana',
+      content: 'Revisado',
+      visibility: 'Internal' as const,
+      parentCommentId: null,
+    };
+    service.addProposalComment('org-1', 'proposal-1', comment).subscribe();
+    expectRequest('POST', `${organizationUrl}/proposals/proposal-1/comments`, comment);
+    const publicComment = {
+      authorDisplayName: 'María',
+      content: 'Comentario',
+      proposalLineId: null,
+      parentCommentId: null,
+    };
+    service.addPublicProposalComment('private', publicComment).subscribe();
+    expectRequest('POST', `${baseUrl}/public/proposals/private/comments`, publicComment);
+  });
+
   function expectRequest(method: string, url: string, body?: unknown): TestRequest {
     const request = controller.expectOne(url);
     expect(request.request.method).toBe(method);

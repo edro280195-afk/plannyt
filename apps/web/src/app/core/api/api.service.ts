@@ -5,9 +5,16 @@ import { environment } from '../../../environments/environment';
 import {
   AcceptInvitationRequest,
   AuthResponse,
+  CatalogPackage,
   ClientContact,
   ClientListItem,
+  ClientMatchSuggestion,
   ClientResponse,
+  ClientType,
+  ConvertProspectResponse,
+  Coupon,
+  CouponRequest,
+  CreateProspectActivityRequest,
   CreateClientRequest,
   DocumentResponse,
   EventAccess,
@@ -27,11 +34,25 @@ import {
   OrganizationMember,
   OrganizationResponse,
   OrganizationRole,
+  PackageRequest,
   PagedResponse,
+  ProposalComment,
+  ProposalDraftRequest,
+  ProposalListItem,
+  ProposalPublicResponse,
+  ProposalResponse,
+  ProposalShareLink,
+  ProposalStatus,
+  ProspectDetailsRequest,
+  ProspectListItem,
+  ProspectResponse,
+  ProspectStatus,
   PortalEvent,
   PortalEventDetail,
   RegisterAndAcceptInvitationRequest,
   RegisterPlannerRequest,
+  ServiceCatalogItem,
+  ServiceCatalogItemRequest,
   UpdateClientRequest,
   UpdateOrganizationRequest,
   UpsertParticipantRequest,
@@ -371,6 +392,333 @@ export class ApiService {
       `${this.baseUrl}/client-portal/events/${eventId}/documents/${documentId}/download`,
       { responseType: 'blob' },
     );
+  }
+
+  getProspects(
+    organizationId: string,
+    filters: {
+      search?: string;
+      status?: ProspectStatus;
+      assignedUserId?: string;
+      eventType?: string;
+      dateFrom?: string;
+      dateTo?: string;
+      page?: number;
+      pageSize?: number;
+    } = {},
+  ): Observable<PagedResponse<ProspectListItem>> {
+    let params = new HttpParams()
+      .set('page', filters.page ?? 1)
+      .set('pageSize', filters.pageSize ?? 100);
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== undefined && key !== 'page' && key !== 'pageSize') {
+        params = params.set(key, value);
+      }
+    }
+    return this.http.get<PagedResponse<ProspectListItem>>(
+      `${this.organizationUrl(organizationId)}/prospects`,
+      { params },
+    );
+  }
+
+  getProspect(organizationId: string, prospectId: string): Observable<ProspectResponse> {
+    return this.http.get<ProspectResponse>(
+      `${this.organizationUrl(organizationId)}/prospects/${prospectId}`,
+    );
+  }
+
+  createProspect(
+    organizationId: string,
+    request: ProspectDetailsRequest,
+  ): Observable<ProspectResponse> {
+    return this.http.post<ProspectResponse>(
+      `${this.organizationUrl(organizationId)}/prospects`,
+      request,
+    );
+  }
+
+  updateProspect(
+    organizationId: string,
+    prospectId: string,
+    request: ProspectDetailsRequest,
+  ): Observable<ProspectResponse> {
+    return this.http.put<ProspectResponse>(
+      `${this.organizationUrl(organizationId)}/prospects/${prospectId}`,
+      request,
+    );
+  }
+
+  changeProspectStatus(
+    organizationId: string,
+    prospectId: string,
+    newStatus: ProspectStatus,
+    reason: string | null,
+  ): Observable<ProspectResponse> {
+    return this.http.post<ProspectResponse>(
+      `${this.organizationUrl(organizationId)}/prospects/${prospectId}/status`,
+      { newStatus, reason },
+    );
+  }
+
+  addProspectActivity(
+    organizationId: string,
+    prospectId: string,
+    request: CreateProspectActivityRequest,
+  ): Observable<unknown> {
+    return this.http.post(
+      `${this.organizationUrl(organizationId)}/prospects/${prospectId}/activities`,
+      request,
+    );
+  }
+
+  completeProspectActivity(
+    organizationId: string,
+    prospectId: string,
+    activityId: string,
+  ): Observable<unknown> {
+    return this.http.post(
+      `${this.organizationUrl(organizationId)}/prospects/${prospectId}/activities/${activityId}/complete`,
+      null,
+    );
+  }
+
+  getProspectMatches(
+    organizationId: string,
+    prospectId: string,
+  ): Observable<ClientMatchSuggestion[]> {
+    return this.http.get<ClientMatchSuggestion[]>(
+      `${this.organizationUrl(organizationId)}/prospects/${prospectId}/client-matches`,
+    );
+  }
+
+  convertProspect(
+    organizationId: string,
+    prospectId: string,
+    request: {
+      existingClientId: string | null;
+      newClientType: ClientType | null;
+      confirmCreateDespiteMatches: boolean;
+    },
+  ): Observable<ConvertProspectResponse> {
+    return this.http.post<ConvertProspectResponse>(
+      `${this.organizationUrl(organizationId)}/prospects/${prospectId}/convert`,
+      request,
+    );
+  }
+
+  linkProspectPreliminaryEvent(
+    organizationId: string,
+    prospectId: string,
+    request: {
+      existingEventId: string | null;
+      name: string | null;
+      eventType: string | null;
+      startDateTime: string | null;
+      timeZone: string | null;
+      city: string | null;
+      countryCode: string | null;
+      estimatedGuestCount: number | null;
+    },
+  ): Observable<{ prospectId: string; eventId: string; createdNewEvent: boolean }> {
+    return this.http.post<{ prospectId: string; eventId: string; createdNewEvent: boolean }>(
+      `${this.organizationUrl(organizationId)}/prospects/${prospectId}/preliminary-event`,
+      request,
+    );
+  }
+
+  getCatalogServices(organizationId: string): Observable<ServiceCatalogItem[]> {
+    return this.http.get<ServiceCatalogItem[]>(
+      `${this.organizationUrl(organizationId)}/catalog/services`,
+    );
+  }
+
+  createCatalogService(
+    organizationId: string,
+    request: ServiceCatalogItemRequest,
+  ): Observable<ServiceCatalogItem> {
+    return this.http.post<ServiceCatalogItem>(
+      `${this.organizationUrl(organizationId)}/catalog/services`,
+      request,
+    );
+  }
+
+  updateCatalogService(
+    organizationId: string,
+    serviceId: string,
+    request: ServiceCatalogItemRequest,
+  ): Observable<ServiceCatalogItem> {
+    return this.http.put<ServiceCatalogItem>(
+      `${this.organizationUrl(organizationId)}/catalog/services/${serviceId}`,
+      request,
+    );
+  }
+
+  getPackages(organizationId: string): Observable<CatalogPackage[]> {
+    return this.http.get<CatalogPackage[]>(
+      `${this.organizationUrl(organizationId)}/catalog/packages`,
+    );
+  }
+
+  createPackage(organizationId: string, request: PackageRequest): Observable<CatalogPackage> {
+    return this.http.post<CatalogPackage>(
+      `${this.organizationUrl(organizationId)}/catalog/packages`,
+      request,
+    );
+  }
+
+  getCoupons(organizationId: string): Observable<Coupon[]> {
+    return this.http.get<Coupon[]>(`${this.organizationUrl(organizationId)}/catalog/coupons`);
+  }
+
+  createCoupon(organizationId: string, request: CouponRequest): Observable<Coupon> {
+    return this.http.post<Coupon>(
+      `${this.organizationUrl(organizationId)}/catalog/coupons`,
+      request,
+    );
+  }
+
+  getProposals(
+    organizationId: string,
+    search = '',
+    status?: ProposalStatus,
+  ): Observable<PagedResponse<ProposalListItem>> {
+    let params = new HttpParams().set('page', 1).set('pageSize', 100).set('search', search);
+    if (status) {
+      params = params.set('status', status);
+    }
+    return this.http.get<PagedResponse<ProposalListItem>>(
+      `${this.organizationUrl(organizationId)}/proposals`,
+      { params },
+    );
+  }
+
+  getProposal(organizationId: string, proposalId: string): Observable<ProposalResponse> {
+    return this.http.get<ProposalResponse>(
+      `${this.organizationUrl(organizationId)}/proposals/${proposalId}`,
+    );
+  }
+
+  createProposal(
+    organizationId: string,
+    request: ProposalDraftRequest,
+  ): Observable<ProposalResponse> {
+    return this.http.post<ProposalResponse>(
+      `${this.organizationUrl(organizationId)}/proposals`,
+      request,
+    );
+  }
+
+  updateProposalDraft(
+    organizationId: string,
+    proposalId: string,
+    request: ProposalDraftRequest,
+  ): Observable<ProposalResponse> {
+    return this.http.put<ProposalResponse>(
+      `${this.organizationUrl(organizationId)}/proposals/${proposalId}/draft`,
+      request,
+    );
+  }
+
+  publishProposal(organizationId: string, proposalId: string): Observable<unknown> {
+    return this.http.post(
+      `${this.organizationUrl(organizationId)}/proposals/${proposalId}/publish`,
+      null,
+    );
+  }
+
+  sendProposal(
+    organizationId: string,
+    proposalId: string,
+    expiresAt: string | null,
+  ): Observable<ProposalShareLink> {
+    return this.http.post<ProposalShareLink>(
+      `${this.organizationUrl(organizationId)}/proposals/${proposalId}/send`,
+      { expiresAt },
+    );
+  }
+
+  downloadAdminProposalPdf(
+    organizationId: string,
+    proposalId: string,
+    versionId: string,
+  ): Observable<Blob> {
+    return this.http.get(
+      `${this.organizationUrl(organizationId)}/proposals/${proposalId}/versions/${versionId}/pdf`,
+      { responseType: 'blob' },
+    );
+  }
+
+  addProposalComment(
+    organizationId: string,
+    proposalId: string,
+    request: {
+      proposalVersionId: string;
+      proposalLineId: string | null;
+      authorDisplayName: string;
+      content: string;
+      visibility: 'Internal' | 'ClientShared';
+      parentCommentId: string | null;
+    },
+  ): Observable<ProposalComment> {
+    return this.http.post<ProposalComment>(
+      `${this.organizationUrl(organizationId)}/proposals/${proposalId}/comments`,
+      request,
+    );
+  }
+
+  getPublicProposal(token: string): Observable<ProposalPublicResponse> {
+    return this.http.get<ProposalPublicResponse>(
+      `${this.baseUrl}/public/proposals/${encodeURIComponent(token)}`,
+    );
+  }
+
+  addPublicProposalComment(
+    token: string,
+    request: {
+      authorDisplayName: string;
+      content: string;
+      proposalLineId: string | null;
+      parentCommentId: string | null;
+    },
+  ): Observable<ProposalComment> {
+    return this.http.post<ProposalComment>(
+      `${this.baseUrl}/public/proposals/${encodeURIComponent(token)}/comments`,
+      request,
+    );
+  }
+
+  decidePublicProposal(
+    token: string,
+    action: 'request-changes' | 'accept' | 'reject',
+    authorDisplayName: string | null,
+    reason: string | null,
+  ): Observable<ProposalPublicResponse> {
+    return this.http.post<ProposalPublicResponse>(
+      `${this.baseUrl}/public/proposals/${encodeURIComponent(token)}/${action}`,
+      { authorDisplayName, reason },
+    );
+  }
+
+  downloadPublicProposalPdf(token: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/public/proposals/${encodeURIComponent(token)}/pdf`, {
+      responseType: 'blob',
+    });
+  }
+
+  getPortalProposals(): Observable<ProposalListItem[]> {
+    return this.http.get<ProposalListItem[]>(`${this.baseUrl}/client-portal/proposals`);
+  }
+
+  getPortalProposal(proposalId: string): Observable<ProposalPublicResponse> {
+    return this.http.get<ProposalPublicResponse>(
+      `${this.baseUrl}/client-portal/proposals/${proposalId}`,
+    );
+  }
+
+  downloadPortalProposalPdf(proposalId: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/client-portal/proposals/${proposalId}/pdf`, {
+      responseType: 'blob',
+    });
   }
 
   private organizationUrl(organizationId: string): string {

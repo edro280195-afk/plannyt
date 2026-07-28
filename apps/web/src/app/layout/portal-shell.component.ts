@@ -16,6 +16,10 @@ import { AuthService } from '../core/auth/auth.service';
             <small>Portal del cliente</small>
           </span>
         </a>
+        <nav class="portal-nav" aria-label="Navegación del portal">
+          <a routerLink="/portal/events">Eventos</a>
+          <a routerLink="/portal/proposals">Propuestas</a>
+        </nav>
         <div class="portal-header__actions">
           <span class="hide-mobile">{{ auth.me()?.email }}</span>
           <button class="btn btn--quiet" type="button" (click)="auth.logout()">Salir</button>
