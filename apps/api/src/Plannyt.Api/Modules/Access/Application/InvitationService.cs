@@ -648,7 +648,7 @@ public sealed class InvitationService(
             invitation.InvitationType,
             invitation.TargetEmail,
             invitation.ExpiresAt,
-            $"{publicUrl}/invite/{rawToken}");
+            $"{publicUrl}/accept-access/{rawToken}");
     }
 
     private static InvitationAcceptanceResponse ToAcceptanceResponse(

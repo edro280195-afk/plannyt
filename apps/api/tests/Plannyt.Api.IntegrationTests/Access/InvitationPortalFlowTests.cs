@@ -27,7 +27,7 @@ public sealed class InvitationPortalFlowTests(ApiFactory factory)
             eventId,
             targetEmail);
 
-        Assert.Contains("/invite/", invitation.Url, StringComparison.Ordinal);
+        Assert.Contains("/accept-access/", invitation.Url, StringComparison.Ordinal);
         await using (var scope = factory.Services.CreateAsyncScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<PlannytDbContext>();

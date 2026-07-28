@@ -98,7 +98,7 @@ La creación devuelve la URL completa exactamente una vez. Regenerar crea un tok
 nuevo e invalida el anterior. El correo normalizado de una cuenta existente debe
 coincidir con el objetivo.
 
-El enlace público usa `/invite/{token}` en el frontend. El token original nunca se
+El enlace público usa `/accept-access/{token}` en el frontend. El token original nunca se
 guarda en base de datos, auditoría ni logs; únicamente se conserva su hash. Las
 invitaciones vencen en siete días y las aceptadas, revocadas o reemplazadas no
 pueden reutilizarse.

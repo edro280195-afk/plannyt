@@ -16,10 +16,11 @@ public static class DemoSeedGuard
 
         if (options.Enabled
             && (string.IsNullOrWhiteSpace(options.PlannerEmail)
-                || string.IsNullOrWhiteSpace(options.PlannerPassword)))
+                || string.IsNullOrWhiteSpace(options.PlannerPassword)
+                || string.IsNullOrWhiteSpace(options.ClientEmail)))
         {
             throw new InvalidOperationException(
-                "El seed demo requiere correo y contraseña configurados localmente.");
+                "El seed demo requiere los correos y la contraseña configurados localmente.");
         }
     }
 }

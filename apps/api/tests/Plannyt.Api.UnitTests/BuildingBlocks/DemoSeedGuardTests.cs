@@ -43,7 +43,27 @@ public sealed class DemoSeedGuardTests
         var exception = Assert.Throws<InvalidOperationException>(
             () => DemoSeedGuard.Validate(environment, configuration));
 
-        Assert.Contains("correo y contraseña", exception.Message, StringComparison.Ordinal);
+        Assert.Contains(
+            "correos y la contraseña",
+            exception.Message,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Validate_WhenEnabledWithoutClientEmail_Throws()
+    {
+        var environment = new TestHostEnvironment(Environments.Development);
+        var configuration = BuildConfiguration(
+            enabled: true,
+            clientEmail: string.Empty);
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => DemoSeedGuard.Validate(environment, configuration));
+
+        Assert.Contains(
+            "correos y la contraseña",
+            exception.Message,
+            StringComparison.Ordinal);
     }
 
     [Fact]
@@ -64,13 +84,15 @@ public sealed class DemoSeedGuardTests
     private static IConfiguration BuildConfiguration(
         bool enabled,
         string email = "planner@example.invalid",
-        string password = "local-only-password") =>
+        string password = "local-only-password",
+        string clientEmail = "client@example.invalid") =>
         new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["DemoSeed:Enabled"] = enabled.ToString(),
                 ["DemoSeed:PlannerEmail"] = email,
-                ["DemoSeed:PlannerPassword"] = password
+                ["DemoSeed:PlannerPassword"] = password,
+                ["DemoSeed:ClientEmail"] = clientEmail
             })
             .Build();
 

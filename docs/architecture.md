@@ -85,7 +85,7 @@ flowchart LR
 - Refresh token aleatorio de alta entropía con vigencia máxima de 30 días.
 - El refresh token se guarda mediante hash y rota en cada uso.
 - La reutilización de un token rotado revoca la cadena completa.
-- Logout revoca la sesión actual; el backend queda preparado para `logout-all`.
+- Logout revoca la sesión actual y `logout-all` revoca todas las sesiones.
 - No se guardan permisos efectivos completos en el JWT.
 
 ## Autorización
@@ -134,8 +134,8 @@ plannyt/
 │   │   │   └── Modules/
 │   │   └── tests/
 │   └── web/
-├── tests/e2e/
-├── infrastructure/
+│       ├── src/
+│       └── e2e/
 ├── docs/decisions/
 ├── docker-compose.yml
 ├── global.json

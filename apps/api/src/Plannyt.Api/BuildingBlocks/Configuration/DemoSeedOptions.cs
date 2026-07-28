@@ -9,4 +9,6 @@ public sealed class DemoSeedOptions
     public string PlannerEmail { get; init; } = string.Empty;
 
     public string PlannerPassword { get; init; } = string.Empty;
+
+    public string ClientEmail { get; init; } = string.Empty;
 }

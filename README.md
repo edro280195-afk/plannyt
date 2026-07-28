@@ -1,67 +1,142 @@
 # Plannyt
 
-Plataforma multi-tenant para planners, agencias, clientes y participantes de
-eventos. El Sprint 0 entrega identidad, organizaciones, CRM básico, núcleo del
-evento, invitaciones, portal del cliente, documentos y auditoría.
+Plataforma multi-tenant para planners, agencias y clientes de eventos. El
+Sprint 0 incluye identidad y sesiones, organización y permisos, CRM básico,
+eventos, invitaciones, portal del cliente, documentos locales y auditoría.
 
 ## Versiones requeridas
 
-- .NET SDK `10.0.302`
-- Node.js `24.18.0` LTS
-- Angular CLI `22.0.x`
-- PostgreSQL `18.4` mediante Docker
-- npm con `package-lock.json`
+- .NET SDK `10.0.302`.
+- Node.js `24.18.0` LTS y npm `11.16.0`.
+- Angular y Angular CLI `22.0.x`.
+- Docker Desktop con PostgreSQL `18.4`.
 
-`global.json` y `.nvmrc` fijan las versiones de SDK y Node.
+`global.json`, `.nvmrc`, `engines`, `package-lock.json` y el manifiesto local de
+`dotnet-ef` fijan las herramientas reproducibles.
 
-## Preparación en Windows 11
+## Arranque rápido
 
-1. Instala .NET SDK `10.0.302`.
-2. Instala Docker Desktop.
-3. Instala [NVM for Windows](https://github.com/coreybutler/nvm-windows).
-4. Desde PowerShell:
+### Windows 11
 
-   ```powershell
-   nvm install 24.18.0
-   nvm use 24.18.0
-   Copy-Item .env.example .env
-   docker compose up -d postgres
-   ```
+Instala [.NET 10](https://dotnet.microsoft.com/download),
+[Docker Desktop](https://www.docker.com/products/docker-desktop/) y
+[NVM for Windows](https://github.com/coreybutler/nvm-windows). Después, desde
+PowerShell en la raíz:
 
-Si la política de PowerShell bloquea `npm.ps1`, utiliza `npm.cmd`.
+```powershell
+nvm install 24.18.0
+nvm use 24.18.0
+Copy-Item .env.example .env
+docker compose up -d postgres
+dotnet tool restore
+dotnet restore apps/api/Plannyt.Api.slnx
+dotnet ef database update --project apps/api/src/Plannyt.Api --startup-project apps/api/src/Plannyt.Api
+Set-Location apps/web
+npm.cmd ci
+Set-Location ../..
+```
 
-## Preparación en macOS
+Si la política de PowerShell bloquea `npm.ps1`, usa `npm.cmd`.
 
-1. Instala .NET SDK `10.0.302` y Docker Desktop.
-2. Instala [nvm](https://github.com/nvm-sh/nvm).
-3. Desde Terminal:
+### macOS
 
-   ```bash
-   nvm install
-   nvm use
-   cp .env.example .env
-   docker compose up -d postgres
-   ```
+Instala .NET 10, Docker Desktop y [nvm](https://github.com/nvm-sh/nvm). Después:
 
-## Validación de PostgreSQL
+```bash
+nvm install
+nvm use
+cp .env.example .env
+docker compose up -d postgres
+dotnet tool restore
+dotnet restore apps/api/Plannyt.Api.slnx
+dotnet ef database update --project apps/api/src/Plannyt.Api --startup-project apps/api/src/Plannyt.Api
+cd apps/web
+npm ci
+cd ../..
+```
+
+La imagen está fijada a `postgres:18.4`; no se usa `latest`. Valida el servicio:
 
 ```powershell
 docker compose ps
 docker compose exec postgres pg_isready -U plannyt -d plannyt
 ```
 
-La imagen está fijada a `postgres:18.4`. No se usa `latest`.
+## Ejecutar
 
-## Configuración
+Confía una vez en el certificado local:
 
-`.env.example` contiene valores ficticios. Crea `.env` local y reemplaza la clave
-JWT y contraseña de PostgreSQL. `.env` nunca se confirma en Git.
+```powershell
+dotnet dev-certs https --trust
+```
 
-Las migraciones automáticas están deshabilitadas. Solo podrán habilitarse de forma
-explícita en Development.
+Terminal 1, API y Swagger:
 
-El seed demo está deshabilitado. Si se intenta habilitar fuera de Development, la
-API debe fallar al iniciar.
+```powershell
+dotnet run --project apps/api/src/Plannyt.Api --launch-profile https
+```
+
+Terminal 2, Angular:
+
+```powershell
+Set-Location apps/web
+npm.cmd start
+```
+
+- Aplicación: `http://localhost:4200`
+- API: `https://localhost:7139`
+- Swagger: `https://localhost:7139/swagger`
+- Readiness: `https://localhost:7139/health/ready`
+
+En macOS usa `npm` en lugar de `npm.cmd`. En desarrollo Angular llama
+directamente a la API HTTPS para que la cookie `Secure` de refresh funcione. El
+build de producción usa `/api` y presupone un reverse proxy del mismo origen.
+
+## Datos demo opcionales
+
+El seed está deshabilitado por defecto. Para cargar “Armonía Eventos”, Mariana
+Torres, Ana Martínez, “Ana & Carlos”, participantes y acceso de cliente, define
+antes de iniciar la API:
+
+```powershell
+$env:DemoSeed__Enabled = "true"
+$env:DemoSeed__PlannerEmail = "mariana.demo@example.invalid"
+$env:DemoSeed__PlannerPassword = "elige-una-clave-local-de-12-o-mas"
+$env:DemoSeed__ClientEmail = "ana.demo@example.invalid"
+```
+
+El seed es idempotente por correo de planner, sólo funciona en `Development` y
+usa esa misma contraseña local para `ana.demo@example.invalid`. No guardes una
+contraseña real en `.env`. Habilitar el seed fuera de Development hace fallar el
+arranque.
+
+## Compilar y probar
+
+```powershell
+dotnet build apps/api/Plannyt.Api.slnx
+dotnet test apps/api/Plannyt.Api.slnx --no-build
+Set-Location apps/web
+npm.cmd run build
+npm.cmd run test:coverage
+npx.cmd playwright install chromium
+npm.cmd run e2e
+```
+
+Las pruebas de integración levantan su propio PostgreSQL 18.4 con Testcontainers.
+Las E2E interceptan la API, son independientes y corren en Chromium de escritorio
+y móvil. La cobertura frontend exige al menos 85% global.
+
+## Seguridad y configuración
+
+- `.env.example` contiene valores ficticios; `.env` está ignorado.
+- Access token sólo en memoria; refresh token en cookie `HttpOnly` y `Secure`.
+- CORS acepta únicamente el origen configurado.
+- El service worker cachea recursos estáticos, nunca `/api/**`.
+- El almacenamiento local queda fuera del web root y sólo se permite en
+  Development.
+- Las migraciones automáticas requieren `Development` y
+  `Database__MigrateOnStartup=true`; producción debe aplicarlas de forma
+  controlada.
 
 ## Documentación
 
@@ -76,7 +151,5 @@ API debe fallar al iniciar.
 - [Plan técnico](docs/implementation-plan.md)
 - [Decisiones arquitectónicas](docs/decisions/README.md)
 
-## Estado
-
-La documentación y decisiones del Sprint 0 están aprobadas. La implementación se
-realiza por bloques locales y no configura ningún remoto ni hace push.
+El repositorio no tiene remoto configurado y los commits del Sprint 0 son
+únicamente locales.

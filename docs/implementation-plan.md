@@ -33,7 +33,7 @@ No se configura remoto ni se hace push.
 
 - Registro transaccional de planner.
 - Login, access token y sesiones con refresh rotativo.
-- Detección de reutilización, logout y preparación de logout-all.
+- Detección de reutilización, logout y logout-all.
 - Organización, membresías, roles, permisos y `TenantContext`.
 - Probar revocación inmediata y límites de delegación.
 
@@ -83,3 +83,15 @@ No se configura remoto ni se hace push.
 - Revisión de secretos, CORS, headers, logs y service worker.
 - Compilación limpia desde cero.
 - README y documentos sincronizados con el comportamiento real.
+
+## Estado verificado
+
+Los diez bloques están implementados. La entrega se valida con:
+
+- Build limpio de la solución .NET sin warnings.
+- Pruebas unitarias e integración contra PostgreSQL 18.4.
+- Build de producción Angular dentro del presupuesto.
+- Pruebas frontend con umbral mínimo global de 85%.
+- E2E de los flujos críticos en Chromium de escritorio y móvil.
+- Migraciones EF Core aplicadas y modelo sin cambios pendientes.
+- Auditoría de paquetes de producción sin vulnerabilidades conocidas.

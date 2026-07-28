@@ -152,6 +152,17 @@ Configuración:
 - `DemoSeed__Enabled=false`
 - `DemoSeed__PlannerEmail`
 - `DemoSeed__PlannerPassword`
+- `DemoSeed__ClientEmail`
 
 Si el seed se habilita fuera de Development, la aplicación falla al iniciar. Las
-pruebas crean datos propios.
+pruebas crean datos propios. Al habilitarse, el seed idempotente crea:
+
+- Organización “Armonía Eventos”.
+- Planner “Mariana Torres” con el correo y contraseña locales configurados.
+- Cliente “Ana Martínez”.
+- Evento futuro “Ana & Carlos”, tipo boda y estado `Planning`.
+- Participantes visibles Ana y Carlos.
+- Acceso `ClientPrimary` para `ana.demo@example.invalid`.
+
+La cuenta de cliente usa la misma contraseña local configurada para la planner.
+Ninguna contraseña demo real se conserva en Git.
