@@ -42,6 +42,40 @@ public static class Permissions
     public const string ProposalsManageComments = "proposals.manage-comments";
     public const string ProposalsConvertClient = "proposals.convert-client";
 
+    public const string ContractTemplatesView = "contract-templates.view";
+    public const string ContractTemplatesManage = "contract-templates.manage";
+
+    public const string ContractsView = "contracts.view";
+    public const string ContractsCreate = "contracts.create";
+    public const string ContractsUpdateDraft = "contracts.update-draft";
+    public const string ContractsPublish = "contracts.publish";
+    public const string ContractsSend = "contracts.send";
+    public const string ContractsCancel = "contracts.cancel";
+    public const string ContractsUploadExternal = "contracts.upload-external";
+    public const string ContractsValidateExternal = "contracts.validate-external";
+    public const string ContractsViewInternal = "contracts.view-internal";
+
+    public const string SignaturesView = "signatures.view";
+    public const string SignaturesManageSigners = "signatures.manage-signers";
+    public const string SignaturesCreateRequest = "signatures.create-request";
+    public const string SignaturesRevokeRequest = "signatures.revoke-request";
+    public const string SignaturesCountersign = "signatures.countersign";
+    public const string SignaturesViewEvidence = "signatures.view-evidence";
+
+    public const string PaymentPlansView = "payment-plans.view";
+    public const string PaymentPlansCreate = "payment-plans.create";
+    public const string PaymentPlansUpdateDraft = "payment-plans.update-draft";
+    public const string PaymentPlansActivate = "payment-plans.activate";
+    public const string PaymentPlansCancel = "payment-plans.cancel";
+
+    public const string PaymentsView = "payments.view";
+    public const string PaymentsCreate = "payments.create";
+    public const string PaymentsApprove = "payments.approve";
+    public const string PaymentsReject = "payments.reject";
+    public const string PaymentsCancel = "payments.cancel";
+    public const string PaymentsRefund = "payments.refund";
+    public const string PaymentsViewInternal = "payments.view-internal";
+
     public const string EventsView = "events.view";
     public const string EventsCreate = "events.create";
     public const string EventsUpdate = "events.update";
@@ -52,6 +86,7 @@ public static class Permissions
     public const string EventsMembersRevoke = "events.members.revoke";
     public const string EventsInternalDataView = "events.internal-data.view";
     public const string EventsSharedDataView = "events.shared-data.view";
+    public const string EventsConfirm = "events.confirm";
 
     public const string ParticipantsView = "participants.view";
     public const string ParticipantsManage = "participants.manage";
@@ -101,6 +136,35 @@ public static class Permissions
         ProposalsViewInternal,
         ProposalsManageComments,
         ProposalsConvertClient,
+        ContractTemplatesView,
+        ContractTemplatesManage,
+        ContractsView,
+        ContractsCreate,
+        ContractsUpdateDraft,
+        ContractsPublish,
+        ContractsSend,
+        ContractsCancel,
+        ContractsUploadExternal,
+        ContractsValidateExternal,
+        ContractsViewInternal,
+        SignaturesView,
+        SignaturesManageSigners,
+        SignaturesCreateRequest,
+        SignaturesRevokeRequest,
+        SignaturesCountersign,
+        SignaturesViewEvidence,
+        PaymentPlansView,
+        PaymentPlansCreate,
+        PaymentPlansUpdateDraft,
+        PaymentPlansActivate,
+        PaymentPlansCancel,
+        PaymentsView,
+        PaymentsCreate,
+        PaymentsApprove,
+        PaymentsReject,
+        PaymentsCancel,
+        PaymentsRefund,
+        PaymentsViewInternal,
         EventsView,
         EventsCreate,
         EventsUpdate,
@@ -111,6 +175,7 @@ public static class Permissions
         EventsMembersRevoke,
         EventsInternalDataView,
         EventsSharedDataView,
+        EventsConfirm,
         ParticipantsView,
         ParticipantsManage,
         DocumentsViewShared,
