@@ -189,7 +189,12 @@ internal sealed class AuditEntryConfiguration : IEntityTypeConfiguration<AuditEn
 {
     public void Configure(EntityTypeBuilder<AuditEntry> builder)
     {
-        builder.ToTable("audit_entries");
+        builder.ToTable("audit_entries", table =>
+        {
+            table.HasCheckConstraint(
+                "ck_audit_entries_event_context",
+                "event_id IS NULL OR organization_id IS NOT NULL");
+        });
         builder.HasKey(entity => entity.Id);
         builder.Property(entity => entity.Action).HasMaxLength(120).IsRequired();
         builder.Property(entity => entity.EntityType).HasMaxLength(120).IsRequired();

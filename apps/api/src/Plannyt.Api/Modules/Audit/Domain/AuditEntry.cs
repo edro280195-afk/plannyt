@@ -1,8 +1,6 @@
-using Plannyt.Api.BuildingBlocks.Domain;
-
 namespace Plannyt.Api.Modules.Audit.Domain;
 
-public sealed class AuditEntry : ITenantEntity
+public sealed class AuditEntry
 {
     private AuditEntry()
     {
@@ -10,7 +8,7 @@ public sealed class AuditEntry : ITenantEntity
 
     private AuditEntry(
         Guid id,
-        Guid organizationId,
+        Guid? organizationId,
         Guid? eventId,
         Guid? actorUserId,
         string action,
@@ -36,7 +34,7 @@ public sealed class AuditEntry : ITenantEntity
 
     public Guid Id { get; private set; }
 
-    public Guid OrganizationId { get; private set; }
+    public Guid? OrganizationId { get; private set; }
 
     public Guid? EventId { get; private set; }
 
@@ -57,7 +55,7 @@ public sealed class AuditEntry : ITenantEntity
     public string? IpAddress { get; private set; }
 
     public static AuditEntry Create(
-        Guid organizationId,
+        Guid? organizationId,
         Guid? eventId,
         Guid? actorUserId,
         string action,

@@ -56,6 +56,12 @@ public sealed class UserAccount
         UpdatedAt = now;
     }
 
+    public void SetPasswordHash(string passwordHash, DateTimeOffset now)
+    {
+        PasswordHash = passwordHash;
+        UpdatedAt = now;
+    }
+
     public void Deactivate(DateTimeOffset now)
     {
         IsActive = false;

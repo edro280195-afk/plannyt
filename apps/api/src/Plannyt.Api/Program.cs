@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
@@ -10,6 +11,10 @@ using Plannyt.Api.BuildingBlocks.Configuration;
 using Plannyt.Api.BuildingBlocks.Errors;
 using Plannyt.Api.BuildingBlocks.Http;
 using Plannyt.Api.Infrastructure.Persistence;
+using Plannyt.Api.Modules.Audit.Application;
+using Plannyt.Api.Modules.Identity.Application;
+using Plannyt.Api.Modules.Identity.Domain;
+using Plannyt.Api.Modules.Identity.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -130,6 +135,13 @@ builder.Services
         };
     });
 builder.Services.AddAuthorization();
+builder.Services.AddScoped<IPasswordHasher<UserAccount>, PasswordHasher<UserAccount>>();
+builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<OrganizationSlugGenerator>();
+builder.Services.AddScoped<AuditService>();
+builder.Services.AddScoped<CookieRequestGuard>();
+builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+builder.Services.AddSingleton<TokenService>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException(
@@ -177,6 +189,7 @@ app.UseHttpsRedirection();
 app.UseCors(CorsPolicies.Frontend);
 app.UseRateLimiter();
 app.UseAuthentication();
+app.UseMiddleware<SessionValidationMiddleware>();
 app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
@@ -192,6 +205,7 @@ app.MapHealthChecks("/health/live", new HealthCheckOptions
 }).AllowAnonymous();
 
 app.MapHealthChecks("/health/ready").AllowAnonymous();
+app.MapAuthEndpoints();
 
 app.MapGet("/", () => Results.Ok(new
 {
