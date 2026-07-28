@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Plannyt.Api.BuildingBlocks.Domain;
 
 namespace Plannyt.Api.BuildingBlocks.Errors;
 
@@ -12,13 +13,19 @@ public sealed class GlobalExceptionHandler(
         Exception exception,
         CancellationToken cancellationToken)
     {
-        var statusCode = exception is ApiException apiException
-            ? apiException.StatusCode
-            : StatusCodes.Status500InternalServerError;
-        var title = exception is ApiException knownException
-            ? knownException.Title
-            : "Ocurrió un error inesperado";
-        var detail = exception is ApiException
+        var statusCode = exception switch
+        {
+            ApiException apiException => apiException.StatusCode,
+            DomainRuleException => StatusCodes.Status400BadRequest,
+            _ => StatusCodes.Status500InternalServerError
+        };
+        var title = exception switch
+        {
+            ApiException apiException => apiException.Title,
+            DomainRuleException => "La operación no es válida",
+            _ => "Ocurrió un error inesperado"
+        };
+        var detail = exception is ApiException or DomainRuleException
             ? exception.Message
             : "La operación no pudo completarse.";
 

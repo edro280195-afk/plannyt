@@ -3,11 +3,13 @@ using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Plannyt.Api.BuildingBlocks.Configuration;
 using Plannyt.Api.BuildingBlocks.Errors;
 using Plannyt.Api.BuildingBlocks.Http;
+using Plannyt.Api.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -129,6 +131,15 @@ builder.Services
     });
 builder.Services.AddAuthorization();
 
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException(
+        "Configura ConnectionStrings:DefaultConnection.");
+
+builder.Services.AddDbContext<PlannytDbContext>(options =>
+    options
+        .UseNpgsql(connectionString)
+        .UseSnakeCaseNamingConvention());
+
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -144,11 +155,14 @@ builder.Services.AddRateLimiter(options =>
             }));
 });
 
-builder.Services.AddHealthChecks();
+builder.Services
+    .AddHealthChecks()
+    .AddDbContextCheck<PlannytDbContext>("postgresql", tags: ["ready"]);
 
 var app = builder.Build();
 
 DemoSeedGuard.Validate(app.Environment, app.Configuration);
+await DatabaseInitializer.InitializeAsync(app);
 
 app.UseExceptionHandler();
 app.UseMiddleware<CorrelationIdMiddleware>();

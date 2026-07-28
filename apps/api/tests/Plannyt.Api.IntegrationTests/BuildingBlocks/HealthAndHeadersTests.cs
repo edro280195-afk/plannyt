@@ -3,8 +3,8 @@ using Plannyt.Api.IntegrationTests.Infrastructure;
 
 namespace Plannyt.Api.IntegrationTests.BuildingBlocks;
 
+[Collection(ApiCollection.Name)]
 public sealed class HealthAndHeadersTests(ApiFactory factory)
-    : IClassFixture<ApiFactory>
 {
     private readonly HttpClient _client = factory.CreateClient();
 
