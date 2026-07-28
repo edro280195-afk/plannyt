@@ -1,0 +1,62 @@
+using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
+
+namespace Plannyt.Api.BuildingBlocks.Errors;
+
+public sealed class GlobalExceptionHandler(
+    IProblemDetailsService problemDetailsService,
+    ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
+{
+    public async ValueTask<bool> TryHandleAsync(
+        HttpContext httpContext,
+        Exception exception,
+        CancellationToken cancellationToken)
+    {
+        var statusCode = exception is ApiException apiException
+            ? apiException.StatusCode
+            : StatusCodes.Status500InternalServerError;
+        var title = exception is ApiException knownException
+            ? knownException.Title
+            : "Ocurrió un error inesperado";
+        var detail = exception is ApiException
+            ? exception.Message
+            : "La operación no pudo completarse.";
+
+        if (statusCode >= StatusCodes.Status500InternalServerError)
+        {
+            logger.LogError(
+                exception,
+                "Error no controlado. CorrelationId: {CorrelationId}",
+                httpContext.TraceIdentifier);
+        }
+        else
+        {
+            logger.LogWarning(
+                "Solicitud rechazada con estado {StatusCode}. CorrelationId: {CorrelationId}",
+                statusCode,
+                httpContext.TraceIdentifier);
+        }
+
+        httpContext.Response.StatusCode = statusCode;
+
+        var problemDetails = new ProblemDetails
+        {
+            Status = statusCode,
+            Title = title,
+            Detail = detail,
+            Instance = httpContext.Request.Path
+        };
+
+        if (exception is RequestValidationException validationException)
+        {
+            problemDetails.Extensions["errors"] = validationException.Errors;
+        }
+
+        return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
+        {
+            HttpContext = httpContext,
+            ProblemDetails = problemDetails,
+            Exception = exception
+        });
+    }
+}

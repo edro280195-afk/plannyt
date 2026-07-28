@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Plannyt.Api/Plannyt.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Plannyt.Api.IntegrationTests/Plannyt.Api.IntegrationTests.csproj" />
+    <Project Path="tests/Plannyt.Api.UnitTests/Plannyt.Api.UnitTests.csproj" />
+  </Folder>
+</Solution>
