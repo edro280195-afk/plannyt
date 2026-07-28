@@ -145,3 +145,36 @@ contenido de archivo y cuerpos completos.
 Quien reciba el enlace puede reenviarlo mientras siga vigente. La mitigación del
 Sprint 1A es alcance mínimo, expiración, revocación, sustitución y rate limiting.
 Autenticación adicional del prospecto y firma son decisiones de sprints futuros.
+
+## Seguridad de contratos y firma simple
+
+- Plannyt ofrece una **firma electrónica simple**. No se presenta como firma
+  avanzada, e.firma, NOM-151, identidad verificada ni certificación externa.
+- Los tokens tienen alta entropía, se persisten con SHA-256, pertenecen a
+  versión y firmante exactos, vencen, son de un solo uso y se revocan al
+  regenerarse o sustituirse la versión.
+- El token no entra en auditoría, evidencia ni logs de negocio.
+- El firmante confirma nombre, medios electrónicos y versión. Una firma
+  dibujada solo se crea por acción explícita.
+- Evidencia conserva hash, consentimiento, método, instante, contexto y metadata
+  técnica mínima; no guarda token ni imagen completa en JSON.
+- HTML se sanitiza y variables desconocidas bloquean publicación.
+- El PDF final es un archivo distinto con copia y anexo; no altera el original.
+- En contratos externos Plannyt certifica la carga, no la autenticidad de las
+  firmas.
+
+## Seguridad de pagos y portal
+
+- El cliente reporta un pago, pero no puede aprobarlo.
+- Solo pagos aprobados y asignaciones no revertidas afectan saldos y anticipo.
+- Comprobantes pasan por validación central de tamaño y tipo.
+- El portal exige acceso activo y permiso efectivo, y no acepta un
+  `organizationId` elegido por el cliente.
+- Readiness y confirmación se recalculan en backend; el frontend nunca escribe
+  `Confirmed`.
+
+## Riesgos residuales del Sprint 1B
+
+La firma simple acredita evidencia técnica, no una identidad oficial. Los
+enlaces pueden reenviarse mientras estén vigentes. Sellado certificado, cifrado
+administrado y proveedor de firma avanzada quedan para fases posteriores.

@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-Todos los ADR de esta carpeta están aceptados para los Sprint 0 y 1A.
+Todos los ADR de esta carpeta están aceptados para los Sprint 0, 1A y 1B.
 
 1. [Monolito modular](0001-monolito-modular.md)
 2. [PostgreSQL](0002-postgresql.md)
@@ -23,3 +23,11 @@ Todos los ADR de esta carpeta están aceptados para los Sprint 0 y 1A.
 19. [Acceso público por token de propuesta](0019-acceso-publico-token-propuesta.md)
 20. [Conversión explícita de prospecto a cliente](0020-conversion-prospecto-cliente.md)
 21. [Separación entre aceptación y contratación](0021-aceptacion-vs-contratacion.md)
+22. [Contrato derivado de propuesta aceptada](0022-contrato-desde-propuesta-aceptada.md)
+23. [Versionado inmutable de contratos](0023-versionado-inmutable-contratos.md)
+24. [Firma electrónica simple propia](0024-firma-electronica-simple.md)
+25. [Evidencia y hash documental](0025-evidencia-hash-documental.md)
+26. [Contratos firmados externamente](0026-contratos-externos.md)
+27. [Planes de pago y asignaciones](0027-planes-pago-asignaciones.md)
+28. [Snapshot de requisitos de contratación](0028-snapshot-requisitos-contratacion.md)
+29. [Confirmación controlada del evento](0029-confirmacion-controlada-evento.md)

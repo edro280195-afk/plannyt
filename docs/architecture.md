@@ -178,3 +178,36 @@ flowchart LR
 - El portal autenticado reutiliza la proyección pública, nunca la administrativa.
 - Aceptar no confirma el evento: contrato, firma y pagos siguen fuera del
   sistema hasta el Sprint 1B.
+
+## Extensión de contratación del Sprint 1B
+
+El monolito incorpora `Contracts` y `Payments` como módulos separados de
+`Proposals` y `Events`. La versión aceptada es una entrada inmutable del
+contrato, no el contrato mismo.
+
+```mermaid
+flowchart LR
+    Accepted["ProposalVersion aceptada"] --> Contract["Contract + ContractVersion"]
+    Policy["OrganizationContractingPolicy"] --> Snapshot["ContractingRequirementSnapshot"]
+    Contract --> Snapshot
+    Contract --> Signature["SignatureRequest + SignatureEvidence"]
+    Signature --> Final["PDF final + anexo de evidencia"]
+    Contract --> Plan["PaymentPlan + Installments"]
+    Plan --> Payment["PaymentRecord + Allocations"]
+    Snapshot --> Ready["ContractingReadiness"]
+    Final --> Ready
+    Payment --> Ready
+    Ready --> Transition["Event Preliminary → Confirmed"]
+```
+
+- El renderizador usa un catálogo central de variables y HTML sanitizado.
+- Al publicar se genera el PDF original, se calcula SHA-256 sobre sus bytes y
+  la versión queda bloqueada por dominio y por `SaveChanges`.
+- La firma propia es electrónica simple. Se conserva consentimiento, persona
+  declarada, método, fecha, sesión o token, IP limitada, agente de usuario,
+  correlación y hash.
+- `IFileStorage` conserva por separado PDF publicado, imagen dibujada opcional,
+  comprobantes y PDF final con el anexo de evidencia.
+- El portal obtiene contratos, pagos y readiness mediante proyecciones propias
+  sujetas a acceso activo al evento; no reutiliza DTO administrativos.
+- Solo `ContractingReadinessService` decide si el evento puede confirmarse.

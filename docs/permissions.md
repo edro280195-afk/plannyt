@@ -191,3 +191,50 @@ aplicándose encima de esta matriz y `Deny` conserva precedencia.
 El acceso público por token no recibe permisos de organización: sus operaciones
 están limitadas en el propio enlace, estado y versión. El portal autenticado
 consulta únicamente propuestas asociadas a sus clientes accesibles.
+
+## Permisos de contratación del Sprint 1B
+
+### Plantillas y contratos
+
+- `contract-templates.view`
+- `contract-templates.manage`
+- `contracts.view`
+- `contracts.create`
+- `contracts.update-draft`
+- `contracts.publish`
+- `contracts.send`
+- `contracts.cancel`
+- `contracts.upload-external`
+- `contracts.validate-external`
+- `contracts.view-internal`
+
+### Firmas
+
+- `signatures.view`
+- `signatures.manage-signers`
+- `signatures.create-request`
+- `signatures.revoke-request`
+- `signatures.countersign`
+- `signatures.view-evidence`
+
+### Planes, pagos y confirmación
+
+- `payment-plans.view`
+- `payment-plans.create`
+- `payment-plans.update-draft`
+- `payment-plans.activate`
+- `payment-plans.cancel`
+- `payments.view`
+- `payments.create`
+- `payments.approve`
+- `payments.reject`
+- `payments.cancel`
+- `payments.refund`
+- `payments.view-internal`
+- `events.confirm`
+
+Owner y OrganizationAdmin reciben el flujo completo. Planner puede contratar y
+confirmar. Finance administra planes, pagos y asignaciones. Los roles del portal
+solo consultan contenido compartido, firman cuando están asociados y reportan
+pagos; nunca aprueban ni consultan evidencia técnica. `Deny` conserva
+precedencia.

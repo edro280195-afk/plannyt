@@ -236,3 +236,67 @@ administrativos son contratos distintos.
 
 El portal deriva los clientes accesibles desde la cuenta autenticada. No permite
 editar importes ni consultar notas internas.
+
+## API de contratación del Sprint 1B
+
+Las rutas administrativas conservan el prefijo
+`/organizations/{organizationId}` y validan tenant, permiso y evento.
+
+### Plantillas y política
+
+| Método | Ruta |
+|---|---|
+| GET, POST | `/contract-templates` |
+| PUT, DELETE | `/contract-templates/{templateId}` |
+| POST | `/contract-templates/preview` |
+| GET, PUT | `/contracting-policy` |
+
+### Contratos y firma
+
+| Método | Ruta |
+|---|---|
+| GET | `/contracts?eventId=` |
+| POST | `/contracts/from-proposal`, `/manual`, `/external` |
+| GET, PUT | `/contracts/{contractId}`, `/contracts/{contractId}/draft` |
+| POST | `/contracts/{contractId}/publish`, `/cancel`, `/validate-external` |
+| GET | `/contracts/{contractId}/versions/{versionId}/pdf`, `/final`, `/evidence` |
+| POST | `/contracts/{contractId}/parties`, `/signers` |
+| PUT, DELETE | `/contracts/{contractId}/signers/{signerId}` |
+| POST | `/contracts/{contractId}/signers/{signerId}/requests`, `/sign` |
+| DELETE | `/contracts/{contractId}/requests/{requestId}` |
+
+### Firma pública
+
+| Método | Ruta |
+|---|---|
+| GET | `/public/signatures/{token}`, `/pdf` |
+| POST | `/public/signatures/{token}/sign`, `/decline` |
+
+Son rutas anónimas con rate limiting y DTO público. Un token inválido devuelve
+`404`; vencido, revocado o utilizado devuelve `410`.
+
+### Planes, pagos y evento
+
+| Método | Ruta |
+|---|---|
+| GET, POST | `/payment-plans`, `/payments` |
+| GET, PUT | `/payment-plans/{planId}` |
+| POST | `/payment-plans/{planId}/activate`, `/cancel` |
+| POST | `/payments/{paymentId}/approve`, `/reject`, `/cancel`, `/refund` |
+| POST | `/payments/{paymentId}/allocations`, `/receipt` |
+| GET | `/events/{eventId}/contracting-readiness` |
+| POST | `/events/{eventId}/confirm` |
+
+### Portal
+
+| Método | Ruta |
+|---|---|
+| GET | `/client-portal/contracts`, `/contracts/{contractId}` |
+| GET | `/client-portal/contracts/{contractId}/pdf`, `/final` |
+| POST | `/client-portal/contracts/{contractId}/signers/{signerId}/sign` |
+| GET | `/client-portal/payment-plans`, `/payments` |
+| POST | `/client-portal/payments`, `/payments/{paymentId}/receipt` |
+| GET | `/client-portal/events/{eventId}/contracting-readiness` |
+
+DTO administrativos, públicos y de portal están separados. El portal omite
+notas internas, IP, correlación y evidencia restringida.

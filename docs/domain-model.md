@@ -245,3 +245,46 @@ conservan su precio, pero no integran el total general.
 La aceptación guarda `AcceptedVersionId` y fecha. El servicio público comprueba
 que la versión del token siga siendo la vigente. Estados vencido, cancelado,
 aceptado o versión sustituida impiden una nueva decisión.
+
+## Modelo de contratación del Sprint 1B
+
+```mermaid
+erDiagram
+    CONTRACT_TEMPLATE ||--o{ CONTRACT_VERSION : origina
+    PROPOSAL_VERSION ||--o| CONTRACT : fundamenta
+    CONTRACT ||--o{ CONTRACT_VERSION : versiona
+    CONTRACT ||--o{ CONTRACT_PARTY : define
+    CONTRACT_PARTY ||--o{ CONTRACT_SIGNER : representa
+    CONTRACT_VERSION ||--o{ SIGNATURE_REQUEST : solicita
+    CONTRACT_SIGNER ||--o{ SIGNATURE_EVIDENCE : produce
+    CONTRACT ||--o| CONTRACT_FINAL_DOCUMENT : consolida
+    CONTRACT ||--|| CONTRACTING_REQUIREMENT_SNAPSHOT : congela
+    CONTRACT ||--o{ PAYMENT_PLAN : cobra
+    PAYMENT_PLAN ||--o{ PAYMENT_INSTALLMENT : distribuye
+    PAYMENT_RECORD ||--o{ PAYMENT_ALLOCATION : aplica
+    PAYMENT_INSTALLMENT ||--o{ PAYMENT_ALLOCATION : recibe
+    PAYMENT_RECORD ||--o{ PAYMENT_RECEIPT : documenta
+```
+
+### Contract y ContractVersion
+
+`Contract` conserva origen, evento, cliente, versión aceptada exacta, total y
+estado. `GeneratedFromProposal` exige propuesta aceptada de la misma
+organización, evento y cliente. `ContractVersion` guarda contenido renderizado,
+consentimiento, archivo y SHA-256. El borrador es mutable; una versión publicada
+solo puede marcarse como sustituida.
+
+### Partes, firmantes y evidencia
+
+`ContractParty` representa a la parte legal y `ContractSigner` a la persona que
+firma por ella. Cada `SignatureRequest` apunta a una versión y firmante exactos
+y conserva solo el hash del token. `SignatureEvidence` no admite actualización
+ni eliminación. `ContractFinalDocument` guarda el PDF compuesto sin reemplazar
+el original.
+
+### Política, planes y pagos
+
+`ContractingRequirementSnapshot` congela reglas, anticipo, moneda y modo de
+confirmación. `PaymentPlan` congela su total al activarse.
+`PaymentAllocation` resuelve la relación muchos-a-muchos entre pagos aprobados
+y parcialidades; las reversas conservan el registro histórico.

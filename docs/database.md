@@ -209,3 +209,44 @@ snapshot de EF Core sin modificar ni eliminar tablas del Sprint 0.
   anterior al fin.
 - Los registros históricos no tienen borrado en cascada desde el catálogo.
 - El borrador puede reemplazarse; líneas y totales publicados solo se insertan.
+
+## Tablas de contratación del Sprint 1B
+
+### Contratos y firma
+
+- `contract_templates`
+- `organization_contracting_policies`
+- `contracts`
+- `contract_versions`
+- `contract_parties`
+- `contract_signers`
+- `signature_requests`
+- `signature_evidence`
+- `contract_final_documents`
+- `contracting_requirement_snapshots`
+
+### Cobranza
+
+- `payment_plans`
+- `payment_installments`
+- `payment_records`
+- `payment_allocations`
+- `payment_receipts`
+
+La migración `AddContractsSignaturesAndPayments` crea este corte y actualiza el
+snapshot de EF Core.
+
+## Invariantes de contratación
+
+- Todas las tablas de negocio conservan `organization_id` y relaciones
+  tenant-aware.
+- `contract_number` es único por organización y `(contract_id,
+  version_number)` no se repite.
+- `signature_requests.token_hash` es único; el token original no se guarda.
+- Versiones publicadas y evidencia están protegidas contra modificación o
+  eliminación en `PlannytDbContext`.
+- SHA-256 corresponde a los bytes exactos del archivo.
+- Asignaciones son positivas y no exceden pago aprobado ni saldo.
+- Un plan activo conserva `activated_total_amount`; sus parcialidades suman el
+  total con precisión monetaria.
+- Cancelaciones, reembolsos y reversas conservan historia.

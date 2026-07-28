@@ -96,3 +96,36 @@ desde `/portal/proposals`.
 - CRM y propuestas pueden crear o relacionar únicamente eventos `Preliminary`.
 - Eventos no conoce tokens ni reglas de propuesta.
 - La aceptación comercial no llama una transición de confirmación del evento.
+
+## Módulos implementados en el Sprint 1B
+
+### Contratos
+
+Administra plantillas, políticas, contratos derivados o independientes, partes,
+firmantes, versiones, publicación, PDF, hash y cargas externas. Una versión
+publicada no admite edición ni eliminación.
+
+### Firmas
+
+Emite tokens de un solo uso, registra vista, rechazo, firma pública,
+confirmación autenticada y contrafirma. La evidencia es inmutable y siempre
+apunta a contrato, versión, firmante y hash exactos.
+
+### Pagos
+
+Administra planes, parcialidades, movimientos manuales, comprobantes y
+asignaciones. Solo asignaciones activas de pagos aprobados modifican saldos. El
+anticipo usa exclusivamente parcialidades `Deposit`.
+
+### Readiness y portal
+
+`ContractingReadiness` compone propuesta, contrato, firmas y anticipo con el
+snapshot congelado al crear el contrato. El portal expone proyecciones propias
+de contratos, pagos y resumen sin notas internas ni evidencia técnica.
+
+## Dependencias del corte de contratación
+
+- Contratos puede leer la versión aceptada; propuestas no depende de contratos.
+- Pagos referencia contrato o versión de propuesta sin alterar sus totales.
+- Readiness delega la transición al servicio de estados de eventos.
+- Portal usa `PortalAccessService` y limita toda consulta a accesos activos.
