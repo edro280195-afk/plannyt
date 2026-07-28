@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Plannyt">
+  <rect width="512" height="512" fill="#172f35"/>
+  <path
+    d="M176 368V146h102c61 0 99 35 99 88 0 55-40 91-102 91h-99"
+    fill="none"
+    stroke="#faf7f2"
+    stroke-width="42"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <circle cx="352" cy="355" r="31" fill="#d76f59"/>
+</svg>
