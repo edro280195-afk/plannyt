@@ -55,6 +55,16 @@ type EventTab = 'overview' | 'clients' | 'participants' | 'access' | 'documents'
             </p>
           </div>
           <div class="page-header__actions">
+            @if (organization.hasPermission('guests.view')) {
+              <a class="btn btn--primary" [routerLink]="['/app/events', eventId, 'guests']">
+                Invitados
+              </a>
+            }
+            @if (organization.hasPermission('invitation-designs.view')) {
+              <a class="btn btn--secondary" [routerLink]="['/app/events', eventId, 'invitations']">
+                Invitación digital
+              </a>
+            }
             @if (organization.hasPermission('contracts.view')) {
               <a class="btn btn--primary" [routerLink]="['/app/events', eventId, 'contracting']">
                 Contratación

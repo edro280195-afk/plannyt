@@ -30,6 +30,12 @@ import { ToastService } from '../../core/ui/toast.service';
             <span class="eyebrow">{{ currentEvent.eventType }}</span>
             <h1>{{ currentEvent.name }}</h1>
             <p>{{ currentEvent.city }}, {{ currentEvent.countryCode }}</p>
+            <a
+              class="btn btn--primary"
+              [routerLink]="['/portal/events', eventId, 'guest-experience']"
+            >
+              Colaborar en invitados
+            </a>
           </div>
         </header>
 
@@ -160,7 +166,7 @@ export class PortalEventDetailPage {
   private readonly route = inject(ActivatedRoute);
   private readonly toast = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly eventId =
+  protected readonly eventId =
     this.route.snapshot.paramMap.get('id') ??
     (() => {
       throw new Error('La ruta requiere un evento.');

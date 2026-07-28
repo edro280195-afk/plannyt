@@ -766,6 +766,288 @@ describe('ApiService', () => {
     receipt.flush({});
   });
 
+  it('maps guest groups, records, tags, duplicates and CSV operations', () => {
+    const guestUrl = `${eventUrl}/guests`;
+    const group = {
+      groupType: 'Family' as const,
+      displayName: 'Familia Luna',
+      contactName: 'Elena Luna',
+      contactPhone: null,
+      contactEmail: null,
+      allowedGuestCount: 3,
+      allowUnnamedCompanions: true,
+      maxUnnamedCompanions: 1,
+      internalNotes: null,
+      tagIds: ['tag-1'],
+      applyCapacityOverride: false,
+    };
+    const guest = {
+      invitationGroupId: 'group-1',
+      personId: null,
+      firstName: 'Elena',
+      lastName: 'Luna',
+      email: null,
+      phone: null,
+      guestType: 'Family' as const,
+      ageCategory: 'Adult' as const,
+      isPrimaryContact: true,
+      isNamed: true,
+      isPlusOne: false,
+      isVip: true,
+      sortOrder: 0,
+      internalNotes: null,
+    };
+
+    service
+      .getGuestDashboard('org-1', 'event-1', {
+        search: 'Elena',
+        groupId: 'group-1',
+        tagId: 'tag-1',
+        includeArchived: true,
+      })
+      .subscribe();
+    expectRequest(
+      'GET',
+      `${guestUrl}/dashboard?search=Elena&groupId=group-1&tagId=tag-1&includeArchived=true`,
+    );
+    service.createInvitationGroup('org-1', 'event-1', group).subscribe();
+    expectRequest('POST', `${guestUrl}/groups`, group);
+    service.updateInvitationGroup('org-1', 'event-1', 'group-1', group).subscribe();
+    expectRequest('PUT', `${guestUrl}/groups/group-1`, group);
+    service.archiveInvitationGroup('org-1', 'event-1', 'group-1').subscribe();
+    expectRequest('DELETE', `${guestUrl}/groups/group-1`);
+    service.createEventGuest('org-1', 'event-1', guest).subscribe();
+    expectRequest('POST', guestUrl, guest);
+    service.updateEventGuest('org-1', 'event-1', 'guest-1', guest).subscribe();
+    expectRequest('PUT', `${guestUrl}/guest-1`, guest);
+    service.archiveEventGuest('org-1', 'event-1', 'guest-1').subscribe();
+    expectRequest('DELETE', `${guestUrl}/guest-1`);
+    service.getGuestTags('org-1', 'event-1').subscribe();
+    expectRequest('GET', `${guestUrl}/tags`);
+    service.createGuestTag('org-1', 'event-1', { name: 'VIP', colorToken: 'rose' }).subscribe();
+    expectRequest('POST', `${guestUrl}/tags`, { name: 'VIP', colorToken: 'rose' });
+    service
+      .updateGuestTag('org-1', 'event-1', 'tag-1', {
+        name: 'Familia',
+        colorToken: 'sky',
+      })
+      .subscribe();
+    expectRequest('PUT', `${guestUrl}/tags/tag-1`, {
+      name: 'Familia',
+      colorToken: 'sky',
+    });
+    service.archiveGuestTag('org-1', 'event-1', 'tag-1').subscribe();
+    expectRequest('DELETE', `${guestUrl}/tags/tag-1`);
+    service.getGuestDuplicates('org-1', 'event-1').subscribe();
+    expectRequest('GET', `${guestUrl}/duplicates`);
+
+    const file = new File(['csv'], 'invitados.csv', { type: 'text/csv' });
+    service.analyzeGuestImport('org-1', 'event-1', file).subscribe();
+    const analyze = controller.expectOne(`${guestUrl}/imports/analyze`);
+    expect(analyze.request.method).toBe('POST');
+    expect((analyze.request.body as FormData).get('file')).toBe(file);
+    analyze.flush({});
+    service
+      .updateGuestImportMapping('org-1', 'event-1', 'import-1', {
+        GroupName: 'Grupo',
+      })
+      .subscribe();
+    expectRequest('PUT', `${guestUrl}/imports/import-1/mapping`, {
+      mapping: { GroupName: 'Grupo' },
+    });
+    service.confirmGuestImport('org-1', 'event-1', 'import-1').subscribe();
+    expectRequest('POST', `${guestUrl}/imports/import-1/confirm`, null);
+    service.downloadGuestTemplate('org-1', 'event-1').subscribe();
+    expectBlobRequest(`${guestUrl}/imports/template`);
+    service.exportGuests('org-1', 'event-1').subscribe();
+    expectBlobRequest(`${guestUrl}/export`);
+  });
+
+  it('maps invitation design, review, publication and private links', () => {
+    const invitationUrl = `${eventUrl}/invitations`;
+    const theme = {
+      backgroundColor: '#FFFFFF',
+      surfaceColor: '#FFFFFF',
+      textColor: '#111111',
+      accentColor: '#805641',
+      headingFont: 'playfair',
+      bodyFont: 'inter',
+      radiusToken: 'lg',
+      spacingToken: 'comfortable',
+      coverStyle: 'card',
+      buttonStyle: 'solid',
+      animation: 'Reduced' as const,
+    };
+    const blocks = [
+      {
+        id: 'block-1',
+        type: 'Text' as const,
+        visible: true,
+        visibility: 'Everyone' as const,
+        visibilityValue: null,
+        sortOrder: 0,
+        content: { body: 'Hola' },
+        presentation: { textAlign: 'center' },
+      },
+    ];
+
+    service.getGuestExperience('org-1', 'event-1').subscribe();
+    expectRequest('GET', `${invitationUrl}/experience`);
+    const experience = {
+      language: 'es',
+      publicTitle: 'Nuestro evento',
+      celebrantDisplayName: 'Ana & Carlos',
+      welcomeMessage: null,
+      closingMessage: 'Te esperamos',
+      showEventName: true,
+      showEventDate: true,
+      showParticipantNames: true,
+      showCity: true,
+      privateAccessOnly: true,
+    };
+    service.updateGuestExperience('org-1', 'event-1', experience).subscribe();
+    expectRequest('PUT', `${invitationUrl}/experience`, experience);
+    service.suspendGuestExperience('org-1', 'event-1').subscribe();
+    expectRequest('POST', `${invitationUrl}/experience/suspend`, null);
+    service.resumeGuestExperience('org-1', 'event-1').subscribe();
+    expectRequest('POST', `${invitationUrl}/experience/resume`, null);
+    service.getInvitationTemplates('org-1', 'event-1').subscribe();
+    expectRequest('GET', `${invitationUrl}/templates`);
+    const template = {
+      name: 'Propia',
+      description: 'Plantilla de la organización',
+      theme,
+      blocks,
+    };
+    service.createInvitationTemplate('org-1', 'event-1', template).subscribe();
+    expectRequest('POST', `${invitationUrl}/templates`, template);
+    service.updateInvitationTemplate('org-1', 'event-1', 'template-1', template).subscribe();
+    expectRequest('PUT', `${invitationUrl}/templates/template-1`, template);
+    service.archiveInvitationTemplate('org-1', 'event-1', 'template-1').subscribe();
+    expectRequest('DELETE', `${invitationUrl}/templates/template-1`);
+    service.getInvitationDesigns('org-1', 'event-1').subscribe();
+    expectRequest('GET', `${invitationUrl}/designs`);
+    service
+      .createInvitationDesign('org-1', 'event-1', {
+        name: 'Principal',
+        templateId: 'template-1',
+      })
+      .subscribe();
+    expectRequest('POST', `${invitationUrl}/designs`, {
+      name: 'Principal',
+      templateId: 'template-1',
+    });
+    service
+      .updateInvitationDesign('org-1', 'event-1', 'design-1', {
+        name: 'Principal',
+        theme,
+        blocks,
+      })
+      .subscribe();
+    expectRequest('PUT', `${invitationUrl}/designs/design-1`, {
+      name: 'Principal',
+      theme,
+      blocks,
+    });
+    service.submitInvitationReview('org-1', 'event-1', 'design-1').subscribe();
+    expectRequest('POST', `${invitationUrl}/designs/design-1/submit-review`, null);
+    service
+      .reviewInvitationDesign('org-1', 'event-1', 'design-1', 'version-1', 'approve', 'Aprobada')
+      .subscribe();
+    expectRequest('POST', `${invitationUrl}/designs/design-1/versions/version-1/approve`, {
+      message: 'Aprobada',
+    });
+    service.publishInvitationDesign('org-1', 'event-1', 'design-1').subscribe();
+    expectRequest('POST', `${invitationUrl}/designs/design-1/publish`, {
+      bypassApprovalForTesting: false,
+    });
+    service.getGuestLinks('org-1', 'event-1').subscribe();
+    expectRequest('GET', `${invitationUrl}/links`);
+    service.generateGuestLink('org-1', 'event-1', 'group-1', null).subscribe();
+    expectRequest('POST', `${invitationUrl}/groups/group-1/links`, { expiresAt: null });
+    service.regenerateGuestLink('org-1', 'event-1', 'link-1', null).subscribe();
+    expectRequest('POST', `${invitationUrl}/links/link-1/regenerate`, { expiresAt: null });
+    service.markGuestLinkShared('org-1', 'event-1', 'link-1').subscribe();
+    expectRequest('POST', `${invitationUrl}/links/link-1/mark-shared`, null);
+    service.revokeGuestLink('org-1', 'event-1', 'link-1').subscribe();
+    expectRequest('DELETE', `${invitationUrl}/links/link-1`);
+    service.getPublicInvitation('private/token').subscribe();
+    expectRequest('GET', `${baseUrl}/public/invitations/private%2Ftoken`);
+  });
+
+  it('maps the safe client portal guest collaboration surface', () => {
+    const portalUrl = `${baseUrl}/client-portal/events/event-1/guest-experience`;
+    const group = {
+      groupType: 'Family' as const,
+      displayName: 'Familia Luna',
+      allowedGuestCount: 3,
+      allowUnnamedCompanions: false,
+      maxUnnamedCompanions: 0,
+    };
+    const guest = {
+      invitationGroupId: 'group-1',
+      firstName: 'Elena',
+      lastName: 'Luna',
+      guestType: 'Family' as const,
+      ageCategory: 'Adult' as const,
+      isPrimaryContact: true,
+      isVip: false,
+      sortOrder: 0,
+    };
+
+    service.getPortalGuestWorkspace('event-1').subscribe();
+    expectRequest('GET', portalUrl);
+    service.createPortalInvitationGroup('event-1', group).subscribe();
+    expectRequest('POST', `${portalUrl}/groups`, group);
+    service.updatePortalInvitationGroup('event-1', 'group-1', group).subscribe();
+    expectRequest('PUT', `${portalUrl}/groups/group-1`, group);
+    service.archivePortalInvitationGroup('event-1', 'group-1').subscribe();
+    expectRequest('DELETE', `${portalUrl}/groups/group-1`);
+    service.createPortalGuest('event-1', guest).subscribe();
+    expectRequest('POST', `${portalUrl}/guests`, guest);
+    service.updatePortalGuest('event-1', 'guest-1', guest).subscribe();
+    expectRequest('PUT', `${portalUrl}/guests/guest-1`, guest);
+    service.archivePortalGuest('event-1', 'guest-1').subscribe();
+    expectRequest('DELETE', `${portalUrl}/guests/guest-1`);
+    service
+      .reviewPortalInvitation(
+        'event-1',
+        'design-1',
+        'version-1',
+        'request-changes',
+        'Ajustar saludo',
+      )
+      .subscribe();
+    expectRequest('POST', `${portalUrl}/designs/design-1/versions/version-1/request-changes`, {
+      message: 'Ajustar saludo',
+    });
+
+    const file = new File(['csv'], 'invitados.csv', { type: 'text/csv' });
+    service.analyzePortalGuestImport('event-1', file).subscribe();
+    const analyze = controller.expectOne(`${portalUrl}/imports/analyze`);
+    expect(analyze.request.method).toBe('POST');
+    expect((analyze.request.body as FormData).get('file')).toBe(file);
+    analyze.flush({});
+    service
+      .updatePortalGuestImportMapping('event-1', 'import-1', {
+        GroupName: 'Grupo',
+      })
+      .subscribe();
+    expectRequest('PUT', `${portalUrl}/imports/import-1/mapping`, {
+      mapping: { GroupName: 'Grupo' },
+    });
+    service.confirmPortalGuestImport('event-1', 'import-1').subscribe();
+    expectRequest('POST', `${portalUrl}/imports/import-1/confirm`, null);
+    service.downloadPortalGuestImportTemplate('event-1').subscribe();
+    expectBlobRequest(`${portalUrl}/imports/template`);
+    service.getPortalGuestDuplicates('event-1').subscribe();
+    expectRequest('GET', `${portalUrl}/duplicates`);
+    service.getPortalGuestLinks('event-1').subscribe();
+    expectRequest('GET', `${portalUrl}/links`);
+    service.markPortalGuestLinkShared('event-1', 'link-1').subscribe();
+    expectRequest('POST', `${portalUrl}/links/link-1/mark-shared`, null);
+  });
+
   function expectRequest(method: string, url: string, body?: unknown): TestRequest {
     const request = controller.expectOne(url);
     expect(request.request.method).toBe(method);

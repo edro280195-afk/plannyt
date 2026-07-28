@@ -949,3 +949,306 @@ export interface PortalPaymentRecord {
   }[];
   createdAt: string;
 }
+
+export type GuestType =
+  | 'Standard'
+  | 'Family'
+  | 'Friend'
+  | 'Colleague'
+  | 'Vendor'
+  | 'WeddingParty'
+  | 'SponsorOrGodparent'
+  | 'StaffGuest'
+  | 'VendorGuest'
+  | 'Vip'
+  | 'Other';
+export type AgeCategory = 'Adult' | 'Teen' | 'Child' | 'Infant' | 'Unknown';
+export type InvitationGroupType =
+  'Individual' | 'Couple' | 'Family' | 'Group' | 'Company' | 'CorporateTable' | 'Other';
+export type InvitationGroupStatus =
+  'Draft' | 'Ready' | 'LinkGenerated' | 'SharedManually' | 'Opened' | 'Revoked' | 'Archived';
+export type GuestPlanTier = 'Community' | 'EventComplete' | 'PlannerPro';
+
+export interface GuestTag {
+  id: string;
+  name: string;
+  colorToken: string;
+}
+
+export interface InvitationGroup {
+  id: string;
+  groupType: InvitationGroupType;
+  displayName: string;
+  contactName: string | null;
+  contactPhone: string | null;
+  contactEmail: string | null;
+  allowedGuestCount: number;
+  namedGuestCount: number;
+  availableGuestCount: number;
+  allowUnnamedCompanions: boolean;
+  maxUnnamedCompanions: number;
+  status: InvitationGroupStatus;
+  source: string;
+  internalNotes: string | null;
+  capacityOverrideApplied: boolean;
+  tags: GuestTag[];
+  updatedAt: string;
+  archivedAt: string | null;
+}
+
+export interface EventGuest {
+  id: string;
+  invitationGroupId: string | null;
+  personId: string | null;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string | null;
+  guestType: GuestType;
+  ageCategory: AgeCategory;
+  isPrimaryContact: boolean;
+  isNamed: boolean;
+  isPlusOne: boolean;
+  isVip: boolean;
+  isActive: boolean;
+  sortOrder: number;
+  internalNotes: string | null;
+  updatedAt: string;
+  archivedAt: string | null;
+}
+
+export interface GuestPlanUsage {
+  tier: GuestPlanTier;
+  activeGuests: number;
+  limit: number;
+  percentage: number;
+  warning80: boolean;
+  warning90: boolean;
+  isAtLimit: boolean;
+}
+
+export interface GuestDashboard {
+  activeGuestCount: number;
+  groupCount: number;
+  linkCount: number;
+  openedLinkCount: number;
+  plan: GuestPlanUsage;
+  groups: InvitationGroup[];
+  guests: EventGuest[];
+}
+
+export interface GuestDuplicateSuggestion {
+  kind: string;
+  reason: string;
+  guestIds: string[];
+  suggestedAction: string;
+}
+
+export interface GuestImportRowPreview {
+  rowNumber: number;
+  groupName: string | null;
+  guestName: string | null;
+  isValid: boolean;
+  errors: string[];
+}
+
+export interface GuestImportAnalysis {
+  importId: string;
+  status: 'Analyzed' | 'Completed' | 'Failed';
+  headers: string[];
+  mapping: Record<string, string>;
+  totalRows: number;
+  validRows: number;
+  errorRows: number;
+  preview: GuestImportRowPreview[];
+}
+
+export interface GuestImportResult {
+  importId: string;
+  status: 'Completed';
+  createdGroups: number;
+  createdGuests: number;
+  reusedGroups: number;
+  skippedRows: number;
+  errors: GuestImportRowPreview[];
+  completedAt: string;
+}
+
+export type GuestExperienceStatus = 'Draft' | 'Ready' | 'Published' | 'Suspended' | 'Archived';
+export type InvitationDesignStatus =
+  'Draft' | 'InReview' | 'ChangesRequested' | 'Approved' | 'Published' | 'Archived';
+export type InvitationBlockType =
+  | 'Cover'
+  | 'Greeting'
+  | 'Participants'
+  | 'EventDate'
+  | 'Countdown'
+  | 'Story'
+  | 'Image'
+  | 'GalleryPreview'
+  | 'Text'
+  | 'Divider'
+  | 'DressCode'
+  | 'Contact'
+  | 'CustomButton'
+  | 'Footer';
+export type BlockVisibility = 'Everyone' | 'InvitationGroup' | 'HasTag' | 'GuestType' | 'VipOnly';
+export type InvitationAnimationLevel = 'None' | 'Reduced' | 'Standard';
+export type InvitationBlockValue = string | number | boolean | null;
+
+export interface InvitationTheme {
+  backgroundColor: string;
+  surfaceColor: string;
+  textColor: string;
+  accentColor: string;
+  headingFont: string;
+  bodyFont: string;
+  radiusToken: string;
+  spacingToken: string;
+  coverStyle: string;
+  buttonStyle: string;
+  animation: InvitationAnimationLevel;
+}
+
+export interface InvitationBlock {
+  id: string;
+  type: InvitationBlockType;
+  visible: boolean;
+  visibility: BlockVisibility;
+  visibilityValue: string | null;
+  sortOrder: number;
+  content: Record<string, InvitationBlockValue>;
+  presentation: Record<string, InvitationBlockValue>;
+}
+
+export interface InvitationVersion {
+  id: string;
+  versionNumber: number;
+  theme: InvitationTheme;
+  blocks: InvitationBlock[];
+  createdAt: string;
+  approvedAt: string | null;
+  publishedAt: string | null;
+}
+
+export interface InvitationComment {
+  id: string;
+  versionId: string;
+  decision: 'Comment' | 'Approved' | 'ChangesRequested';
+  message: string;
+  createdAt: string;
+}
+
+export interface InvitationDesign {
+  id: string;
+  eventId: string;
+  name: string;
+  status: InvitationDesignStatus;
+  theme: InvitationTheme;
+  blocks: InvitationBlock[];
+  nextVersionNumber: number;
+  approvedVersionId: string | null;
+  versions: InvitationVersion[];
+  comments: InvitationComment[];
+  accessibilityWarnings: string[];
+  updatedAt: string;
+}
+
+export interface InvitationTemplate {
+  id: string;
+  isGlobal: boolean;
+  name: string;
+  description: string;
+  theme: InvitationTheme;
+  blocks: InvitationBlock[];
+}
+
+export interface GuestExperience {
+  id: string;
+  eventId: string;
+  status: GuestExperienceStatus;
+  language: string;
+  publicTitle: string;
+  celebrantDisplayName: string;
+  welcomeMessage: string | null;
+  closingMessage: string | null;
+  showEventName: boolean;
+  showEventDate: boolean;
+  showParticipantNames: boolean;
+  showCity: boolean;
+  privateAccessOnly: boolean;
+  activeInvitationDesignId: string | null;
+  activeVersionId: string | null;
+  updatedAt: string;
+}
+
+export type GuestAccessLinkStatus = 'Active' | 'Revoked' | 'Expired' | 'Replaced';
+
+export interface GuestAccessLink {
+  id: string;
+  invitationGroupId: string;
+  status: GuestAccessLinkStatus;
+  publicUrl: string | null;
+  expiresAt: string | null;
+  firstOpenedAt: string | null;
+  lastOpenedAt: string | null;
+  openCount: number;
+  sharedManuallyAt: string | null;
+  createdAt: string;
+}
+
+export interface PublicGuest {
+  firstName: string;
+  lastName: string;
+  guestType: GuestType;
+  ageCategory: AgeCategory;
+  isPrimaryContact: boolean;
+  isVip: boolean;
+}
+
+export interface PublicInvitation {
+  status: 'available';
+  language: string;
+  publicTitle: string;
+  celebrantDisplayName: string;
+  welcomeMessage: string | null;
+  closingMessage: string | null;
+  eventName: string | null;
+  eventStartsAt: string | null;
+  eventTimeZone: string;
+  city: string | null;
+  countryCode: string | null;
+  groupDisplayName: string;
+  allowedGuestCount: number;
+  participants: PublicGuest[];
+  theme: InvitationTheme;
+  blocks: InvitationBlock[];
+}
+
+export interface PortalInvitationGroup {
+  id: string;
+  groupType: InvitationGroupType;
+  displayName: string;
+  allowedGuestCount: number;
+  namedGuestCount: number;
+  allowUnnamedCompanions: boolean;
+  maxUnnamedCompanions: number;
+}
+
+export interface PortalGuest {
+  id: string;
+  invitationGroupId: string | null;
+  firstName: string;
+  lastName: string;
+  guestType: GuestType;
+  ageCategory: AgeCategory;
+  isPrimaryContact: boolean;
+  isVip: boolean;
+}
+
+export interface PortalGuestWorkspace {
+  eventId: string;
+  groups: PortalInvitationGroup[];
+  guests: PortalGuest[];
+  design: InvitationDesign | null;
+}

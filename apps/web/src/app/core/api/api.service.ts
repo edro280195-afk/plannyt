@@ -30,6 +30,22 @@ import {
   EventParticipant,
   EventResponse,
   EventStatus,
+  EventGuest,
+  GuestAccessLink,
+  GuestDashboard,
+  GuestDuplicateSuggestion,
+  GuestExperience,
+  GuestImportAnalysis,
+  GuestImportResult,
+  GuestTag,
+  GuestType,
+  AgeCategory,
+  InvitationBlock,
+  InvitationDesign,
+  InvitationGroup,
+  InvitationGroupType,
+  InvitationTemplate,
+  InvitationTheme,
   InvitationAcceptance,
   InvitationCreated,
   InvitationPublic,
@@ -59,6 +75,10 @@ import {
   PortalContract,
   PortalContractListItem,
   PortalPaymentRecord,
+  PortalGuest,
+  PortalGuestWorkspace,
+  PortalInvitationGroup,
+  PublicInvitation,
   PublicSignatureContract,
   RegisterAndAcceptInvitationRequest,
   RegisterPlannerRequest,
@@ -1183,11 +1203,577 @@ export class ApiService {
     );
   }
 
+  getGuestDashboard(
+    organizationId: string,
+    eventId: string,
+    filters?: { search?: string; groupId?: string; tagId?: string; includeArchived?: boolean },
+  ): Observable<GuestDashboard> {
+    let params = new HttpParams();
+    if (filters?.search) params = params.set('search', filters.search);
+    if (filters?.groupId) params = params.set('groupId', filters.groupId);
+    if (filters?.tagId) params = params.set('tagId', filters.tagId);
+    if (filters?.includeArchived) params = params.set('includeArchived', true);
+    return this.http.get<GuestDashboard>(`${this.guestUrl(organizationId, eventId)}/dashboard`, {
+      params,
+    });
+  }
+
+  createInvitationGroup(
+    organizationId: string,
+    eventId: string,
+    request: {
+      groupType: InvitationGroupType;
+      displayName: string;
+      contactName: string | null;
+      contactPhone: string | null;
+      contactEmail: string | null;
+      allowedGuestCount: number;
+      allowUnnamedCompanions: boolean;
+      maxUnnamedCompanions: number;
+      internalNotes: string | null;
+      tagIds: string[];
+      applyCapacityOverride?: boolean;
+    },
+  ): Observable<InvitationGroup> {
+    return this.http.post<InvitationGroup>(
+      `${this.guestUrl(organizationId, eventId)}/groups`,
+      request,
+    );
+  }
+
+  updateInvitationGroup(
+    organizationId: string,
+    eventId: string,
+    groupId: string,
+    request: {
+      groupType: InvitationGroupType;
+      displayName: string;
+      contactName: string | null;
+      contactPhone: string | null;
+      contactEmail: string | null;
+      allowedGuestCount: number;
+      allowUnnamedCompanions: boolean;
+      maxUnnamedCompanions: number;
+      internalNotes: string | null;
+      tagIds: string[];
+      applyCapacityOverride?: boolean;
+    },
+  ): Observable<InvitationGroup> {
+    return this.http.put<InvitationGroup>(
+      `${this.guestUrl(organizationId, eventId)}/groups/${groupId}`,
+      request,
+    );
+  }
+
+  archiveInvitationGroup(
+    organizationId: string,
+    eventId: string,
+    groupId: string,
+  ): Observable<void> {
+    return this.http.delete<void>(`${this.guestUrl(organizationId, eventId)}/groups/${groupId}`);
+  }
+
+  createEventGuest(
+    organizationId: string,
+    eventId: string,
+    request: {
+      invitationGroupId: string | null;
+      personId: string | null;
+      firstName: string;
+      lastName: string;
+      email: string | null;
+      phone: string | null;
+      guestType: GuestType;
+      ageCategory: AgeCategory;
+      isPrimaryContact: boolean;
+      isNamed: boolean;
+      isPlusOne: boolean;
+      isVip: boolean;
+      sortOrder: number;
+      internalNotes: string | null;
+    },
+  ): Observable<EventGuest> {
+    return this.http.post<EventGuest>(this.guestUrl(organizationId, eventId), request);
+  }
+
+  updateEventGuest(
+    organizationId: string,
+    eventId: string,
+    guestId: string,
+    request: {
+      invitationGroupId: string | null;
+      personId: string | null;
+      firstName: string;
+      lastName: string;
+      email: string | null;
+      phone: string | null;
+      guestType: GuestType;
+      ageCategory: AgeCategory;
+      isPrimaryContact: boolean;
+      isNamed: boolean;
+      isPlusOne: boolean;
+      isVip: boolean;
+      sortOrder: number;
+      internalNotes: string | null;
+    },
+  ): Observable<EventGuest> {
+    return this.http.put<EventGuest>(
+      `${this.guestUrl(organizationId, eventId)}/${guestId}`,
+      request,
+    );
+  }
+
+  archiveEventGuest(organizationId: string, eventId: string, guestId: string): Observable<void> {
+    return this.http.delete<void>(`${this.guestUrl(organizationId, eventId)}/${guestId}`);
+  }
+
+  getGuestTags(organizationId: string, eventId: string): Observable<GuestTag[]> {
+    return this.http.get<GuestTag[]>(`${this.guestUrl(organizationId, eventId)}/tags`);
+  }
+
+  createGuestTag(
+    organizationId: string,
+    eventId: string,
+    request: { name: string; colorToken: string },
+  ): Observable<GuestTag> {
+    return this.http.post<GuestTag>(`${this.guestUrl(organizationId, eventId)}/tags`, request);
+  }
+
+  updateGuestTag(
+    organizationId: string,
+    eventId: string,
+    tagId: string,
+    request: { name: string; colorToken: string },
+  ): Observable<GuestTag> {
+    return this.http.put<GuestTag>(
+      `${this.guestUrl(organizationId, eventId)}/tags/${tagId}`,
+      request,
+    );
+  }
+
+  archiveGuestTag(organizationId: string, eventId: string, tagId: string): Observable<void> {
+    return this.http.delete<void>(`${this.guestUrl(organizationId, eventId)}/tags/${tagId}`);
+  }
+
+  getGuestDuplicates(
+    organizationId: string,
+    eventId: string,
+  ): Observable<GuestDuplicateSuggestion[]> {
+    return this.http.get<GuestDuplicateSuggestion[]>(
+      `${this.guestUrl(organizationId, eventId)}/duplicates`,
+    );
+  }
+
+  analyzeGuestImport(
+    organizationId: string,
+    eventId: string,
+    file: File,
+  ): Observable<GuestImportAnalysis> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<GuestImportAnalysis>(
+      `${this.guestUrl(organizationId, eventId)}/imports/analyze`,
+      form,
+    );
+  }
+
+  updateGuestImportMapping(
+    organizationId: string,
+    eventId: string,
+    importId: string,
+    mapping: Record<string, string>,
+  ): Observable<GuestImportAnalysis> {
+    return this.http.put<GuestImportAnalysis>(
+      `${this.guestUrl(organizationId, eventId)}/imports/${importId}/mapping`,
+      { mapping },
+    );
+  }
+
+  confirmGuestImport(
+    organizationId: string,
+    eventId: string,
+    importId: string,
+  ): Observable<GuestImportResult> {
+    return this.http.post<GuestImportResult>(
+      `${this.guestUrl(organizationId, eventId)}/imports/${importId}/confirm`,
+      null,
+    );
+  }
+
+  downloadGuestTemplate(organizationId: string, eventId: string): Observable<Blob> {
+    return this.http.get(`${this.guestUrl(organizationId, eventId)}/imports/template`, {
+      responseType: 'blob',
+    });
+  }
+
+  exportGuests(organizationId: string, eventId: string): Observable<Blob> {
+    return this.http.get(`${this.guestUrl(organizationId, eventId)}/export`, {
+      responseType: 'blob',
+    });
+  }
+
+  getGuestExperience(organizationId: string, eventId: string): Observable<GuestExperience> {
+    return this.http.get<GuestExperience>(
+      `${this.invitationUrl(organizationId, eventId)}/experience`,
+    );
+  }
+
+  updateGuestExperience(
+    organizationId: string,
+    eventId: string,
+    request: {
+      language: string;
+      publicTitle: string;
+      celebrantDisplayName: string;
+      welcomeMessage: string | null;
+      closingMessage: string | null;
+      showEventName: boolean;
+      showEventDate: boolean;
+      showParticipantNames: boolean;
+      showCity: boolean;
+      privateAccessOnly: boolean;
+    },
+  ): Observable<GuestExperience> {
+    return this.http.put<GuestExperience>(
+      `${this.invitationUrl(organizationId, eventId)}/experience`,
+      request,
+    );
+  }
+
+  suspendGuestExperience(organizationId: string, eventId: string): Observable<GuestExperience> {
+    return this.http.post<GuestExperience>(
+      `${this.invitationUrl(organizationId, eventId)}/experience/suspend`,
+      null,
+    );
+  }
+
+  resumeGuestExperience(organizationId: string, eventId: string): Observable<GuestExperience> {
+    return this.http.post<GuestExperience>(
+      `${this.invitationUrl(organizationId, eventId)}/experience/resume`,
+      null,
+    );
+  }
+
+  getInvitationTemplates(
+    organizationId: string,
+    eventId: string,
+  ): Observable<InvitationTemplate[]> {
+    return this.http.get<InvitationTemplate[]>(
+      `${this.invitationUrl(organizationId, eventId)}/templates`,
+    );
+  }
+
+  createInvitationTemplate(
+    organizationId: string,
+    eventId: string,
+    request: {
+      name: string;
+      description: string;
+      theme: InvitationTheme;
+      blocks: InvitationBlock[];
+    },
+  ): Observable<InvitationTemplate> {
+    return this.http.post<InvitationTemplate>(
+      `${this.invitationUrl(organizationId, eventId)}/templates`,
+      request,
+    );
+  }
+
+  updateInvitationTemplate(
+    organizationId: string,
+    eventId: string,
+    templateId: string,
+    request: {
+      name: string;
+      description: string;
+      theme: InvitationTheme;
+      blocks: InvitationBlock[];
+    },
+  ): Observable<InvitationTemplate> {
+    return this.http.put<InvitationTemplate>(
+      `${this.invitationUrl(organizationId, eventId)}/templates/${templateId}`,
+      request,
+    );
+  }
+
+  archiveInvitationTemplate(
+    organizationId: string,
+    eventId: string,
+    templateId: string,
+  ): Observable<void> {
+    return this.http.delete<void>(
+      `${this.invitationUrl(organizationId, eventId)}/templates/${templateId}`,
+    );
+  }
+
+  getInvitationDesigns(organizationId: string, eventId: string): Observable<InvitationDesign[]> {
+    return this.http.get<InvitationDesign[]>(
+      `${this.invitationUrl(organizationId, eventId)}/designs`,
+    );
+  }
+
+  createInvitationDesign(
+    organizationId: string,
+    eventId: string,
+    request: { name: string; templateId: string | null },
+  ): Observable<InvitationDesign> {
+    return this.http.post<InvitationDesign>(
+      `${this.invitationUrl(organizationId, eventId)}/designs`,
+      request,
+    );
+  }
+
+  updateInvitationDesign(
+    organizationId: string,
+    eventId: string,
+    designId: string,
+    request: { name: string; theme: InvitationTheme; blocks: InvitationBlock[] },
+  ): Observable<InvitationDesign> {
+    return this.http.put<InvitationDesign>(
+      `${this.invitationUrl(organizationId, eventId)}/designs/${designId}`,
+      request,
+    );
+  }
+
+  submitInvitationReview(
+    organizationId: string,
+    eventId: string,
+    designId: string,
+  ): Observable<InvitationDesign> {
+    return this.http.post<InvitationDesign>(
+      `${this.invitationUrl(organizationId, eventId)}/designs/${designId}/submit-review`,
+      null,
+    );
+  }
+
+  reviewInvitationDesign(
+    organizationId: string,
+    eventId: string,
+    designId: string,
+    versionId: string,
+    action: 'comments' | 'approve' | 'request-changes',
+    message: string,
+  ): Observable<InvitationDesign> {
+    return this.http.post<InvitationDesign>(
+      `${this.invitationUrl(organizationId, eventId)}/designs/${designId}/versions/${versionId}/${action}`,
+      { message },
+    );
+  }
+
+  publishInvitationDesign(
+    organizationId: string,
+    eventId: string,
+    designId: string,
+    bypassApprovalForTesting = false,
+  ): Observable<InvitationDesign> {
+    return this.http.post<InvitationDesign>(
+      `${this.invitationUrl(organizationId, eventId)}/designs/${designId}/publish`,
+      { bypassApprovalForTesting },
+    );
+  }
+
+  getGuestLinks(organizationId: string, eventId: string): Observable<GuestAccessLink[]> {
+    return this.http.get<GuestAccessLink[]>(`${this.invitationUrl(organizationId, eventId)}/links`);
+  }
+
+  generateGuestLink(
+    organizationId: string,
+    eventId: string,
+    groupId: string,
+    expiresAt: string | null,
+  ): Observable<GuestAccessLink> {
+    return this.http.post<GuestAccessLink>(
+      `${this.invitationUrl(organizationId, eventId)}/groups/${groupId}/links`,
+      { expiresAt },
+    );
+  }
+
+  regenerateGuestLink(
+    organizationId: string,
+    eventId: string,
+    linkId: string,
+    expiresAt: string | null,
+  ): Observable<GuestAccessLink> {
+    return this.http.post<GuestAccessLink>(
+      `${this.invitationUrl(organizationId, eventId)}/links/${linkId}/regenerate`,
+      { expiresAt },
+    );
+  }
+
+  markGuestLinkShared(
+    organizationId: string,
+    eventId: string,
+    linkId: string,
+  ): Observable<GuestAccessLink> {
+    return this.http.post<GuestAccessLink>(
+      `${this.invitationUrl(organizationId, eventId)}/links/${linkId}/mark-shared`,
+      null,
+    );
+  }
+
+  revokeGuestLink(organizationId: string, eventId: string, linkId: string): Observable<void> {
+    return this.http.delete<void>(`${this.invitationUrl(organizationId, eventId)}/links/${linkId}`);
+  }
+
+  getPublicInvitation(token: string): Observable<PublicInvitation> {
+    return this.http.get<PublicInvitation>(
+      `${this.baseUrl}/public/invitations/${encodeURIComponent(token)}`,
+    );
+  }
+
+  getPortalGuestWorkspace(eventId: string): Observable<PortalGuestWorkspace> {
+    return this.http.get<PortalGuestWorkspace>(`${this.portalGuestUrl(eventId)}`);
+  }
+
+  createPortalInvitationGroup(
+    eventId: string,
+    request: {
+      groupType: InvitationGroupType;
+      displayName: string;
+      allowedGuestCount: number;
+      allowUnnamedCompanions: boolean;
+      maxUnnamedCompanions: number;
+    },
+  ): Observable<PortalInvitationGroup> {
+    return this.http.post<PortalInvitationGroup>(`${this.portalGuestUrl(eventId)}/groups`, request);
+  }
+
+  updatePortalInvitationGroup(
+    eventId: string,
+    groupId: string,
+    request: {
+      groupType: InvitationGroupType;
+      displayName: string;
+      allowedGuestCount: number;
+      allowUnnamedCompanions: boolean;
+      maxUnnamedCompanions: number;
+    },
+  ): Observable<PortalInvitationGroup> {
+    return this.http.put<PortalInvitationGroup>(
+      `${this.portalGuestUrl(eventId)}/groups/${groupId}`,
+      request,
+    );
+  }
+
+  archivePortalInvitationGroup(eventId: string, groupId: string): Observable<void> {
+    return this.http.delete<void>(`${this.portalGuestUrl(eventId)}/groups/${groupId}`);
+  }
+
+  createPortalGuest(
+    eventId: string,
+    request: {
+      invitationGroupId: string | null;
+      firstName: string;
+      lastName: string;
+      guestType: GuestType;
+      ageCategory: AgeCategory;
+      isPrimaryContact: boolean;
+      isVip: boolean;
+      sortOrder: number;
+    },
+  ): Observable<PortalGuest> {
+    return this.http.post<PortalGuest>(`${this.portalGuestUrl(eventId)}/guests`, request);
+  }
+
+  updatePortalGuest(
+    eventId: string,
+    guestId: string,
+    request: {
+      invitationGroupId: string | null;
+      firstName: string;
+      lastName: string;
+      guestType: GuestType;
+      ageCategory: AgeCategory;
+      isPrimaryContact: boolean;
+      isVip: boolean;
+      sortOrder: number;
+    },
+  ): Observable<PortalGuest> {
+    return this.http.put<PortalGuest>(`${this.portalGuestUrl(eventId)}/guests/${guestId}`, request);
+  }
+
+  archivePortalGuest(eventId: string, guestId: string): Observable<void> {
+    return this.http.delete<void>(`${this.portalGuestUrl(eventId)}/guests/${guestId}`);
+  }
+
+  reviewPortalInvitation(
+    eventId: string,
+    designId: string,
+    versionId: string,
+    action: 'comments' | 'approve' | 'request-changes',
+    message: string,
+  ): Observable<InvitationDesign> {
+    return this.http.post<InvitationDesign>(
+      `${this.portalGuestUrl(eventId)}/designs/${designId}/versions/${versionId}/${action}`,
+      { message },
+    );
+  }
+
+  analyzePortalGuestImport(eventId: string, file: File): Observable<GuestImportAnalysis> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<GuestImportAnalysis>(
+      `${this.portalGuestUrl(eventId)}/imports/analyze`,
+      form,
+    );
+  }
+
+  updatePortalGuestImportMapping(
+    eventId: string,
+    importId: string,
+    mapping: Record<string, string>,
+  ): Observable<GuestImportAnalysis> {
+    return this.http.put<GuestImportAnalysis>(
+      `${this.portalGuestUrl(eventId)}/imports/${importId}/mapping`,
+      { mapping },
+    );
+  }
+
+  confirmPortalGuestImport(eventId: string, importId: string): Observable<GuestImportResult> {
+    return this.http.post<GuestImportResult>(
+      `${this.portalGuestUrl(eventId)}/imports/${importId}/confirm`,
+      null,
+    );
+  }
+
+  downloadPortalGuestImportTemplate(eventId: string): Observable<Blob> {
+    return this.http.get(`${this.portalGuestUrl(eventId)}/imports/template`, {
+      responseType: 'blob',
+    });
+  }
+
+  getPortalGuestDuplicates(eventId: string): Observable<GuestDuplicateSuggestion[]> {
+    return this.http.get<GuestDuplicateSuggestion[]>(`${this.portalGuestUrl(eventId)}/duplicates`);
+  }
+
+  getPortalGuestLinks(eventId: string): Observable<GuestAccessLink[]> {
+    return this.http.get<GuestAccessLink[]>(`${this.portalGuestUrl(eventId)}/links`);
+  }
+
+  markPortalGuestLinkShared(eventId: string, linkId: string): Observable<GuestAccessLink> {
+    return this.http.post<GuestAccessLink>(
+      `${this.portalGuestUrl(eventId)}/links/${linkId}/mark-shared`,
+      null,
+    );
+  }
+
   private organizationUrl(organizationId: string): string {
     return `${this.baseUrl}/organizations/${organizationId}`;
   }
 
   private eventUrl(organizationId: string, eventId: string): string {
     return `${this.organizationUrl(organizationId)}/events/${eventId}`;
+  }
+
+  private guestUrl(organizationId: string, eventId: string): string {
+    return `${this.eventUrl(organizationId, eventId)}/guests`;
+  }
+
+  private invitationUrl(organizationId: string, eventId: string): string {
+    return `${this.eventUrl(organizationId, eventId)}/invitations`;
+  }
+
+  private portalGuestUrl(eventId: string): string {
+    return `${this.baseUrl}/client-portal/events/${eventId}/guest-experience`;
   }
 }

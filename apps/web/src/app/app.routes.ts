@@ -73,6 +73,14 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'i/:token',
+    title: 'Invitación privada · Plannyt',
+    loadComponent: () =>
+      import('./features/invitations/public-invitation.page').then(
+        (module) => module.PublicInvitationPage,
+      ),
+  },
+  {
     path: 'app',
     canActivate: [authGuard, professionalGuard],
     loadComponent: () =>
@@ -204,6 +212,26 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'events/:id/guests',
+        title: 'Invitados del evento · Plannyt',
+        canActivate: [permissionGuard],
+        data: { permission: 'guests.view' },
+        loadComponent: () =>
+          import('./features/guests/guest-management.page').then(
+            (module) => module.GuestManagementPage,
+          ),
+      },
+      {
+        path: 'events/:id/invitations',
+        title: 'Invitación digital · Plannyt',
+        canActivate: [permissionGuard],
+        data: { permission: 'invitation-designs.view' },
+        loadComponent: () =>
+          import('./features/invitations/invitation-editor.page').then(
+            (module) => module.InvitationEditorPage,
+          ),
+      },
+      {
         path: 'events/:id',
         title: 'Evento · Plannyt',
         canActivate: [permissionGuard],
@@ -272,6 +300,14 @@ export const routes: Routes = [
         title: 'Mis eventos · Plannyt',
         loadComponent: () =>
           import('./features/portal/portal-events.page').then((module) => module.PortalEventsPage),
+      },
+      {
+        path: 'events/:id/guest-experience',
+        title: 'Invitados e invitación · Plannyt',
+        loadComponent: () =>
+          import('./features/portal/portal-guest-experience.page').then(
+            (module) => module.PortalGuestExperiencePage,
+          ),
       },
       {
         path: 'events/:id',
