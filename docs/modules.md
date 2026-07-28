@@ -129,3 +129,42 @@ de contratos, pagos y resumen sin notas internas ni evidencia técnica.
 - Pagos referencia contrato o versión de propuesta sin alterar sus totales.
 - Readiness delega la transición al servicio de estados de eventos.
 - Portal usa `PortalAccessService` y limita toda consulta a accesos activos.
+
+## Módulos implementados en el Sprint 2A
+
+### Guests
+
+Administra `InvitationGroup`, `EventGuest`, etiquetas, cupos, contacto principal,
+archivo lógico, sugerencias de duplicados y límites por plan. La importación CSV
+se analiza y mapea antes de confirmar; acepta hasta 5,000 filas, ejecuta una
+transacción y reutiliza el resultado al repetir el mismo `importId`.
+
+### Invitations
+
+Administra la configuración de experiencia, ocho plantillas globales, plantillas
+propias, editor estructurado, revisión, comentarios, aprobación y publicación.
+Una versión publicada es inmutable y no se copia por grupo.
+
+### Guest access
+
+Mantiene un enlace activo por grupo, expiración, apertura limitada, sustitución,
+revocación y marca manual de compartido. La ruta pública proyecta solamente el
+evento permitido, el grupo del token y los bloques que superan la regla de
+visibilidad.
+
+### Portal de colaboración
+
+Permite CRUD seguro de grupos e invitados, importación, duplicados, vista previa,
+comentarios, aprobación, enlaces y marca de compartido según permisos. Exportar
+datos privados, publicar, regenerar o revocar siguen siendo operaciones
+profesionales.
+
+## Dependencias del corte de invitados
+
+- `Guests` conoce evento y tenant, pero no depende de CRM ni convierte invitados
+  en `Person`.
+- `Invitations` lee grupos, invitados y etiquetas para personalización; no
+  duplica el diseño publicado.
+- El acceso público no usa entidades EF como contrato de salida.
+- RSVP, menú, alergias, transporte, mesas, check-in y multimedia quedan fuera
+  del módulo actual.

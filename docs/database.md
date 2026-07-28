@@ -250,3 +250,38 @@ snapshot de EF Core.
 - Un plan activo conserva `activated_total_amount`; sus parcialidades suman el
   total con precisión monetaria.
 - Cancelaciones, reembolsos y reversas conservan historia.
+
+## Tablas de invitados y experiencia digital del Sprint 2A
+
+- `invitation_groups`
+- `event_guests`
+- `guest_tags`
+- `invitation_group_tags`
+- `guest_import_batches`
+- `event_guest_experiences`
+- `invitation_templates`
+- `invitation_designs`
+- `invitation_design_versions`
+- `invitation_design_comments`
+- `guest_access_links`
+
+La migración `AddGuestsAndDigitalInvitations` crea el corte y sincroniza el
+snapshot de EF Core.
+
+## Invariantes de invitados e invitaciones
+
+- Todas las relaciones del evento usan claves compuestas con
+  `organization_id` y `event_id`.
+- Un índice parcial permite un solo contacto principal activo por grupo.
+- Un índice parcial permite un solo enlace `Active` por grupo.
+- `token_hash` es único y el valor del token no tiene columna.
+- Existe una experiencia por evento y un número de versión único por diseño.
+- `InvitationDesignVersion` se bloquea contra modificación o eliminación en
+  `SaveChanges`.
+- Grupos, invitados, etiquetas, diseños y plantillas propias se archivan
+  lógicamente.
+- El lote CSV conserva contenido, mapeo, análisis y resultado con alcance de
+  tenant para repetir la confirmación sin duplicar datos.
+
+El inicializador de plantillas crea de forma idempotente ocho plantillas globales
+con identificadores estables. No utiliza imágenes externas.

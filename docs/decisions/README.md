@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-Todos los ADR de esta carpeta están aceptados para los Sprint 0, 1A y 1B.
+Todos los ADR de esta carpeta están aceptados para los Sprint 0, 1A, 1B y 2A.
 
 1. [Monolito modular](0001-monolito-modular.md)
 2. [PostgreSQL](0002-postgresql.md)
@@ -31,3 +31,11 @@ Todos los ADR de esta carpeta están aceptados para los Sprint 0, 1A y 1B.
 27. [Planes de pago y asignaciones](0027-planes-pago-asignaciones.md)
 28. [Snapshot de requisitos de contratación](0028-snapshot-requisitos-contratacion.md)
 29. [Confirmación controlada del evento](0029-confirmacion-controlada-evento.md)
+30. [Invitado separado de Person](0030-invitado-separado-de-person.md)
+31. [Grupo como unidad de invitación](0031-grupo-unidad-invitacion.md)
+32. [Diseño compartido y personalización por grupo](0032-diseno-compartido-personalizacion-grupo.md)
+33. [Editor estructurado por bloques](0033-editor-estructurado-bloques.md)
+34. [Versiones publicadas de invitación inmutables](0034-versiones-invitacion-inmutables.md)
+35. [Acceso privado por token de invitado](0035-acceso-privado-token-invitado.md)
+36. [Importación CSV de invitados](0036-importacion-csv-invitados.md)
+37. [Límites de invitados por plan](0037-limites-invitados-plan.md)

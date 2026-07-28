@@ -288,3 +288,48 @@ el original.
 confirmación. `PaymentPlan` congela su total al activarse.
 `PaymentAllocation` resuelve la relación muchos-a-muchos entre pagos aprobados
 y parcialidades; las reversas conservan el registro histórico.
+
+## Modelo de invitados e invitación digital del Sprint 2A
+
+```mermaid
+erDiagram
+    EVENT ||--o{ INVITATION_GROUP : organiza
+    INVITATION_GROUP ||--o{ EVENT_GUEST : contiene
+    EVENT_GUEST o|--o| PERSON : vincula_opcional
+    EVENT ||--o{ GUEST_TAG : define
+    INVITATION_GROUP }o--o{ GUEST_TAG : clasifica
+    EVENT ||--|| EVENT_GUEST_EXPERIENCE : configura
+    EVENT ||--o{ INVITATION_DESIGN : diseña
+    INVITATION_DESIGN ||--o{ INVITATION_DESIGN_VERSION : versiona
+    INVITATION_DESIGN_VERSION ||--o{ INVITATION_DESIGN_COMMENT : revisa
+    INVITATION_GROUP ||--o{ GUEST_ACCESS_LINK : recibe
+    INVITATION_TEMPLATE o|--o{ INVITATION_DESIGN : origina
+```
+
+### Padrón y grupos
+
+`EventGuest` pertenece a un evento y opcionalmente a un grupo o `Person`. El
+vínculo con `Person` no es obligatorio ni convierte el registro en contacto.
+Solo existe un contacto principal activo por grupo. Archivar conserva historia
+y libera el conteo activo del plan.
+
+`InvitationGroup` es la unidad de envío. Controla nombre, tipo, contacto, lugares,
+acompañantes sin nombre, etiquetas, fuente y estado. Los invitados nombrados no
+pueden superar el cupo salvo un override explícito y auditado.
+
+### Diseño, versión y experiencia
+
+`InvitationDesign` contiene el borrador mutable. Enviar a revisión crea
+`InvitationDesignVersion`; aprobación y publicación siempre señalan esa versión
+exacta. `EventGuestExperience` conserva la versión activa y puede suspenderse sin
+eliminar enlaces.
+
+Los bloques usan tipos y esquemas cerrados. `VisibilityRule` admite `Everyone`,
+`InvitationGroup`, `HasTag`, `GuestType` y `VipOnly`. Las únicas variables
+resueltas son las declaradas en el catálogo seguro.
+
+### Acceso y métricas
+
+`GuestAccessLink` pertenece a un único evento y grupo. Conserva hash, estado,
+vigencia, reemplazo, primera y última apertura y contador. No guarda el token,
+cookies de publicidad ni historial detallado de navegación.

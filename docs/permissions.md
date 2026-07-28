@@ -238,3 +238,42 @@ confirmar. Finance administra planes, pagos y asignaciones. Los roles del portal
 solo consultan contenido compartido, firman cuando están asociados y reportan
 pagos; nunca aprueban ni consultan evidencia técnica. `Deny` conserva
 precedencia.
+
+## Permisos de invitados e invitaciones del Sprint 2A
+
+### Invitados
+
+- `guests.view`, `guests.create`, `guests.update`, `guests.archive`
+- `guests.import`, `guests.export`, `guests.view-private`
+- `guests.manage-tags`
+
+### Grupos
+
+- `invitation-groups.view`, `invitation-groups.create`
+- `invitation-groups.update`, `invitation-groups.archive`
+- `invitation-groups.manage-capacity`, `invitation-groups.view-private`
+
+### Diseños y plantillas
+
+- `invitation-designs.view`, `invitation-designs.create`
+- `invitation-designs.update-draft`, `invitation-designs.submit-review`
+- `invitation-designs.approve`, `invitation-designs.publish`
+- `invitation-designs.archive`, `invitation-designs.manage-templates`
+- `invitation-designs.publish-testing`, reservado a Owner y
+  OrganizationAdmin para pruebas explícitas y auditadas
+
+### Enlaces
+
+- `guest-links.view`, `guest-links.generate`, `guest-links.regenerate`
+- `guest-links.revoke`, `guest-links.mark-shared`
+
+Owner y OrganizationAdmin reciben el catálogo completo. Planner administra todo
+el flujo salvo el bypass de pruebas; Coordinator opera invitados, diseños y
+enlaces; Assistant crea y edita sin archivar, aprobar, publicar, regenerar ni
+revocar.
+
+Los roles de portal reciben CRUD e importación de invitados, administración de
+cupos, revisión y aprobación, consulta de enlaces y marca manual de compartido.
+No reciben `guests.export`, permisos privados, publicación, generación,
+regeneración o revocación. Un `Deny` explícito conserva precedencia sobre estos
+roles base.

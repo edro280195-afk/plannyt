@@ -211,3 +211,34 @@ flowchart LR
 - El portal obtiene contratos, pagos y readiness mediante proyecciones propias
   sujetas a acceso activo al evento; no reutiliza DTO administrativos.
 - Solo `ContractingReadinessService` decide si el evento puede confirmarse.
+
+## Extensión de invitados y experiencia digital del Sprint 2A
+
+`Guests` e `Invitations` son módulos separados dentro del monolito. El primero
+administra el padrón del evento; el segundo publica una versión compartida y
+resuelve una proyección distinta para cada grupo.
+
+```mermaid
+flowchart LR
+    Csv["CSV validado"] --> Guests["EventGuest + InvitationGroup"]
+    Guests --> Rules["Etiquetas, cupo y visibilidad"]
+    Editor["Editor por bloques"] --> Draft["InvitationDesign"]
+    Draft --> Version["InvitationDesignVersion inmutable"]
+    Version --> Experience["EventGuestExperience publicada"]
+    Experience --> Link["GuestAccessLink por grupo"]
+    Rules --> Public["Proyección pública segura"]
+    Link --> Public
+    Version --> Public
+```
+
+- El editor acepta únicamente temas, bloques, propiedades y variables de un
+  catálogo cerrado; no almacena HTML, CSS o scripts arbitrarios.
+- Editar después de aprobar invalida la aprobación. Publicar apunta a una
+  versión exacta e inmutable.
+- El acceso público busca por SHA-256. El valor del token se deriva mediante
+  HMAC-SHA-384 del identificador aleatorio del enlace y una clave exclusiva, por
+  lo que puede reconstruirse para un usuario autorizado sin persistirlo.
+- El portal usa DTO y rutas propios. No expone notas, correo, teléfono,
+  organización ni operaciones de publicación, regeneración o revocación.
+- La PWA no guarda respuestas `/api/**`; la ruta `/i/:token` usa `no-store`,
+  `no-referrer`, `noindex` y respeta movimiento reducido.

@@ -300,3 +300,54 @@ Son rutas anónimas con rate limiting y DTO público. Un token inválido devuelv
 
 DTO administrativos, públicos y de portal están separados. El portal omite
 notas internas, IP, correlación y evidencia restringida.
+
+## API de invitados y experiencia digital del Sprint 2A
+
+El prefijo profesional es
+`/organizations/{organizationId}/events/{eventId}`.
+
+### Invitados, grupos y CSV
+
+| Método | Ruta |
+|---|---|
+| GET | `/guests/dashboard`, `/guests/duplicates`, `/guests/export` |
+| POST | `/guests`, `/guests/groups`, `/guests/tags` |
+| PUT, DELETE | `/guests/{guestId}` |
+| PUT, DELETE | `/guests/groups/{groupId}` |
+| PUT, DELETE | `/guests/tags/{tagId}` |
+| GET | `/guests/imports/template`, `/guests/imports/{importId}/report` |
+| POST | `/guests/imports/analyze`, `/guests/imports/{importId}/confirm` |
+| PUT | `/guests/imports/{importId}/mapping` |
+
+Crear o actualizar un invitado también permite moverlo de grupo. Actualizar el
+grupo administra cupo, etiquetas y acompañantes. El análisis CSV no escribe
+datos; la confirmación falla si quedan filas inválidas.
+
+### Diseños, experiencia y enlaces
+
+| Método | Ruta |
+|---|---|
+| GET, PUT | `/invitations/experience` |
+| POST | `/invitations/experience/suspend`, `/resume` |
+| GET, POST | `/invitations/templates` |
+| PUT, DELETE | `/invitations/templates/{templateId}` |
+| GET, POST | `/invitations/designs` |
+| GET, PUT, DELETE | `/invitations/designs/{designId}` |
+| POST | `/invitations/designs/{designId}/submit-review`, `/publish` |
+| POST | `/invitations/designs/{designId}/versions/{versionId}/comments`, `/approve`, `/request-changes` |
+| GET | `/invitations/links` |
+| POST | `/invitations/groups/{groupId}/links` |
+| POST | `/invitations/links/{linkId}/regenerate`, `/mark-shared` |
+| DELETE | `/invitations/links/{linkId}` |
+
+### Público y portal
+
+`GET /api/public/invitations/{token}` es anónimo y limitado por frecuencia.
+Devuelve `404` para token inválido y `410` con razón segura para expirado,
+revocado, reemplazado, suspendido o no publicado.
+
+El portal usa
+`/client-portal/events/{eventId}/guest-experience` y ofrece workspace, CRUD de
+grupos e invitados, duplicados, importación, revisión, enlaces y marca de
+compartido. Sus DTO omiten datos privados y sus rutas no incluyen publicación,
+generación, regeneración, revocación ni exportación.

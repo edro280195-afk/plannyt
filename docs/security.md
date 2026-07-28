@@ -178,3 +178,43 @@ Autenticación adicional del prospecto y firma son decisiones de sprints futuros
 La firma simple acredita evidencia técnica, no una identidad oficial. Los
 enlaces pueden reenviarse mientras estén vigentes. Sellado certificado, cifrado
 administrado y proveedor de firma avanzada quedan para fases posteriores.
+
+## Seguridad de invitaciones digitales
+
+- Cada enlace usa un identificador UUID aleatorio y un token opaco de 384 bits
+  derivado con HMAC-SHA-384 y una clave exclusiva
+  `GuestAccessTokens__DerivationKey`.
+- PostgreSQL conserva únicamente SHA-256 del token. La derivación permite que un
+  usuario con `guest-links.view` vuelva a copiar un enlace activo sin almacenar
+  el secreto reversible.
+- La clave de derivación debe tener al menos 64 caracteres, ser distinta de la
+  clave JWT y permanecer estable durante la vigencia de los enlaces. Rotarla
+  exige regenerar los accesos que deban volver a copiarse.
+- Regenerar crea otro identificador y marca el anterior `Replaced`; revocar y
+  expirar bloquean la proyección.
+- La consulta pública tiene rate limiting y proyecta únicamente el grupo del
+  token. No expone IDs internos, notas, correos, teléfonos, tenant, finanzas ni
+  auditoría.
+- Bloques, tema, fuentes, colores, propiedades, URLs y variables se validan en
+  backend. Se rechazan HTML, scripts, `javascript:`, CSS y propiedades
+  desconocidas.
+- Publicar exige contraste básico y versión aprobada, salvo bypass administrativo
+  explícito y auditado para pruebas.
+- `/api/public/invitations/**` responde `Cache-Control: no-store, private`,
+  `Pragma: no-cache`, `Referrer-Policy: no-referrer` y `X-Robots-Tag:
+  noindex, nofollow`.
+- El frontend no coloca el token en almacenamiento web, no carga recursos
+  externos desde la vista privada y el service worker no cachea API.
+
+## CSV y límites
+
+Solo se acepta CSV UTF-8 de hasta 5 MB y 5,000 filas. El parser limita filas,
+valida encabezados y valores y no interpreta fórmulas. Las exportaciones
+anteponen apóstrofo a celdas que podrían ejecutar fórmulas. Análisis,
+confirmación y reporte están ligados a organización y evento; la confirmación es
+transaccional e idempotente.
+
+Los límites de invitados se aplican en backend: Community 100, Event Complete
+300 y Planner Pro 500 invitados activos por evento, con advertencias al 80 % y
+90 % y bloqueo al 100 %. Los overrides quedan auditados. La facturación y el
+cambio comercial de plan continúan fuera de este sprint.
