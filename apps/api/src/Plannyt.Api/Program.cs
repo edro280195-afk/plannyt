@@ -13,6 +13,8 @@ using Plannyt.Api.BuildingBlocks.Http;
 using Plannyt.Api.Infrastructure.Persistence;
 using Plannyt.Api.Modules.Audit.Application;
 using Plannyt.Api.Modules.Crm.Application;
+using Plannyt.Api.Modules.Events.Application;
+using Plannyt.Api.Modules.Events.Domain;
 using Plannyt.Api.Modules.Identity.Application;
 using Plannyt.Api.Modules.Identity.Domain;
 using Plannyt.Api.Modules.Identity.Security;
@@ -152,6 +154,8 @@ builder.Services.AddSingleton<TokenService>();
 builder.Services.AddScoped<TenantAccessService>();
 builder.Services.AddScoped<OrganizationService>();
 builder.Services.AddScoped<ClientService>();
+builder.Services.AddScoped<EventService>();
+builder.Services.AddScoped<EventStatusTransitionService>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException(
@@ -225,6 +229,7 @@ app.MapHealthChecks("/health/ready").AllowAnonymous();
 app.MapAuthEndpoints();
 app.MapOrganizationEndpoints();
 app.MapClientEndpoints();
+app.MapEventEndpoints();
 
 app.MapGet("/", () => Results.Ok(new
 {

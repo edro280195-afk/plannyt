@@ -70,4 +70,18 @@ public sealed class EventParticipant : ITenantEntity
             isVisibleToClient,
             sharedDescription,
             now);
+
+    public void Update(
+        string participantType,
+        int displayOrder,
+        bool isVisibleToClient,
+        string? sharedDescription,
+        DateTimeOffset now)
+    {
+        ParticipantType = participantType;
+        DisplayOrder = displayOrder;
+        IsVisibleToClient = isVisibleToClient;
+        SharedDescription = sharedDescription;
+        UpdatedAt = now;
+    }
 }
