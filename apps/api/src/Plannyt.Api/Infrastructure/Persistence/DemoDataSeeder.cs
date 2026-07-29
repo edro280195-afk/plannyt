@@ -71,7 +71,13 @@ public sealed class DemoDataSeeder(
             plannerPerson.Id,
             now);
 
-        var clientAccount = CreateAccount(
+        var normalizedClientEmail = EmailNormalizer.Normalize(
+            seedOptions.ClientEmail);
+        var clientAccount = await dbContext.UserAccounts.SingleOrDefaultAsync(
+            entity => entity.NormalizedEmail == normalizedClientEmail,
+            cancellationToken);
+        var clientAccountIsNew = clientAccount is null;
+        clientAccount ??= CreateAccount(
             seedOptions.ClientEmail,
             seedOptions.PlannerPassword,
             now);
@@ -182,7 +188,6 @@ public sealed class DemoDataSeeder(
             organization,
             plannerPerson,
             membership,
-            clientAccount,
             ana,
             carlos,
             client,
@@ -194,6 +199,11 @@ public sealed class DemoDataSeeder(
             confirmedHistory,
             planningHistory,
             auditEntry);
+        if (clientAccountIsNew)
+        {
+            dbContext.Add(clientAccount);
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
     }

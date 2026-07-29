@@ -4,7 +4,9 @@
 
 La remediación crítica de RSVP y el motor backend de preguntas versionadas
 están implementados y cuentan con evidencia automatizada. Este reporte no
-aprueba por sí mismo el sprint y no se creó el tag `v0.5.0-sprint2b`.
+aprueba por sí mismo el sprint. Al redactar el cierre original todavía no se
+había creado el tag `v0.5.0-sprint2b`; actualmente el tag sí existe y apunta al
+commit `55e1b91e82ea6965420d86ba65d88e2a20dfaec1`.
 
 No se avanzó a mesas, check-in, itinerarios, multimedia ni Sprint 2C.
 

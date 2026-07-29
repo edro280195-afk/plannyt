@@ -8,7 +8,8 @@ compartida, PDF, conversión a cliente y eventos preliminares.
 
 ## Versiones requeridas
 
-- .NET SDK `10.0.302`.
+- .NET SDK `10.0.300` o un parche posterior compatible, según
+  `global.json` (`latestPatch`).
 - Node.js `24.18.0` LTS y npm `11.16.0`.
 - Angular y Angular CLI `22.0.x`.
 - Docker Desktop con PostgreSQL `18.4`.

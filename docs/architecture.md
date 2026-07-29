@@ -34,7 +34,8 @@ flowchart LR
 
 ### API
 
-- .NET SDK `10.0.302`, `net10.0` y ASP.NET Core 10.
+- .NET SDK `10.0.300` o un parche posterior compatible (`latestPatch`),
+  `net10.0` y ASP.NET Core 10.
 - Una Web API organizada por módulos funcionales.
 - DTO y validación por operación.
 - Manejo global de errores mediante Problem Details.

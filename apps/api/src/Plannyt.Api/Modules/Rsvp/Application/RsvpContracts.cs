@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Plannyt.Api.Modules.Rsvp.Domain;
 
 namespace Plannyt.Api.Modules.Rsvp.Application;
@@ -79,6 +80,7 @@ public sealed record RsvpQuestionRequest(
     VisibilityRule VisibilityRule,
     ValidationRules ValidationRules);
 
+[method: JsonConstructor]
 public sealed record RsvpSubmissionRequest(
     int ExpectedRevision,
     RsvpOverallStatus OverallStatus,
@@ -88,8 +90,32 @@ public sealed record RsvpSubmissionRequest(
     List<RsvpSubmissionGuestRequest> Guests,
     List<RsvpSubmissionAnswerRequest> Answers,
     string? ConsentSnapshot,
-    Guid RsvpFormVersionId = default);
+    Guid RsvpFormVersionId)
+{
+    public RsvpSubmissionRequest(
+        int expectedRevision,
+        RsvpOverallStatus overallStatus,
+        string? contactName,
+        string? contactEmail,
+        string? contactPhone,
+        List<RsvpSubmissionGuestRequest> guests,
+        List<RsvpSubmissionAnswerRequest> answers,
+        string? consentSnapshot)
+        : this(
+            expectedRevision,
+            overallStatus,
+            contactName,
+            contactEmail,
+            contactPhone,
+            guests,
+            answers,
+            consentSnapshot,
+            Guid.Empty)
+    {
+    }
+}
 
+[method: JsonConstructor]
 public sealed record RsvpSubmissionGuestRequest(
     Guid? EventGuestId,
     string DisplayName,
@@ -100,7 +126,32 @@ public sealed record RsvpSubmissionGuestRequest(
     string AccommodationSelectionJson,
     string DietaryJson,
     bool IsUnnamedCompanion,
-    Guid ResponseGuestId = default);
+    Guid ResponseGuestId)
+{
+    public RsvpSubmissionGuestRequest(
+        Guid? eventGuestId,
+        string displayName,
+        string ageCategory,
+        GuestAttendanceStatus attendanceStatus,
+        string menuSelectionsJson,
+        string transportSelectionJson,
+        string accommodationSelectionJson,
+        string dietaryJson,
+        bool isUnnamedCompanion)
+        : this(
+            eventGuestId,
+            displayName,
+            ageCategory,
+            attendanceStatus,
+            menuSelectionsJson,
+            transportSelectionJson,
+            accommodationSelectionJson,
+            dietaryJson,
+            isUnnamedCompanion,
+            Guid.Empty)
+    {
+    }
+}
 
 public sealed record RsvpSubmissionAnswerRequest(
     string QuestionId,

@@ -16,18 +16,24 @@ public sealed class GlobalExceptionHandler(
         var statusCode = exception switch
         {
             ApiException apiException => apiException.StatusCode,
+            BadHttpRequestException => StatusCodes.Status400BadRequest,
             DomainRuleException => StatusCodes.Status400BadRequest,
             _ => StatusCodes.Status500InternalServerError
         };
         var title = exception switch
         {
             ApiException apiException => apiException.Title,
+            BadHttpRequestException => "La solicitud no es válida",
             DomainRuleException => "La operación no es válida",
             _ => "Ocurrió un error inesperado"
         };
-        var detail = exception is ApiException or DomainRuleException
-            ? exception.Message
-            : "La operación no pudo completarse.";
+        var detail = exception switch
+        {
+            ApiException or DomainRuleException => exception.Message,
+            BadHttpRequestException =>
+                "No se pudo interpretar el contenido de la solicitud.",
+            _ => "La operación no pudo completarse."
+        };
 
         if (statusCode >= StatusCodes.Status500InternalServerError)
         {

@@ -15,6 +15,66 @@ namespace Plannyt.Api.IntegrationTests.Persistence;
 public sealed class DemoDataSeederTests(ApiFactory factory)
 {
     [Fact]
+    public async Task SeedAsync_WhenClientAccountAlreadyExists_ReusesGlobalAccount()
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var services = scope.ServiceProvider;
+        var dbContext = services.GetRequiredService<PlannytDbContext>();
+        var passwordHasher =
+            services.GetRequiredService<IPasswordHasher<UserAccount>>();
+        var email = $"demo-partial-{Guid.NewGuid():N}@example.invalid";
+        var clientEmail =
+            $"client-demo-partial-{Guid.NewGuid():N}@example.invalid";
+        var now = services.GetRequiredService<TimeProvider>().GetUtcNow();
+        var existingClientAccount = UserAccount.Create(
+            clientEmail,
+            EmailNormalizer.Normalize(clientEmail),
+            string.Empty,
+            now);
+        existingClientAccount.SetPasswordHash(
+            passwordHasher.HashPassword(
+                existingClientAccount,
+                "Existing-Account-Password-2026!"),
+            now);
+        dbContext.UserAccounts.Add(existingClientAccount);
+        await dbContext.SaveChangesAsync();
+
+        var seeder = new DemoDataSeeder(
+            dbContext,
+            passwordHasher,
+            services.GetRequiredService<OrganizationSlugGenerator>(),
+            services.GetRequiredService<EventStatusTransitionService>(),
+            Options.Create(new DemoSeedOptions
+            {
+                Enabled = true,
+                PlannerEmail = email,
+                PlannerPassword = "Demo-Only-Secure-Password-2026!",
+                ClientEmail = clientEmail
+            }),
+            services.GetRequiredService<TimeProvider>());
+
+        await seeder.SeedAsync();
+
+        var normalizedPlannerEmail = EmailNormalizer.Normalize(email);
+        var planner = await dbContext.UserAccounts.SingleAsync(
+            entity => entity.NormalizedEmail == normalizedPlannerEmail);
+        var membership = await dbContext.OrganizationMemberships.SingleAsync(
+            entity => entity.UserAccountId == planner.Id);
+        var eventEntity = await dbContext.Events.SingleAsync(
+            entity => entity.OrganizationId == membership.OrganizationId
+                && entity.Name == "Ana & Carlos");
+        var access = await dbContext.EventAccesses.SingleAsync(
+            entity => entity.EventId == eventEntity.Id);
+
+        Assert.Equal(existingClientAccount.Id, access.UserAccountId);
+        Assert.Equal(
+            1,
+            await dbContext.UserAccounts.CountAsync(
+                entity => entity.NormalizedEmail
+                    == EmailNormalizer.Normalize(clientEmail)));
+    }
+
+    [Fact]
     public async Task SeedAsync_WhenEnabled_CreatesCompleteIdempotentDemo()
     {
         await using var scope = factory.Services.CreateAsyncScope();
