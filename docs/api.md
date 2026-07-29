@@ -351,3 +351,122 @@ El portal usa
 grupos e invitados, duplicados, importación, revisión, enlaces y marca de
 compartido. Sus DTO omiten datos privados y sus rutas no incluyen publicación,
 generación, regeneración, revocación ni exportación.
+
+## API RSVP del Sprint 2B
+
+El prefijo profesional es
+`/organizations/{organizationId}/events/{eventId}`.
+
+### Configuración RSVP
+
+| Método | Ruta |
+|---|---|
+| GET | `/rsvp/settings` |
+| PUT | `/rsvp/settings` |
+| POST | `/rsvp/settings/publish` |
+| POST | `/rsvp/settings/open` |
+| POST | `/rsvp/settings/close` |
+
+Las transiciones expuestas pasan por la máquina de dominio. Las excepciones por
+grupo se administran mediante sus rutas específicas.
+
+### Formulario RSVP
+
+| Método | Ruta |
+|---|---|
+| GET, POST | `/rsvp/form` |
+| POST | `/rsvp/form/version` |
+| POST | `/rsvp/form/submit-review` |
+| POST | `/rsvp/form/versions/{versionId}/approve` |
+| POST | `/rsvp/form/versions/{versionId}/publish` |
+
+Cada `POST /rsvp/form/version` crea un snapshot nuevo e inmutable. El flujo
+publica una versión aprobada y PostgreSQL exige JSON válido en las columnas
+`jsonb`; esta remediación no incorpora todavía un motor completo de reglas para
+tipos, longitudes u opciones de preguntas.
+
+### Dashboard y respuestas
+
+| Método | Ruta |
+|---|---|
+| GET | `/rsvp/dashboard` |
+| GET | `/rsvp/sensitive-data` |
+| POST | `/rsvp/groups/{groupId}/manual-capture` |
+| POST | `/rsvp/groups/{groupId}/exception` |
+| POST | `/rsvp/groups/{groupId}/exception/close` |
+| GET | `/rsvp/projections/diagnosis` |
+| POST | `/rsvp/projections/repair` |
+
+Estas rutas están bajo
+`/api/organizations/{organizationId}/events/{eventId}`. La captura manual
+requiere `Idempotency-Key`, motivo y `submission.expectedRevision`.
+`SupportCorrection` exige además `rsvp-responses.correct`. Si contiene datos
+sensibles también exige `guest-sensitive-data.manage`.
+
+La lectura sensible exige `guest-sensitive-data.view`; diagnóstico usa
+`rsvp-responses.view` y reparación transaccional
+`rsvp-responses.correct`.
+
+### Portal autenticado
+
+| Método | Ruta |
+|---|---|
+| GET | `/api/client-portal/events/{eventId}/rsvp/dashboard` |
+| POST | `/api/client-portal/events/{eventId}/rsvp/groups/{groupId}/manual-capture` |
+
+El portal resuelve organización y evento desde `EventAccess`, no desde un
+`organizationId` enviado por el navegador. La captura usa la misma transacción,
+idempotencia y cadena de revisiones que la ruta profesional. Los roles de
+portal no reciben permisos `guest-sensitive-data.*`.
+
+### Exportaciones
+
+| Método | Ruta |
+|---|---|
+| GET | `/rsvp/exports/attendance` |
+| GET | `/rsvp/exports/catering` |
+| GET | `/rsvp/exports/transport` |
+| GET | `/rsvp/exports/accommodation` |
+| GET | `/rsvp/exports/sensitive` |
+
+La exportación sensible exige `guest-sensitive-data.export` y genera
+`guest_sensitive_data.exported` con cantidad de registros y tipo de operación,
+sin contenido del CSV.
+
+### Menús
+
+| Método | Ruta |
+|---|---|
+| GET, POST | `/menus` |
+| POST | `/menus/{menuId}/options` |
+
+Las rutas están bajo
+`/api/organizations/{organizationId}/events/{eventId}`.
+
+### Transporte y hospedaje
+
+| Método | Ruta |
+|---|---|
+| GET, POST | `/transport` |
+| GET, POST | `/accommodation` |
+
+### Recordatorios
+
+| Método | Ruta |
+|---|---|
+| GET, POST | `/rsvp/reminders/templates` |
+| POST | `/rsvp/reminders/groups/{groupId}/templates/{templateId}/mark-sent` |
+
+### Público RSVP
+
+| Método | Ruta |
+|---|---|
+| GET | `/api/guest/rsvp/{token}/state` |
+| POST | `/api/guest/rsvp/{token}/submit` |
+
+`GET` devuelve el estado RSVP y la respuesta previa del invitado si existe.
+`POST` recibe `Idempotency-Key` en encabezado y
+`expectedRevision` en el cuerpo. Misma llave y fingerprint devuelve la entrega
+existente; misma llave con contenido distinto o una revisión obsoleta devuelve
+`409 Conflict`. Las rutas son anónimas, limitadas por origen y usan un DTO que
+redacta snapshots sensibles.

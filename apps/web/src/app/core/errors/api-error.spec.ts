@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { getApiErrorMessage } from './api-error';
+import { getApiErrorMessage, requiresReload } from './api-error';
 
 describe('getApiErrorMessage', () => {
   it('returns the first validation error', () => {
@@ -39,5 +39,23 @@ describe('getApiErrorMessage', () => {
     expect(getApiErrorMessage(new Error('internal'))).toBe(
       'No fue posible completar la operación.',
     );
+  });
+
+  it('requires reload only for an explicit revision conflict', () => {
+    const revisionConflict = new HttpErrorResponse({
+      status: 409,
+      error: { reloadRequired: true },
+    });
+    const operationalConflict = new HttpErrorResponse({
+      status: 409,
+      error: {
+        detail: 'No quedan lugares.',
+        reloadRequired: false,
+      },
+    });
+
+    expect(requiresReload(revisionConflict)).toBe(true);
+    expect(requiresReload(operationalConflict)).toBe(false);
+    expect(requiresReload(new Error('internal'))).toBe(false);
   });
 });

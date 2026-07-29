@@ -2881,6 +2881,12 @@ namespace Plannyt.Api.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
+                    b.Property<string>("DerivationKeyId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("derivation_key_id");
+
                     b.Property<Guid>("EventId")
                         .HasColumnType("uuid")
                         .HasColumnName("event_id");
@@ -4469,6 +4475,1300 @@ namespace Plannyt.Api.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.CurrentGuestRsvp", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AttendanceStatus")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("attendance_status");
+
+                    b.Property<int?>("CompanionSlotNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("companion_slot_number");
+
+                    b.Property<string>("CurrentDisplayName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("current_display_name");
+
+                    b.Property<Guid?>("EventGuestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_guest_id");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid>("InvitationGroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("invitation_group_id");
+
+                    b.Property<bool>("IsUnnamedCompanion")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_unnamed_companion");
+
+                    b.Property<Guid?>("LastSubmissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("last_submission_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_current_guest_rsvps");
+
+                    b.HasAlternateKey("OrganizationId", "EventId", "Id")
+                        .HasName("ak_current_guest_rsvps_organization_id_event_id_id");
+
+                    b.HasIndex("OrganizationId", "EventId", "InvitationGroupId")
+                        .HasDatabaseName("ix_current_guest_rsvps_organization_id_event_id_invitation_gro");
+
+                    b.HasIndex("OrganizationId", "EventId", "LastSubmissionId")
+                        .HasDatabaseName("ix_current_guest_rsvps_organization_id_event_id_last_submissio");
+
+                    b.ToTable("current_guest_rsvps", (string)null);
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.EventAccommodationOption", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("address");
+
+                    b.Property<string>("BookingCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("booking_code");
+
+                    b.Property<DateTimeOffset?>("BookingDeadline")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("booking_deadline");
+
+                    b.Property<string>("BookingUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("booking_url");
+
+                    b.Property<string>("ContactInformation")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("contact_information");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_accommodation_options");
+
+                    b.HasAlternateKey("OrganizationId", "EventId", "Id")
+                        .HasName("ak_event_accommodation_options_organization_id_event_id_id");
+
+                    b.ToTable("event_accommodation_options", (string)null);
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.EventMenu", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("ArchivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("archived_at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<int>("MaximumSelections")
+                        .HasColumnType("integer")
+                        .HasColumnName("maximum_selections");
+
+                    b.Property<string>("MenuCategory")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("menu_category");
+
+                    b.Property<int>("MinimumSelections")
+                        .HasColumnType("integer")
+                        .HasColumnName("minimum_selections");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<bool>("SelectionRequired")
+                        .HasColumnType("boolean")
+                        .HasColumnName("selection_required");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_menus");
+
+                    b.HasAlternateKey("OrganizationId", "Id")
+                        .HasName("ak_event_menus_organization_id_id");
+
+                    b.HasAlternateKey("OrganizationId", "EventId", "Id")
+                        .HasName("ak_event_menus_organization_id_event_id_id");
+
+                    b.HasIndex("OrganizationId", "EventId", "SortOrder")
+                        .HasDatabaseName("ix_event_menus_organization_id_event_id_sort_order");
+
+                    b.ToTable("event_menus", (string)null);
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.EventMenuOption", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int?>("Capacity")
+                        .HasColumnType("integer")
+                        .HasColumnName("capacity");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("DietaryTags")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("dietary_tags");
+
+                    b.Property<Guid>("EventMenuId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_menu_id");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_menu_options");
+
+                    b.HasAlternateKey("OrganizationId", "EventMenuId", "Id")
+                        .HasName("ak_event_menu_options_organization_id_event_menu_id_id");
+
+                    b.ToTable("event_menu_options", (string)null);
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.EventReminderLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("channel");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid>("InvitationGroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("invitation_group_id");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("note");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("ReminderTemplateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reminder_template_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_reminder_logs");
+
+                    b.HasIndex("CreatedBy")
+                        .HasDatabaseName("ix_event_reminder_logs_created_by");
+
+                    b.HasIndex("OrganizationId", "ReminderTemplateId")
+                        .HasDatabaseName("ix_event_reminder_logs_organization_id_reminder_template_id");
+
+                    b.HasIndex("OrganizationId", "EventId", "InvitationGroupId")
+                        .HasDatabaseName("ix_event_reminder_logs_organization_id_event_id_invitation_gro");
+
+                    b.ToTable("event_reminder_logs", (string)null);
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.EventRsvpSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("AllowChangesAfterSubmission")
+                        .HasColumnType("boolean")
+                        .HasColumnName("allow_changes_after_submission");
+
+                    b.Property<bool>("AllowContactInformationUpdate")
+                        .HasColumnType("boolean")
+                        .HasColumnName("allow_contact_information_update");
+
+                    b.Property<bool>("AllowGroupDecline")
+                        .HasColumnType("boolean")
+                        .HasColumnName("allow_group_decline");
+
+                    b.Property<bool>("AllowTentativeResponse")
+                        .HasColumnType("boolean")
+                        .HasColumnName("allow_tentative_response");
+
+                    b.Property<DateTimeOffset?>("ChangesCloseAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("changes_close_at");
+
+                    b.Property<string>("ClosedMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("closed_message");
+
+                    b.Property<DateTimeOffset?>("ClosesAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closes_at");
+
+                    b.Property<string>("ConfirmationMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("confirmation_message");
+
+                    b.Property<string>("ConfirmationTitle")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("confirmation_title");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DeclineMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("decline_message");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<DateTimeOffset?>("OpensAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("opens_at");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("PrivacyNotice")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("privacy_notice");
+
+                    b.Property<bool>("RequireCompanionNames")
+                        .HasColumnType("boolean")
+                        .HasColumnName("require_companion_names");
+
+                    b.Property<bool>("RequireResponseForEveryNamedGuest")
+                        .HasColumnType("boolean")
+                        .HasColumnName("require_response_for_every_named_guest");
+
+                    b.Property<string>("SensitiveDataConsentText")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("sensitive_data_consent_text");
+
+                    b.Property<bool>("ShowAttendanceSummaryAfterSubmission")
+                        .HasColumnType("boolean")
+                        .HasColumnName("show_attendance_summary_after_submission");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TimeZone")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("time_zone");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_rsvp_settings");
+
+                    b.HasAlternateKey("OrganizationId", "EventId", "Id")
+                        .HasName("ak_event_rsvp_settings_organization_id_event_id_id");
+
+                    b.HasIndex("OrganizationId", "EventId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_rsvp_settings_organization_id_event_id");
+
+                    b.ToTable("event_rsvp_settings", (string)null);
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.EventTransportOption", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("AllowWaitlist")
+                        .HasColumnType("boolean")
+                        .HasColumnName("allow_waitlist");
+
+                    b.Property<int?>("Capacity")
+                        .HasColumnType("integer")
+                        .HasColumnName("capacity");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("DepartureAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("departure_at");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Direction")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("direction");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("PickupPoint")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("pickup_point");
+
+                    b.Property<DateTimeOffset?>("ReturnAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("return_at");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_transport_options");
+
+                    b.HasAlternateKey("OrganizationId", "EventId", "Id")
+                        .HasName("ak_event_transport_options_organization_id_event_id_id");
+
+                    b.ToTable("event_transport_options", (string)null);
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.GuestAccommodationSelection", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ConfirmationReference")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("confirmation_reference");
+
+                    b.Property<Guid?>("EventAccommodationOptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_accommodation_option_id");
+
+                    b.Property<Guid?>("EventGuestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_guest_id");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid>("InvitationGroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("invitation_group_id");
+
+                    b.Property<Guid?>("LastSubmissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("last_submission_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("ReservationName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("reservation_name");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_guest_accommodation_selections");
+
+                    b.HasIndex("OrganizationId", "EventId", "EventAccommodationOptionId")
+                        .HasDatabaseName("ix_guest_accommodation_selections_organization_id_event_id_eve");
+
+                    b.HasIndex("OrganizationId", "EventId", "EventGuestId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_guest_accommodation_selections_organization_id_event_id_eve1")
+                        .HasFilter("event_guest_id IS NOT NULL");
+
+                    b.HasIndex("OrganizationId", "EventId", "InvitationGroupId")
+                        .HasDatabaseName("ix_guest_accommodation_selections_organization_id_event_id_inv");
+
+                    b.HasIndex("OrganizationId", "EventId", "LastSubmissionId")
+                        .HasDatabaseName("ix_guest_accommodation_selections_organization_id_event_id_las");
+
+                    b.ToTable("guest_accommodation_selections", (string)null);
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.GuestDietaryAndAccessibility", b =>
+                {
+                    b.Property<Guid>("EventGuestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_guest_id");
+
+                    b.Property<string>("AccessibilityRequirements")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("accessibility_requirements");
+
+                    b.Property<string>("AdditionalNotes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("additional_notes");
+
+                    b.Property<string>("Allergies")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("allergies");
+
+                    b.Property<DateTimeOffset?>("ConsentGrantedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("consent_granted_at");
+
+                    b.Property<string>("DietaryRestrictions")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("dietary_restrictions");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid?>("LastSubmissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("last_submission_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("EventGuestId")
+                        .HasName("pk_guest_dietary_accessibility");
+
+                    b.HasIndex("OrganizationId", "EventId", "EventGuestId")
+                        .HasDatabaseName("ix_guest_dietary_accessibility_organization_id_event_id_event_");
+
+                    b.HasIndex("OrganizationId", "EventId", "LastSubmissionId")
+                        .HasDatabaseName("ix_guest_dietary_accessibility_organization_id_event_id_last_s");
+
+                    b.ToTable("guest_dietary_accessibility", (string)null);
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.GuestTransportSelection", b =>
+                {
+                    b.Property<Guid>("EventGuestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_guest_id");
+
+                    b.Property<Guid>("EventTransportOptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_transport_option_id");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid?>("LastSubmissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("last_submission_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<DateTimeOffset>("RequestedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("requested_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<long?>("WaitlistSequence")
+                        .HasColumnType("bigint")
+                        .HasColumnName("waitlist_sequence");
+
+                    b.HasKey("EventGuestId", "EventTransportOptionId")
+                        .HasName("pk_guest_transport_selections");
+
+                    b.HasIndex("OrganizationId", "EventId", "EventGuestId")
+                        .HasDatabaseName("ix_guest_transport_selections_organization_id_event_id_event_g");
+
+                    b.HasIndex("OrganizationId", "EventId", "LastSubmissionId")
+                        .HasDatabaseName("ix_guest_transport_selections_organization_id_event_id_last_su");
+
+                    b.HasIndex("OrganizationId", "EventId", "EventTransportOptionId", "WaitlistSequence")
+                        .IsUnique()
+                        .HasDatabaseName("ix_guest_transport_selections_organization_id_event_id_event_t")
+                        .HasFilter("waitlist_sequence IS NOT NULL");
+
+                    b.ToTable("guest_transport_selections", (string)null);
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.GuestTransportSelectionHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("EventGuestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_guest_id");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid>("EventTransportOptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_transport_option_id");
+
+                    b.Property<string>("NewStatus")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("new_status");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("PreviousStatus")
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("previous_status");
+
+                    b.Property<Guid>("SubmissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submission_id");
+
+                    b.Property<long?>("WaitlistSequence")
+                        .HasColumnType("bigint")
+                        .HasColumnName("waitlist_sequence");
+
+                    b.HasKey("Id")
+                        .HasName("pk_guest_transport_selection_history");
+
+                    b.HasIndex("OrganizationId", "EventId", "EventGuestId")
+                        .HasDatabaseName("ix_guest_transport_selection_history_organization_id_event_id_");
+
+                    b.HasIndex("OrganizationId", "EventId", "SubmissionId")
+                        .HasDatabaseName("ix_guest_transport_selection_history_organization_id_event_id_1");
+
+                    b.HasIndex("OrganizationId", "EventId", "EventTransportOptionId", "OccurredAt")
+                        .HasDatabaseName("ix_guest_transport_selection_history_organization_id_event_id_2");
+
+                    b.ToTable("guest_transport_selection_history", (string)null);
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.ReminderTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("channel");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("MessageTemplate")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("message_template");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("SegmentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("segment_type");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_reminder_templates");
+
+                    b.HasAlternateKey("OrganizationId", "Id")
+                        .HasName("ak_reminder_templates_organization_id_id");
+
+                    b.HasIndex("OrganizationId", "EventId")
+                        .HasDatabaseName("ix_reminder_templates_organization_id_event_id");
+
+                    b.ToTable("reminder_templates", (string)null);
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.RsvpForm", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ActivePublishedVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("active_published_version_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("CurrentDraftVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("current_draft_version");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_rsvp_forms");
+
+                    b.HasAlternateKey("OrganizationId", "Id")
+                        .HasName("ak_rsvp_forms_organization_id_id");
+
+                    b.HasAlternateKey("OrganizationId", "EventId", "Id")
+                        .HasName("ak_rsvp_forms_organization_id_event_id_id");
+
+                    b.HasIndex("OrganizationId", "EventId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_rsvp_forms_organization_id_event_id");
+
+                    b.ToTable("rsvp_forms", (string)null);
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.RsvpFormVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AccommodationSnapshot")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("accommodation_snapshot");
+
+                    b.Property<DateTimeOffset?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("approved_at");
+
+                    b.Property<Guid?>("ApprovedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("approved_by");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("MenuSnapshot")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("menu_snapshot");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<DateTimeOffset?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("published_at");
+
+                    b.Property<string>("QuestionsSnapshot")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("questions_snapshot");
+
+                    b.Property<Guid>("RsvpFormId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("rsvp_form_id");
+
+                    b.Property<string>("SettingsSnapshot")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("settings_snapshot");
+
+                    b.Property<string>("TransportSnapshot")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("transport_snapshot");
+
+                    b.Property<int>("VersionNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("version_number");
+
+                    b.HasKey("Id")
+                        .HasName("pk_rsvp_form_versions");
+
+                    b.HasAlternateKey("OrganizationId", "Id")
+                        .HasName("ak_rsvp_form_versions_organization_id_id");
+
+                    b.HasAlternateKey("OrganizationId", "RsvpFormId", "Id")
+                        .HasName("ak_rsvp_form_versions_organization_id_rsvp_form_id_id");
+
+                    b.HasIndex("OrganizationId", "RsvpFormId", "VersionNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ix_rsvp_form_versions_organization_id_rsvp_form_id_version_num");
+
+                    b.ToTable("rsvp_form_versions", (string)null);
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.RsvpGroupException", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closed_at");
+
+                    b.Property<Guid?>("ClosedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("closed_by");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<Guid>("InvitationGroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("invitation_group_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reason");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_rsvp_group_exceptions");
+
+                    b.HasAlternateKey("OrganizationId", "EventId", "Id")
+                        .HasName("ak_rsvp_group_exceptions_organization_id_event_id_id");
+
+                    b.HasIndex("OrganizationId", "EventId", "InvitationGroupId", "Status")
+                        .IsUnique()
+                        .HasDatabaseName("ix_rsvp_group_exceptions_organization_id_event_id_invitation_g")
+                        .HasFilter("status = 'Active'");
+
+                    b.ToTable("rsvp_group_exceptions", (string)null);
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.RsvpSubmission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ConsentSnapshot")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("consent_snapshot");
+
+                    b.Property<string>("ContactEmailSnapshot")
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("contact_email_snapshot");
+
+                    b.Property<string>("ContactNameSnapshot")
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("contact_name_snapshot");
+
+                    b.Property<string>("ContactPhoneSnapshot")
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("contact_phone_snapshot");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid?>("GuestAccessLinkId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("guest_access_link_id");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<Guid>("InvitationGroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("invitation_group_id");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)")
+                        .HasColumnName("ip_address");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("OverallStatus")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("overall_status");
+
+                    b.Property<Guid?>("PreviousSubmissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("previous_submission_id");
+
+                    b.Property<string>("RequestFingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("request_fingerprint");
+
+                    b.Property<int>("RevisionNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("revision_number");
+
+                    b.Property<Guid>("RsvpFormVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("rsvp_form_version_id");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("source");
+
+                    b.Property<DateTimeOffset>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
+
+                    b.Property<Guid?>("SubmittedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submitted_by_user_id");
+
+                    b.Property<string>("UserAgentCategory")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("user_agent_category");
+
+                    b.HasKey("Id")
+                        .HasName("pk_rsvp_submissions");
+
+                    b.HasAlternateKey("OrganizationId", "EventId", "Id")
+                        .HasName("ak_rsvp_submissions_organization_id_event_id_id");
+
+                    b.HasIndex("GuestAccessLinkId")
+                        .HasDatabaseName("ix_rsvp_submissions_guest_access_link_id");
+
+                    b.HasIndex("OrganizationId", "RsvpFormVersionId")
+                        .HasDatabaseName("ix_rsvp_submissions_organization_id_rsvp_form_version_id");
+
+                    b.HasIndex("OrganizationId", "EventId", "PreviousSubmissionId")
+                        .HasDatabaseName("ix_rsvp_submissions_organization_id_event_id_previous_submissi");
+
+                    b.HasIndex("OrganizationId", "EventId", "InvitationGroupId", "IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_rsvp_submissions_idempotency");
+
+                    b.HasIndex("OrganizationId", "EventId", "InvitationGroupId", "RevisionNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ux_rsvp_submissions_revision");
+
+                    b.ToTable("rsvp_submissions", (string)null);
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.RsvpSubmissionAnswer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AnswerValue")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("answer_value");
+
+                    b.Property<string>("DisplayValueSnapshot")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("display_value_snapshot");
+
+                    b.Property<Guid?>("GuestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("guest_id");
+
+                    b.Property<string>("QuestionId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("question_id");
+
+                    b.Property<Guid>("RsvpSubmissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("rsvp_submission_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_rsvp_submission_answers");
+
+                    b.HasIndex("RsvpSubmissionId", "QuestionId", "GuestId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_rsvp_submission_answers_rsvp_submission_id_question_id_gues")
+                        .HasFilter("guest_id IS NOT NULL");
+
+                    b.ToTable("rsvp_submission_answers", (string)null);
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.RsvpSubmissionGuest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AccommodationSelectionSnapshot")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("accommodation_selection_snapshot");
+
+                    b.Property<string>("AgeCategory")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("age_category");
+
+                    b.Property<string>("AttendanceStatus")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("attendance_status");
+
+                    b.Property<int?>("CompanionSlotNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("companion_slot_number");
+
+                    b.Property<string>("DietarySnapshot")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("dietary_snapshot");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("display_name");
+
+                    b.Property<Guid?>("EventGuestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_guest_id");
+
+                    b.Property<bool>("IsUnnamedCompanion")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_unnamed_companion");
+
+                    b.Property<string>("MenuSelectionsSnapshot")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("menu_selections_snapshot");
+
+                    b.Property<Guid>("RsvpSubmissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("rsvp_submission_id");
+
+                    b.Property<string>("TransportSelectionSnapshot")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("transport_selection_snapshot");
+
+                    b.HasKey("Id")
+                        .HasName("pk_rsvp_submission_guests");
+
+                    b.HasIndex("RsvpSubmissionId", "CompanionSlotNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ix_rsvp_submission_guests_rsvp_submission_id_companion_slot_nu")
+                        .HasFilter("companion_slot_number IS NOT NULL");
+
+                    b.HasIndex("RsvpSubmissionId", "EventGuestId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_rsvp_submission_guests_rsvp_submission_id_event_guest_id")
+                        .HasFilter("event_guest_id IS NOT NULL");
+
+                    b.ToTable("rsvp_submission_guests", (string)null);
+                });
+
             modelBuilder.Entity("Plannyt.Api.Modules.Access.Domain.AccessInvitation", b =>
                 {
                     b.HasOne("Plannyt.Api.Modules.Identity.Domain.UserAccount", null)
@@ -5582,6 +6882,335 @@ namespace Plannyt.Api.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_proposal_versions_proposals_organization_id_proposal_id");
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.CurrentGuestRsvp", b =>
+                {
+                    b.HasOne("Plannyt.Api.Modules.Events.Domain.Event", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_current_guest_rsvps_events_organization_id_event_id");
+
+                    b.HasOne("Plannyt.Api.Modules.Guests.Domain.InvitationGroup", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventId", "InvitationGroupId")
+                        .HasPrincipalKey("OrganizationId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_current_guest_rsvps_invitation_groups_organization_id_event");
+
+                    b.HasOne("Plannyt.Api.Modules.Rsvp.Domain.RsvpSubmission", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventId", "LastSubmissionId")
+                        .HasPrincipalKey("OrganizationId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_current_guest_rsvps_rsvp_submissions_organization_id_event_");
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.EventAccommodationOption", b =>
+                {
+                    b.HasOne("Plannyt.Api.Modules.Events.Domain.Event", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_accommodation_options_events_organization_id_event_id");
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.EventMenu", b =>
+                {
+                    b.HasOne("Plannyt.Api.Modules.Events.Domain.Event", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_menus_events_organization_id_event_id");
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.EventMenuOption", b =>
+                {
+                    b.HasOne("Plannyt.Api.Modules.Rsvp.Domain.EventMenu", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventMenuId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_menu_options_event_menus_organization_id_event_menu_id");
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.EventReminderLog", b =>
+                {
+                    b.HasOne("Plannyt.Api.Modules.Identity.Domain.UserAccount", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_reminder_logs_user_accounts_created_by");
+
+                    b.HasOne("Plannyt.Api.Modules.Events.Domain.Event", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_reminder_logs_events_organization_id_event_id");
+
+                    b.HasOne("Plannyt.Api.Modules.Rsvp.Domain.ReminderTemplate", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ReminderTemplateId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_reminder_logs_reminder_templates_organization_id_remi");
+
+                    b.HasOne("Plannyt.Api.Modules.Guests.Domain.InvitationGroup", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventId", "InvitationGroupId")
+                        .HasPrincipalKey("OrganizationId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_reminder_logs_invitation_groups_organization_id_event");
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.EventRsvpSettings", b =>
+                {
+                    b.HasOne("Plannyt.Api.Modules.Events.Domain.Event", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_rsvp_settings_events_organization_id_event_id");
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.EventTransportOption", b =>
+                {
+                    b.HasOne("Plannyt.Api.Modules.Events.Domain.Event", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_transport_options_events_organization_id_event_id");
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.GuestAccommodationSelection", b =>
+                {
+                    b.HasOne("Plannyt.Api.Modules.Rsvp.Domain.EventAccommodationOption", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventId", "EventAccommodationOptionId")
+                        .HasPrincipalKey("OrganizationId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_guest_accommodation_selections_event_accommodation_options_");
+
+                    b.HasOne("Plannyt.Api.Modules.Guests.Domain.EventGuest", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventId", "EventGuestId")
+                        .HasPrincipalKey("OrganizationId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_guest_accommodation_selections_event_guests_organization_id");
+
+                    b.HasOne("Plannyt.Api.Modules.Guests.Domain.InvitationGroup", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventId", "InvitationGroupId")
+                        .HasPrincipalKey("OrganizationId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_guest_accommodation_selections_invitation_groups_organizati");
+
+                    b.HasOne("Plannyt.Api.Modules.Rsvp.Domain.RsvpSubmission", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventId", "LastSubmissionId")
+                        .HasPrincipalKey("OrganizationId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_guest_accommodation_selections_rsvp_submissions_organizatio");
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.GuestDietaryAndAccessibility", b =>
+                {
+                    b.HasOne("Plannyt.Api.Modules.Guests.Domain.EventGuest", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventId", "EventGuestId")
+                        .HasPrincipalKey("OrganizationId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_guest_dietary_accessibility_event_guests_organization_id_ev");
+
+                    b.HasOne("Plannyt.Api.Modules.Rsvp.Domain.RsvpSubmission", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventId", "LastSubmissionId")
+                        .HasPrincipalKey("OrganizationId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_guest_dietary_accessibility_rsvp_submissions_organization_i");
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.GuestTransportSelection", b =>
+                {
+                    b.HasOne("Plannyt.Api.Modules.Guests.Domain.EventGuest", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventId", "EventGuestId")
+                        .HasPrincipalKey("OrganizationId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_guest_transport_selections_event_guests_organization_id_eve");
+
+                    b.HasOne("Plannyt.Api.Modules.Rsvp.Domain.EventTransportOption", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventId", "EventTransportOptionId")
+                        .HasPrincipalKey("OrganizationId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_guest_transport_selections_event_transport_options_organiza");
+
+                    b.HasOne("Plannyt.Api.Modules.Rsvp.Domain.RsvpSubmission", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventId", "LastSubmissionId")
+                        .HasPrincipalKey("OrganizationId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_guest_transport_selections_rsvp_submissions_organization_id");
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.GuestTransportSelectionHistory", b =>
+                {
+                    b.HasOne("Plannyt.Api.Modules.Guests.Domain.EventGuest", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventId", "EventGuestId")
+                        .HasPrincipalKey("OrganizationId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_guest_transport_selection_history_event_guests_organization");
+
+                    b.HasOne("Plannyt.Api.Modules.Rsvp.Domain.EventTransportOption", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventId", "EventTransportOptionId")
+                        .HasPrincipalKey("OrganizationId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_guest_transport_selection_history_event_transport_options_o");
+
+                    b.HasOne("Plannyt.Api.Modules.Rsvp.Domain.RsvpSubmission", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventId", "SubmissionId")
+                        .HasPrincipalKey("OrganizationId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_guest_transport_selection_history_rsvp_submissions_organiza");
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.ReminderTemplate", b =>
+                {
+                    b.HasOne("Plannyt.Api.Modules.Events.Domain.Event", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_reminder_templates_events_organization_id_event_id");
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.RsvpForm", b =>
+                {
+                    b.HasOne("Plannyt.Api.Modules.Events.Domain.Event", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_rsvp_forms_events_organization_id_event_id");
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.RsvpFormVersion", b =>
+                {
+                    b.HasOne("Plannyt.Api.Modules.Rsvp.Domain.RsvpForm", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "RsvpFormId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_rsvp_form_versions_rsvp_forms_organization_id_rsvp_form_id");
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.RsvpGroupException", b =>
+                {
+                    b.HasOne("Plannyt.Api.Modules.Events.Domain.Event", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_rsvp_group_exceptions_events_organization_id_event_id");
+
+                    b.HasOne("Plannyt.Api.Modules.Guests.Domain.InvitationGroup", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventId", "InvitationGroupId")
+                        .HasPrincipalKey("OrganizationId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_rsvp_group_exceptions_invitation_groups_organization_id_eve");
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.RsvpSubmission", b =>
+                {
+                    b.HasOne("Plannyt.Api.Modules.Invitations.Domain.GuestAccessLink", null)
+                        .WithMany()
+                        .HasForeignKey("GuestAccessLinkId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_rsvp_submissions_guest_access_links_guest_access_link_id");
+
+                    b.HasOne("Plannyt.Api.Modules.Events.Domain.Event", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_rsvp_submissions_events_organization_id_event_id");
+
+                    b.HasOne("Plannyt.Api.Modules.Rsvp.Domain.RsvpFormVersion", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "RsvpFormVersionId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_rsvp_submissions_rsvp_form_versions_organization_id_rsvp_fo");
+
+                    b.HasOne("Plannyt.Api.Modules.Guests.Domain.InvitationGroup", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventId", "InvitationGroupId")
+                        .HasPrincipalKey("OrganizationId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_rsvp_submissions_invitation_groups_organization_id_event_id");
+
+                    b.HasOne("Plannyt.Api.Modules.Rsvp.Domain.RsvpSubmission", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "EventId", "PreviousSubmissionId")
+                        .HasPrincipalKey("OrganizationId", "EventId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_rsvp_submissions_rsvp_submissions_organization_id_event_id_");
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.RsvpSubmissionAnswer", b =>
+                {
+                    b.HasOne("Plannyt.Api.Modules.Rsvp.Domain.RsvpSubmission", null)
+                        .WithMany()
+                        .HasForeignKey("RsvpSubmissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_rsvp_submission_answers_rsvp_submissions_rsvp_submission_id");
+                });
+
+            modelBuilder.Entity("Plannyt.Api.Modules.Rsvp.Domain.RsvpSubmissionGuest", b =>
+                {
+                    b.HasOne("Plannyt.Api.Modules.Rsvp.Domain.RsvpSubmission", null)
+                        .WithMany()
+                        .HasForeignKey("RsvpSubmissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_rsvp_submission_guests_rsvp_submissions_rsvp_submission_id");
                 });
 #pragma warning restore 612, 618
         }

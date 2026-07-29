@@ -54,7 +54,7 @@ respuesta funcional.
 ## Deuda documentada
 
 El plan se resuelve temporalmente desde `GuestPlan` en configuración porque aún
-no existe cobro ni upgrade. La clave
-`GuestAccessTokens__DerivationKey` debe administrarse como secreto estable en
+no existe cobro ni upgrade. `GuestAccessTokens__ActiveKeyId` y
+`GuestAccessTokens__Keys__<KeyId>` deben administrarse en el secret manager de
 cada entorno. La rotación coordinada y los límites comerciales de usuarios se
 integrarán cuando exista el módulo real de planes.

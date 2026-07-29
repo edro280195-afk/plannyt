@@ -242,3 +242,47 @@ flowchart LR
   organización ni operaciones de publicación, regeneración o revocación.
 - La PWA no guarda respuestas `/api/**`; la ruta `/i/:token` usa `no-store`,
   `no-referrer`, `noindex` y respeta movimiento reducido.
+
+## Extensión RSVP del Sprint 2B
+
+`Rsvp` se incorpora como módulo separado dentro del monolito. Administra la
+confirmación de asistencia, menús, transporte, hospedaje, datos sensibles y
+recordatorios, con formulario versionado y entregas inmutables.
+
+```mermaid
+flowchart LR
+    Settings["EventRsvpSettings + reglas"] --> Form["RsvpForm + RsvpFormVersion"]
+    Form --> Public["Captura pública por token"]
+    Form --> Manual["Captura manual administrativa"]
+    Public --> Submission["RsvpSubmission inmutable"]
+    Manual --> Submission
+    Submission --> Current["CurrentGuestRsvp vigente"]
+    Menu["EventMenu + opciones"] --> Submission
+    Transport["TransportOption + selección"] --> Submission
+    Accommodation["AccommodationOption + selección"] --> Submission
+    Submission --> Dashboard["Dashboard profesional"]
+    Submission --> Export["CSV asistencia, catering, transporte, hospedaje, sensibles"]
+    Reminder["ReminderTemplate"] --> Log["EventReminderLog"]
+    Exception["RsvpGroupException"] --> Settings
+```
+
+- La configuración RSVP pertenece al evento y controla apertura, cierre,
+  cambios posteriores y mensajes mediante una máquina de estados propia.
+- El formulario versionado sigue el mismo patrón que propuestas y diseños de
+  invitación: borrador mutable, revisión, aprobación y versión publicada
+  inmutable.
+- Las entregas son append-only con llave de cliente, `RequestFingerprint`,
+  `RevisionNumber` y `PreviousSubmissionId`; `SaveChanges` rechaza cualquier
+  modificación o eliminación.
+- `CurrentGuestRsvp` es una proyección por invitado o slot de acompañante. Se
+  actualiza en la transacción de entrega o mediante el reconciliador
+  administrativo auditado.
+- Las exportaciones CSV usan `RsvpExportService` con neutralización de formula
+  injection y permisos separados por tipo de dato.
+- El acceso público deriva el token con `GuestAccessTokenService` usando llave
+  versionada; la validación histórica permite rotación sin invalidar enlaces
+  existentes.
+- La captura pública usa un DTO propio que omite datos sensibles. La lectura
+  profesional sensible está separada y exige permiso explícito.
+- Los recordatorios no integran un servicio externo de envío; el módulo solo
+  gestiona plantillas y registros de marca manual.

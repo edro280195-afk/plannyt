@@ -333,3 +333,106 @@ resueltas son las declaradas en el catálogo seguro.
 `GuestAccessLink` pertenece a un único evento y grupo. Conserva hash, estado,
 vigencia, reemplazo, primera y última apertura y contador. No guarda el token,
 cookies de publicidad ni historial detallado de navegación.
+
+## Modelo RSVP del Sprint 2B
+
+```mermaid
+erDiagram
+    EVENT ||--|| EVENT_RSVP_SETTINGS : configura
+    EVENT_RSVP_SETTINGS ||--o{ RSVP_GROUP_EXCEPTION : exceptúa
+    INVITATION_GROUP ||--o{ RSVP_GROUP_EXCEPTION : recibe
+
+    EVENT ||--o{ RSVP_FORM : publica
+    RSVP_FORM ||--o{ RSVP_FORM_VERSION : versiona
+    RSVP_FORM_VERSION ||--o{ RSVP_FORM_QUESTION : contiene
+
+    INVITATION_GROUP ||--o{ RSVP_SUBMISSION : entrega
+    RSVP_FORM_VERSION ||--o{ RSVP_SUBMISSION : congela
+    RSVP_SUBMISSION ||--o{ RSVP_SUBMISSION_GUEST : snapshot
+    RSVP_SUBMISSION_GUEST ||--o{ RSVP_SUBMISSION_ANSWER : captura
+    RSVP_FORM_QUESTION ||--o{ RSVP_SUBMISSION_ANSWER : responde
+    INVITATION_GROUP ||--|| CURRENT_GUEST_RSVP : refleja
+
+    EVENT ||--o{ EVENT_MENU : ofrece
+    EVENT_MENU ||--o{ EVENT_MENU_OPTION : detalla
+    INVITATION_GROUP ||--o{ GUEST_DIETARY_AND_ACCESSIBILITY : restringe
+
+    EVENT ||--o{ EVENT_TRANSPORT_OPTION : provee
+    INVITATION_GROUP ||--o{ GUEST_TRANSPORT_SELECTION : elige
+
+    EVENT ||--o{ EVENT_ACCOMMODATION_OPTION : informa
+    INVITATION_GROUP ||--o{ GUEST_ACCOMMODATION_SELECTION : indica
+
+    EVENT ||--o{ REMINDER_TEMPLATE : define
+    INVITATION_GROUP ||--o{ EVENT_REMINDER_LOG : registra
+```
+
+### Configuración y formulario
+
+`EventRsvpSettings` es una configuración por evento con fechas de apertura y
+cierre programables, reglas de comportamiento y mensajes personalizables. Su
+máquina de estados opera Draft → Ready → Open → Closed / Suspended /
+Archived.
+
+`RsvpForm` controla el ciclo de aprobación y la versión vigente.
+`RsvpFormVersion` es un snapshot inmutable; las preguntas tipadas viven dentro
+de `QuestionsSnapshot`, no como una entidad o tabla independiente.
+
+Los 8 tipos de pregunta son: `ShortText`, `LongText`, `YesNo`, `SingleChoice`,
+`MultipleChoice`, `Number`, `Date` e `InformationalConsent`. El alcance puede
+ser `InvitationGroup`, `IndividualGuest` o `PrimaryContact`. Las categorías
+incluyen `General`, `Dietary`, `Transportation`, `Accommodation`,
+`Accessibility`, `Consent` y `Other`.
+
+### Entregas y proyección vigente
+
+`RsvpSubmission` es una entrega inmutable append-only. `RsvpSubmissionGuest` y
+`RsvpSubmissionAnswer` capturan snapshots por invitado y pregunta referenciando
+la `RsvpFormVersion` exacta presentada. La llave de cliente `IdempotencyKey` y
+el `RequestFingerprint` distinguen reintentos de conflictos. `RevisionNumber`
+es incremental por grupo y `PreviousSubmissionId` enlaza la revisión anterior.
+
+`CurrentGuestRsvp` es una proyección vigente actualizada atómicamente en la
+misma transacción. Existe un registro por invitado nombrado o slot estable de
+acompañante; la entrega histórica nunca se modifica durante una reparación.
+
+Las fuentes de entrega son: `GuestPrivateLink`, `PlannerManual`,
+`ClientPortal`, `Imported` y `SupportCorrection`. Esta última requiere permiso
+restringido y produce auditoría reforzada.
+
+### Cierre y excepciones
+
+`RsvpGroupException` permite extender el cierre para grupos específicos con
+fecha de expiración y motivo. La excepción de grupo exige motivo; la ruta
+global de apertura no recibe uno.
+
+### Menús, transporte y hospedaje
+
+`EventMenu` agrupa `EventMenuOption` con categorías, etiquetas dietéticas y
+capacidad opcional. Las selecciones se capturan en
+`RsvpSubmissionGuest.MenuSelectionsSnapshot`; las opciones archivadas
+permanecen en respuestas históricas.
+
+`EventTransportOption` define dirección, horario, capacidad y lista de espera.
+`GuestTransportSelection` registra el estado operativo del invitado con
+`LastSubmissionId`, secuencia de espera y transiciones
+(Requested, Confirmed, Waitlisted, NotNeeded, Cancelled) y confirmación
+determinista bajo lock de PostgreSQL hasta capacidad.
+
+`EventAccommodationOption` es informativo: nombre, URL, código, fecha límite.
+`GuestAccommodationSelection` refleja intención (NotNeeded, Interested,
+PlanningToBook, Booked, NeedAssistance) sin procesar reservas ni almacenar
+tarjetas.
+
+### Datos sensibles
+
+`GuestDietaryAndAccessibility` consolida información dietética y de
+accesibilidad con acceso restringido por permisos `guest-sensitive-data.*`.
+El backend exige `consentGranted` cuando el payload contiene alergias,
+restricciones, necesidades o notas sensibles.
+
+### Recordatorios
+
+`ReminderTemplate` define mensajes por segmento y canal con variables del
+catálogo seguro. `EventReminderLog` registra la marca manual con usuario y
+fecha; no afirma entrega real ni depende de un servicio externo de envío.

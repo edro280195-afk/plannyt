@@ -285,3 +285,99 @@ snapshot de EF Core.
 
 El inicializador de plantillas crea de forma idempotente ocho plantillas globales
 con identificadores estables. No utiliza imágenes externas.
+
+## Tablas RSVP del Sprint 2B
+
+### Configuración y formulario
+
+- `event_rsvp_settings`: configuración por evento con fechas de apertura/cierre,
+  zona horaria, reglas (cambios posteriores, tentativos, negativa de grupo,
+  nombres de acompañantes, actualización de contacto) y mensajes personalizables
+  de confirmación, declinación, cierre, aviso de privacidad y consentimiento.
+- `rsvp_forms`: formulario RSVP con estado de ciclo de vida
+  (Draft → InReview → Approved → Published), propietario y fechas de auditoría.
+- `rsvp_form_versions`: versión inmutable del formulario publicada; número de
+  versión único por formulario, protegida contra modificación y eliminación en
+  `SaveChanges`.
+- `rsvp_form_questions`: preguntas del formulario con tipo (ShortText, LongText,
+  YesNo, SingleChoice, MultipleChoice, Number, Date, InformationalConsent),
+  alcance por grupo o invitado, categoría, reglas de visibilidad condicional y
+  validación (MinLength, MaxLength, Min, Max, Required, AllowedOptions).
+
+### Entregas y respuestas
+
+- `rsvp_submissions`: entrega inmutable append-only por grupo; protegida en
+  `SaveChanges`. Contiene fuente (GuestPrivateLink, PlannerManual, ClientPortal,
+  Imported, SupportCorrection), llave de cliente `IdempotencyKey`,
+  `RequestFingerprint`, `RevisionNumber` incremental, `PreviousSubmissionId`
+  y referencia a la versión exacta del formulario presentada.
+- `rsvp_submission_guests`: snapshot por invitado dentro de una entrega.
+- `rsvp_submission_answers`: snapshot de respuesta por pregunta e invitado.
+- `current_guest_rsvps`: proyección vigente actualizada en la misma transacción
+  de entrega; un registro por invitado nombrado o slot de acompañante.
+- `rsvp_group_exceptions`: excepción por grupo con fecha de expiración, motivo y
+  auditoría para cierres y reaperturas parciales.
+
+### Menús
+
+- `event_menus`: catálogo de menús por evento con nombre y categorías
+  (AdultMeal, ChildMeal, TeenMeal, Beverage, Dessert, LateSnack, Other).
+- `event_menu_options`: opciones de menú con descripción, etiquetas dietéticas,
+  capacidad opcional y estado; las selecciones se capturan en snapshots de
+  entrega y las opciones archivadas permanecen visibles en respuestas
+  históricas.
+
+### Alergias y accesibilidad
+
+- `guest_dietary_and_accessibility`: proyección vigente con información
+  dietética y de accesibilidad por invitado; acceso restringido por permisos
+  de datos sensibles y sujeto a consentimiento explícito.
+
+### Transporte
+
+- `event_transport_options`: opciones de transporte con dirección, punto de
+  recogida, horario, capacidad y lista de espera configurable.
+- `guest_transport_selections`: estado del invitado (Requested, Confirmed,
+  Waitlisted, NotNeeded, Cancelled); confirmación determinista hasta capacidad
+  con liberación al cambiar o cancelar, `LastSubmissionId` y secuencia estable
+  de espera.
+- `guest_transport_selection_history`: historial append-only de transiciones y
+  promociones.
+
+### Hospedaje
+
+- `event_accommodation_options`: opciones de hospedaje informativo con datos
+  del hotel, URL de reserva, código, fecha límite y contacto.
+- `guest_accommodation_selections`: estado del invitado (NotNeeded, Interested,
+  PlanningToBook, Booked, NeedAssistance); sin procesamiento de reservas ni
+  almacenamiento de tarjetas.
+
+### Recordatorios
+
+- `reminder_templates`: plantillas por segmento (no abierto, sin respuesta,
+  incompleto, sin menú, etc.) y canal (WhatsAppManual, EmailCopy, GeneralCopy)
+  con variables seguras y texto editable.
+- `event_reminder_logs`: registro de recordatorio marcado con usuario, fecha y
+  nota opcional; sin afirmación de entrega real.
+
+`AddRsvpModule` crea el corte inicial. `RemediateCriticalRsvp` agrega
+fingerprints, restricciones únicas, cadena de revisiones, FKs multi-tenant,
+historial de transporte y elimina la tabla sin uso
+`guest_access_token_keys`. Antes de crear restricciones únicas, la migración
+aborta con un mensaje descriptivo si encuentra duplicados; no elimina entregas.
+
+## Invariantes RSVP
+
+- Todas las tablas conservan `organization_id` y relaciones tenant-aware.
+- `rsvp_form_versions` y `rsvp_submissions` están protegidas contra
+  modificación y eliminación en `SaveChanges`.
+- `(form_id, version_number)` es único y positivo.
+- `(organization_id, event_id, invitation_group_id, revision_number)` es único.
+- `(organization_id, event_id, invitation_group_id, idempotency_key)` es único.
+- Una sola proyección vigente por invitado nombrado o slot de acompañante.
+- `opening_date_time < closing_date_time` y `allow_changes_until ≤ closing_date_time`.
+- Capacidad de transporte y menú se validan en backend; conteos son derivados,
+  no columnas mutables.
+- Consentimiento explícito requerido en la respuesta para datos sensibles.
+- Categorías, tipos de pregunta, fuentes de entrega, canales y segmentos usan
+  catálogos cerrados en el dominio.

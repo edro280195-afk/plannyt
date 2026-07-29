@@ -9,16 +9,17 @@ namespace Plannyt.Api.Modules.Invitations.Security;
 public sealed class GuestAccessTokenService(
     IOptions<GuestAccessTokenOptions> options)
 {
-    private readonly byte[] _derivationKey =
-        Encoding.UTF8.GetBytes(options.Value.DerivationKey);
+    private GuestAccessTokenOptions Options => options.Value;
 
     public GuestAccessToken Create(Guid linkId)
     {
-        var value = DeriveValue(linkId);
-        return new GuestAccessToken(value, Hash(value));
+        var keyId = Options.ActiveKeyId;
+        var value = DeriveValue(linkId, keyId);
+        return new GuestAccessToken(value, Hash(value), keyId);
     }
 
-    public string Reveal(Guid linkId) => DeriveValue(linkId);
+    public string Reveal(Guid linkId, string derivationKeyId) =>
+        DeriveValue(linkId, derivationKeyId);
 
     public string Hash(string token)
     {
@@ -31,13 +32,15 @@ public sealed class GuestAccessTokenService(
             SHA256.HashData(Encoding.UTF8.GetBytes(token)));
     }
 
-    private string DeriveValue(Guid linkId)
+    private string DeriveValue(Guid linkId, string keyId)
     {
-        using var hmac = new HMACSHA384(_derivationKey);
+        var key = Options.GetDerivationKey(keyId);
+        var derivationKey = Encoding.UTF8.GetBytes(key);
+        using var hmac = new HMACSHA384(derivationKey);
         var purpose = Encoding.UTF8.GetBytes(
             $"plannyt:guest-access-link:v1:{linkId:N}");
         return WebEncoders.Base64UrlEncode(hmac.ComputeHash(purpose));
     }
 }
 
-public sealed record GuestAccessToken(string Value, string Hash);
+public sealed record GuestAccessToken(string Value, string Hash, string DerivationKeyId);

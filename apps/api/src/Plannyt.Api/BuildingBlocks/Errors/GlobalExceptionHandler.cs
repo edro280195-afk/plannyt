@@ -64,6 +64,21 @@ public sealed class GlobalExceptionHandler(
             problemDetails.Extensions["reason"] = unavailableException.Reason;
         }
 
+        if (exception is RsvpRevisionConflictException revisionConflict)
+        {
+            problemDetails.Extensions["expectedRevision"] =
+                revisionConflict.ExpectedRevision;
+            problemDetails.Extensions["currentRevision"] =
+                revisionConflict.CurrentRevision;
+            problemDetails.Extensions["reloadRequired"] = true;
+        }
+
+        if (exception is IdempotencyConflictException)
+        {
+            problemDetails.Extensions["conflictType"] =
+                "idempotency-key-reused-with-different-content";
+        }
+
         return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
         {
             HttpContext = httpContext,

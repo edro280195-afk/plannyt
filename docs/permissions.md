@@ -277,3 +277,67 @@ cupos, revisión y aprobación, consulta de enlaces y marca manual de compartido
 No reciben `guests.export`, permisos privados, publicación, generación,
 regeneración o revocación. Un `Deny` explícito conserva precedencia sobre estos
 roles base.
+
+## Permisos RSVP del Sprint 2B
+
+### Configuración RSVP
+
+- `rsvp-settings.view`
+- `rsvp-settings.manage`
+- `rsvp-settings.publish`
+- `rsvp-settings.open-close`
+
+### Formularios RSVP
+
+- `rsvp-forms.view`
+- `rsvp-forms.create`
+- `rsvp-forms.update-draft`
+- `rsvp-forms.submit-review`
+- `rsvp-forms.approve`
+- `rsvp-forms.publish`
+
+### Respuestas RSVP
+
+- `rsvp-responses.view`
+- `rsvp-responses.create-manual`
+- `rsvp-responses.correct`
+- `rsvp-responses.reopen`
+- `rsvp-responses.export`
+- `rsvp-responses.view-history`
+
+### Menús del evento
+
+- `event-menus.view`
+- `event-menus.manage`
+- `event-menus.export`
+
+### Transporte de invitados
+
+- `guest-travel.view`
+- `guest-travel.manage`
+- `guest-travel.export`
+
+### Datos sensibles de invitados
+
+- `guest-sensitive-data.view`
+- `guest-sensitive-data.manage`
+- `guest-sensitive-data.export`
+
+### Recordatorios
+
+- `guest-reminders.view`
+- `guest-reminders.manage`
+- `guest-reminders.mark-sent`
+
+Owner y OrganizationAdmin reciben el catálogo completo. Planner administra
+configuración, formularios, respuestas, menús, transporte, hospedaje y
+recordatorios, pero **no** recibe por defecto `guest-sensitive-data.view`,
+`.manage` ni `.export`. Esos permisos sensibles quedan inicialmente en Owner y
+OrganizationAdmin y cualquier otro rol requiere una concesión explícita.
+Coordinator opera
+respuestas, menús, transporte y recordatorios sin exportar ni corregir. Los
+roles del portal reciben `rsvp-responses.view`,
+`rsvp-responses.create-manual` y `rsvp-responses.correct` para el dashboard y
+la captura del evento compartido. No reciben ningún permiso
+`guest-sensitive-data.*`; una captura que contenga esos datos se rechaza salvo
+concesión explícita. Un `Deny` explícito conserva precedencia.

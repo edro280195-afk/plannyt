@@ -125,6 +125,13 @@ const ownerPermissions = [
   'guest-links.regenerate',
   'guest-links.revoke',
   'guest-links.mark-shared',
+  'rsvp-settings.view',
+  'rsvp-responses.view',
+  'rsvp-responses.create-manual',
+  'rsvp-responses.correct',
+  'guest-sensitive-data.view',
+  'guest-sensitive-data.manage',
+  'guest-sensitive-data.export',
 ];
 
 interface CommercialState {
@@ -792,7 +799,14 @@ function meResponse(profile: Exclude<ProfileKind, 'anonymous'>): object {
         organizationName: 'Armonía Eventos',
         membershipId: 'membership-1',
         role: profile === 'limited' ? 'Assistant' : 'Owner',
-        permissions: profile === 'limited' ? ['events.view'] : ownerPermissions,
+        permissions:
+          profile === 'limited'
+            ? [
+                'events.view',
+                'rsvp-settings.view',
+                'rsvp-responses.view',
+              ]
+            : ownerPermissions,
       },
     ],
     eventAccesses: [],

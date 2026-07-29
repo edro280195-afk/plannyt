@@ -13,6 +13,7 @@ public sealed class GuestAccessLink : ITenantEntity
     public Guid EventId { get; private set; }
     public Guid InvitationGroupId { get; private set; }
     public string TokenHash { get; private set; } = string.Empty;
+    public string DerivationKeyId { get; private set; } = string.Empty;
     public GuestAccessLinkStatus Status { get; private set; }
     public Guid? ReplacedByLinkId { get; private set; }
     public DateTimeOffset? ExpiresAt { get; private set; }
@@ -30,6 +31,7 @@ public sealed class GuestAccessLink : ITenantEntity
         Guid eventId,
         Guid invitationGroupId,
         string tokenHash,
+        string derivationKeyId,
         DateTimeOffset? expiresAt,
         Guid createdBy,
         DateTimeOffset now) =>
@@ -40,6 +42,7 @@ public sealed class GuestAccessLink : ITenantEntity
             EventId = eventId,
             InvitationGroupId = invitationGroupId,
             TokenHash = tokenHash,
+            DerivationKeyId = derivationKeyId,
             Status = GuestAccessLinkStatus.Active,
             ExpiresAt = expiresAt,
             CreatedBy = createdBy,

@@ -19,6 +19,25 @@ public sealed class ForbiddenException(string detail)
 public sealed class ConflictException(string detail)
     : ApiException(StatusCodes.Status409Conflict, "Conflicto", detail);
 
+public sealed class RsvpRevisionConflictException(
+    int expectedRevision,
+    int currentRevision)
+    : ApiException(
+        StatusCodes.Status409Conflict,
+        "La respuesta RSVP cambió",
+        "Existe una respuesta más reciente. Recarga antes de volver a enviar.")
+{
+    public int ExpectedRevision { get; } = expectedRevision;
+
+    public int CurrentRevision { get; } = currentRevision;
+}
+
+public sealed class IdempotencyConflictException()
+    : ApiException(
+        StatusCodes.Status409Conflict,
+        "Conflicto de idempotencia",
+        "La llave de idempotencia ya se utilizó con un contenido diferente.");
+
 public sealed class GoneException(string detail)
     : ApiException(StatusCodes.Status410Gone, "El recurso ya no está disponible", detail);
 

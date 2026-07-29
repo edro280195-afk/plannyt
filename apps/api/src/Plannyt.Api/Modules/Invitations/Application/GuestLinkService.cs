@@ -4,6 +4,7 @@ using Plannyt.Api.BuildingBlocks.Configuration;
 using Plannyt.Api.BuildingBlocks.Errors;
 using Plannyt.Api.Infrastructure.Persistence;
 using Plannyt.Api.Modules.Audit.Application;
+using Plannyt.Api.Modules.Audit.Domain;
 using Plannyt.Api.Modules.Guests.Domain;
 using Plannyt.Api.Modules.Invitations.Domain;
 using Plannyt.Api.Modules.Invitations.Security;
@@ -121,7 +122,7 @@ public sealed class GuestLinkService(
             organizationId,
             eventId,
             access.UserAccountId,
-            "guest_link.revoked",
+            AuditActions.GuestLinkRevoked,
             nameof(GuestAccessLink),
             link.Id);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -160,7 +161,7 @@ public sealed class GuestLinkService(
             organizationId,
             eventId,
             access.UserAccountId,
-            "guest_link.marked_shared",
+            AuditActions.GuestLinkMarkedShared,
             nameof(GuestAccessLink),
             link.Id);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -229,6 +230,7 @@ public sealed class GuestLinkService(
             eventId,
             groupId,
             token.Hash,
+            token.DerivationKeyId,
             request.ExpiresAt,
             access.UserAccountId,
             now);
@@ -244,8 +246,8 @@ public sealed class GuestLinkService(
             eventId,
             access.UserAccountId,
             linkToReplace is null
-                ? "guest_link.generated"
-                : "guest_link.regenerated",
+                ? AuditActions.GuestLinkGenerated
+                : AuditActions.GuestLinkRegenerated,
             nameof(GuestAccessLink),
             link.Id,
             linkToReplace is null
@@ -315,7 +317,7 @@ public sealed class GuestLinkService(
             return null;
         }
 
-        var token = tokenService.Reveal(link.Id);
+        var token = tokenService.Reveal(link.Id, link.DerivationKeyId);
         return $"{frontendOptions.Value.PublicUrl.TrimEnd('/')}/i/"
             + Uri.EscapeDataString(token);
     }

@@ -168,3 +168,69 @@ profesionales.
 - El acceso público no usa entidades EF como contrato de salida.
 - RSVP, menú, alergias, transporte, mesas, check-in y multimedia quedan fuera
   del módulo actual.
+
+## Módulos implementados en el Sprint 2B
+
+### Módulo RSVP
+
+Administra el flujo completo de confirmación de asistencia: configuración de
+reglas por evento, formulario versionado con preguntas personalizadas, captura
+pública y manual de respuestas, entregas inmutables con idempotencia,
+proyección vigente por invitado y cierre con excepciones por grupo.
+
+**Entidades de dominio:**
+
+- `EventRsvpSettings`: configuración programable de apertura, cierre, reglas y
+  mensajes personalizables.
+- `RsvpForm` y `RsvpFormVersion`: formulario versionado con ciclo de aprobación
+  (Draft → InReview → Approved → Published); las preguntas se conservan como
+  snapshot JSON de la versión.
+- `RsvpSubmission`: entrega inmutable append-only con `IdempotencyKey`,
+  `RequestFingerprint`, `RevisionNumber`, `PreviousSubmissionId` y fuente.
+- `CurrentGuestRsvp`: proyección vigente por invitado o slot de acompañante.
+- `RsvpGroupException`: excepción de cierre por grupo con expiración y motivo.
+- `EventMenu` y `EventMenuOption`: catálogo de menús con capacidad y etiquetas.
+- `GuestDietaryAndAccessibility`: datos sensibles con acceso restringido.
+- `EventTransportOption`, `GuestTransportSelection` y su historial: transporte
+  operativo con capacidad protegida por lock y lista de espera determinista.
+- `EventAccommodationOption` y `GuestAccommodationSelection`: hospedaje
+  informativo.
+- `ReminderTemplate` y `EventReminderLog`: recordatorios manuales segmentados.
+
+**Servicios de aplicación:**
+
+- `RsvpService`: configuración, formulario, dashboard, excepciones, catálogos y
+  recordatorios.
+- `RsvpSubmissionCoordinator`: envío público y administrativo dentro de una
+  sola transacción, con idempotencia, revisión esperada, proyecciones,
+  transporte y auditoría.
+- `RsvpSensitiveDataService`: lectura separada y auditada de datos sensibles.
+- `RsvpProjectionReconciliationService`: diagnóstico por defecto y reparación
+  transaccional sin modificar entregas históricas.
+- `RsvpExportService`: exportaciones CSV de asistencia, catering, transporte,
+  hospedaje y datos sensibles con neutralización de formula injection.
+- `GuestAccessTokenService`: derivación HMAC-SHA-384 con llave versionada y
+  validación histórica de tokens de acceso público.
+
+### Interfaces RSVP
+
+La interfaz pública `/rsvp/:token` consume exclusivamente las rutas
+`/api/guest/rsvp/{token}`. La interfaz profesional ofrece dashboard,
+configuración y captura manual. El portal autenticado usa rutas propias bajo
+`/api/client-portal/events/{eventId}/rsvp` para dashboard y captura; no recibe
+datos sensibles sin una concesión explícita.
+
+## Dependencias del corte RSVP
+
+- RSVP conoce `Event`, `InvitationGroup` y `EventGuest` para asociar
+  configuraciones, formularios y respuestas.
+- RSVP no modifica invitados ni convierte respuestas en cambios de estado del
+  evento.
+- La captura pública usa `GuestAccessLink` y token derivado; no requiere cuenta.
+- Los datos sensibles administrativos se consultan en un endpoint separado y
+  nunca forman parte del DTO público.
+- Los recordatorios no dependen de un servicio externo de envío; solo registran
+  la marca manual.
+- CRM, propuestas, contratos y pagos no dependen de RSVP.
+- El cierre de RSVP no transiciona el estado del evento; es una operación
+  independiente del módulo de eventos.

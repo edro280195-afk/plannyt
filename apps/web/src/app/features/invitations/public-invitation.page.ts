@@ -2,7 +2,7 @@ import { DatePipe, DOCUMENT } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api/api.service';
 import { InvitationBlock, PublicInvitation } from '../../core/models/api.models';
 
@@ -18,7 +18,7 @@ type PublicInvitationState =
 
 @Component({
   selector: 'app-public-invitation-page',
-  imports: [DatePipe],
+  imports: [DatePipe, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <main
@@ -154,9 +154,8 @@ type PublicInvitationState =
             </section>
           }
 
-          <section class="public-invite-block public-rsvp-demo">
-            <button type="button" disabled>Confirmar asistencia</button>
-            <small>Demostración · La confirmación estará disponible próximamente</small>
+          <section class="public-invite-block public-rsvp">
+            <a [routerLink]="['/rsvp', token]" class="rsvp-button">Confirmar asistencia</a>
           </section>
           @if (invite.closingMessage) {
             <p class="public-invite-closing">{{ invite.closingMessage }}</p>
@@ -184,12 +183,13 @@ export class PublicInvitationPage {
   private readonly destroyRef = inject(DestroyRef);
   protected readonly invitation = signal<PublicInvitation | null>(null);
   protected readonly state = signal<PublicInvitationState>('loading');
+  protected token = '';
 
   constructor() {
     this.configurePrivacyMetadata();
-    const token = this.route.snapshot.paramMap.get('token') ?? '';
+    this.token = this.route.snapshot.paramMap.get('token') ?? '';
     this.api
-      .getPublicInvitation(token)
+      .getPublicInvitation(this.token)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (invitation) => {

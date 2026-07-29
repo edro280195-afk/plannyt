@@ -129,7 +129,7 @@ public sealed class InvitationDomainTests
         Assert.NotEqual(token.Value, token.Hash);
         Assert.Equal(64, token.Hash.Length);
         Assert.Equal(token.Hash, service.Hash(token.Value));
-        Assert.Equal(token.Value, service.Reveal(linkId));
+        Assert.Equal(token.Value, service.Reveal(linkId, token.DerivationKeyId));
         Assert.NotEqual(token.Value, service.Create(Guid.NewGuid()).Value);
     }
 
@@ -142,6 +142,7 @@ public sealed class InvitationDomainTests
             Guid.NewGuid(),
             Guid.NewGuid(),
             "A".PadLeft(64, 'A'),
+            "default",
             Now.AddDays(7),
             Guid.NewGuid(),
             Now);
@@ -156,8 +157,12 @@ public sealed class InvitationDomainTests
     private static GuestAccessTokenService CreateTokenService() =>
         new(Options.Create(new GuestAccessTokenOptions
         {
-            DerivationKey =
-                "unit-test-guest-link-key-with-at-least-sixty-four-characters-000000"
+            ActiveKeyId = "default",
+            Keys = new Dictionary<string, string>
+            {
+                ["default"] =
+                    "unit-test-guest-link-key-with-at-least-sixty-four-characters-000000"
+            }
         }));
 
     [Fact]

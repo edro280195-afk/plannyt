@@ -1252,3 +1252,352 @@ export interface PortalGuestWorkspace {
   guests: PortalGuest[];
   design: InvitationDesign | null;
 }
+
+// === RSVP Types ===
+
+export type RsvpSettingsStatus = 'Draft' | 'Ready' | 'Open' | 'Closed' | 'Suspended' | 'Archived';
+export type RsvpFormStatus = 'Draft' | 'InReview' | 'ChangesRequested' | 'Approved' | 'Published' | 'Archived';
+export type GuestAttendanceStatus = 'Pending' | 'Attending' | 'NotAttending' | 'Tentative' | 'CancelledAfterConfirmation';
+export type RsvpSubmissionSource = 'GuestPrivateLink' | 'PlannerManual' | 'ClientPortal' | 'Imported' | 'SupportCorrection';
+export type RsvpOverallStatus = 'Confirmed' | 'Declined' | 'Mixed' | 'Tentative' | 'Incomplete';
+export type RsvpQuestionType = 'ShortText' | 'LongText' | 'YesNo' | 'SingleChoice' | 'MultipleChoice' | 'Number' | 'Date' | 'InformationalConsent';
+export type RsvpQuestionScope = 'InvitationGroup' | 'IndividualGuest' | 'PrimaryContact';
+export type RsvpQuestionCategory = 'General' | 'Dietary' | 'Transportation' | 'Accommodation' | 'Accessibility' | 'Consent' | 'Other';
+export type MenuCategory = 'AdultMeal' | 'ChildMeal' | 'TeenMeal' | 'Beverage' | 'Dessert' | 'LateSnack' | 'Other';
+export type TransportDirection = 'ToCeremony' | 'ToReception' | 'Return' | 'RoundTrip' | 'Other';
+export type TransportSelectionStatus = 'Requested' | 'Confirmed' | 'Waitlisted' | 'NotNeeded' | 'Cancelled';
+export type AccommodationSelectionStatus = 'NotNeeded' | 'Interested' | 'PlanningToBook' | 'Booked' | 'NeedAssistance';
+export type ReminderChannel = 'WhatsAppManual' | 'EmailCopy' | 'GeneralCopy';
+
+export interface RsvpSettingsResponse {
+  id: string;
+  status: RsvpSettingsStatus;
+  opensAt: string | null;
+  closesAt: string | null;
+  timeZone: string;
+  allowChangesAfterSubmission: boolean;
+  changesCloseAt: string | null;
+  allowTentativeResponse: boolean;
+  allowGroupDecline: boolean;
+  requireResponseForEveryNamedGuest: boolean;
+  requireCompanionNames: boolean;
+  allowContactInformationUpdate: boolean;
+  showAttendanceSummaryAfterSubmission: boolean;
+  confirmationTitle: string | null;
+  confirmationMessage: string | null;
+  declineMessage: string | null;
+  closedMessage: string | null;
+  privacyNotice: string | null;
+  sensitiveDataConsentText: string | null;
+  updatedAt: string;
+}
+
+export interface RsvpSettingsRequest {
+  opensAt: string | null;
+  closesAt: string | null;
+  timeZone: string;
+  allowChangesAfterSubmission: boolean;
+  changesCloseAt: string | null;
+  allowTentativeResponse: boolean;
+  allowGroupDecline: boolean;
+  requireResponseForEveryNamedGuest: boolean;
+  requireCompanionNames: boolean;
+  allowContactInformationUpdate: boolean;
+  showAttendanceSummaryAfterSubmission: boolean;
+  confirmationTitle: string | null;
+  confirmationMessage: string | null;
+  declineMessage: string | null;
+  closedMessage: string | null;
+  privacyNotice: string | null;
+  sensitiveDataConsentText: string | null;
+}
+
+export interface RsvpFormResponse {
+  id: string;
+  status: RsvpFormStatus;
+  currentDraftVersion: number;
+  activePublishedVersionId: string | null;
+  updatedAt: string;
+}
+
+export interface RsvpFormVersionResponse {
+  id: string;
+  rsvpFormId: string;
+  versionNumber: number;
+  settingsSnapshot: string;
+  questionsSnapshot: string;
+  menuSnapshot: string;
+  transportSnapshot: string;
+  accommodationSnapshot: string;
+  createdAt: string;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  publishedAt: string | null;
+}
+
+export interface RsvpQuestion {
+  id: string;
+  questionType: RsvpQuestionType;
+  scope: RsvpQuestionScope;
+  category: RsvpQuestionCategory;
+  label: string;
+  helpText: string | null;
+  isRequired: boolean;
+  isActive: boolean;
+  sortOrder: number;
+  options: string[];
+  visibilityRule: { dependsOnQuestionId: string; expectedValue: string } | null;
+  validationRules: { minLength?: number; maxLength?: number; minimum?: number; maximum?: number; required?: boolean; allowedOptions?: string[] } | null;
+}
+
+export interface RsvpSubmissionRequest {
+  expectedRevision: number;
+  overallStatus: RsvpOverallStatus;
+  contactName: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  guests: RsvpSubmissionGuestRequest[];
+  answers: RsvpSubmissionAnswerRequest[];
+  consentSnapshot: string | null;
+}
+
+export interface RsvpSubmissionGuestRequest {
+  eventGuestId: string | null;
+  displayName: string;
+  ageCategory: string;
+  attendanceStatus: GuestAttendanceStatus;
+  menuSelectionsJson: string;
+  transportSelectionJson: string;
+  accommodationSelectionJson: string;
+  dietaryJson: string;
+  isUnnamedCompanion: boolean;
+}
+
+export interface RsvpSubmissionAnswerRequest {
+  questionId: string;
+  guestId: string | null;
+  answerValue: string;
+  displayValue: string | null;
+}
+
+export interface RsvpSubmissionResponse {
+  id: string;
+  invitationGroupId: string;
+  revisionNumber: number;
+  source: RsvpSubmissionSource;
+  overallStatus: RsvpOverallStatus;
+  submittedAt: string;
+  contactNameSnapshot: string | null;
+  contactEmailSnapshot: string | null;
+  contactPhoneSnapshot: string | null;
+  confirmationCode: string | null;
+  guests: RsvpSubmissionGuestResponse[];
+  answers: RsvpSubmissionAnswerResponse[];
+}
+
+export interface RsvpSubmissionGuestResponse {
+  eventGuestId: string | null;
+  displayName: string;
+  ageCategory: string;
+  attendanceStatus: GuestAttendanceStatus;
+  menuSelectionsJson: string;
+  transportSelectionJson: string;
+  accommodationSelectionJson: string;
+  dietaryJson: string;
+  isUnnamedCompanion: boolean;
+}
+
+export interface RsvpSubmissionAnswerResponse {
+  questionId: string;
+  guestId: string | null;
+  answerValue: string;
+  displayValue: string | null;
+}
+
+export interface GuestRsvpStateResponse {
+  groupId: string;
+  groupName: string;
+  allowedGuestCount: number;
+  maxUnnamedCompanions: number;
+  allowUnnamedCompanions: boolean;
+  canRespond: boolean;
+  canModify: boolean;
+  closedMessage: string | null;
+  settings: RsvpSettingsResponse | null;
+  activeForm: RsvpFormVersionResponse | null;
+  currentResponse: RsvpSubmissionResponse | null;
+  revisionVersion: number;
+  guests: GuestRsvpInviteeResponse[];
+}
+
+export interface GuestRsvpInviteeResponse {
+  eventGuestId: string;
+  displayName: string;
+  ageCategory: string;
+}
+
+export interface SensitiveGuestDataResponse {
+  eventGuestId: string;
+  displayName: string;
+  allergies: string | null;
+  dietaryRestrictions: string | null;
+  accessibilityRequirements: string | null;
+  additionalNotes: string | null;
+  consentGrantedAt: string | null;
+  updatedAt: string;
+}
+
+export interface RsvpDashboardResponse {
+  totalGroups: number;
+  totalGuestsGranted: number;
+  guestsConfirmed: number;
+  guestsNotAttending: number;
+  guestsTentative: number;
+  guestsPending: number;
+  partialResponses: number;
+  changedAfterSubmission: number;
+  closesAt: string | null;
+  groups: RsvpGroupSummaryResponse[];
+}
+
+export interface RsvpGroupSummaryResponse {
+  groupId: string;
+  groupName: string;
+  status: RsvpOverallStatus | null;
+  confirmedCount: number;
+  declinedCount: number;
+  pendingCount: number;
+  hasMenuSelection: boolean;
+  hasTransport: boolean;
+  hasAccommodation: boolean;
+  hasSensitiveData: boolean;
+  lastResponseAt: string | null;
+}
+
+export interface EventMenuResponse {
+  id: string;
+  name: string;
+  description: string | null;
+  menuCategory: MenuCategory;
+  isActive: boolean;
+  selectionRequired: boolean;
+  minimumSelections: number;
+  maximumSelections: number;
+  sortOrder: number;
+  options: EventMenuOptionResponse[];
+  updatedAt: string;
+}
+
+export interface EventMenuOptionResponse {
+  id: string;
+  name: string;
+  description: string | null;
+  dietaryTags: string;
+  isActive: boolean;
+  capacity: number | null;
+  selectionCount: number;
+  sortOrder: number;
+}
+
+export interface EventMenuRequest {
+  name: string;
+  description: string | null;
+  menuCategory: MenuCategory;
+  selectionRequired: boolean;
+  minimumSelections: number;
+  maximumSelections: number;
+  sortOrder: number;
+}
+
+export interface EventMenuOptionRequest {
+  name: string;
+  description: string | null;
+  dietaryTags: string;
+  capacity: number | null;
+  sortOrder: number;
+}
+
+export interface EventTransportOptionResponse {
+  id: string;
+  name: string;
+  description: string | null;
+  direction: TransportDirection;
+  pickupPoint: string | null;
+  departureAt: string | null;
+  returnAt: string | null;
+  capacity: number | null;
+  allowWaitlist: boolean;
+  isActive: boolean;
+  sortOrder: number;
+  confirmedCount: number;
+  waitlistCount: number;
+}
+
+export interface EventTransportOptionRequest {
+  name: string;
+  description: string | null;
+  direction: TransportDirection;
+  pickupPoint: string | null;
+  departureAt: string | null;
+  returnAt: string | null;
+  capacity: number | null;
+  allowWaitlist: boolean;
+  sortOrder: number;
+}
+
+export interface EventAccommodationOptionResponse {
+  id: string;
+  name: string;
+  description: string | null;
+  address: string | null;
+  bookingUrl: string | null;
+  bookingCode: string | null;
+  bookingDeadline: string | null;
+  contactInformation: string | null;
+  isActive: boolean;
+  sortOrder: number;
+  interestedCount: number;
+}
+
+export interface EventAccommodationOptionRequest {
+  name: string;
+  description: string | null;
+  address: string | null;
+  bookingUrl: string | null;
+  bookingCode: string | null;
+  bookingDeadline: string | null;
+  contactInformation: string | null;
+  sortOrder: number;
+}
+
+export interface ReminderTemplateResponse {
+  id: string;
+  name: string;
+  channel: ReminderChannel;
+  segmentType: string;
+  messageTemplate: string;
+  isActive: boolean;
+  updatedAt: string;
+}
+
+export interface ReminderTemplateRequest {
+  name: string;
+  channel: ReminderChannel;
+  segmentType: string;
+  messageTemplate: string;
+}
+
+export interface MarkReminderRequest {
+  note: string | null;
+}
+
+export interface ManualRsvpRequest {
+  source: RsvpSubmissionSource;
+  reason: string;
+  submission: RsvpSubmissionRequest;
+}
+
+export interface OpenGroupExceptionRequest {
+  expiresAt: string;
+  reason: string;
+}

@@ -81,6 +81,12 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'rsvp/:token',
+    title: 'Confirmar asistencia · Plannyt',
+    loadComponent: () =>
+      import('./features/rsvp/public-rsvp.page').then((module) => module.PublicRsvpPage),
+  },
+  {
     path: 'app',
     canActivate: [authGuard, professionalGuard],
     loadComponent: () =>
@@ -232,6 +238,26 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'events/:id/rsvp',
+        title: 'RSVP · Plannyt',
+        canActivate: [permissionGuard],
+        data: { permission: 'rsvp-responses.view' },
+        loadComponent: () =>
+          import('./features/rsvp/rsvp-dashboard.page').then(
+            (module) => module.RsvpDashboardPage,
+          ),
+      },
+      {
+        path: 'events/:id/rsvp/settings',
+        title: 'Configuración RSVP · Plannyt',
+        canActivate: [permissionGuard],
+        data: { permission: 'rsvp-settings.view' },
+        loadComponent: () =>
+          import('./features/rsvp/rsvp-settings.page').then(
+            (module) => module.RsvpSettingsPage,
+          ),
+      },
+      {
         path: 'events/:id',
         title: 'Evento · Plannyt',
         canActivate: [permissionGuard],
@@ -307,6 +333,22 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/portal/portal-guest-experience.page').then(
             (module) => module.PortalGuestExperiencePage,
+          ),
+      },
+      {
+        path: 'events/:id/rsvp',
+        title: 'RSVP · Portal Plannyt',
+        loadComponent: () =>
+          import('./features/portal/portal-rsvp-dashboard.page').then(
+            (module) => module.PortalRsvpDashboardPage,
+          ),
+      },
+      {
+        path: 'events/:id/rsvp/capture',
+        title: 'Capturar respuesta · Portal Plannyt',
+        loadComponent: () =>
+          import('./features/portal/portal-rsvp-capture.page').then(
+            (module) => module.PortalRsvpCapturePage,
           ),
       },
       {

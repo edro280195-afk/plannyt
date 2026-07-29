@@ -182,14 +182,16 @@ administrado y proveedor de firma avanzada quedan para fases posteriores.
 ## Seguridad de invitaciones digitales
 
 - Cada enlace usa un identificador UUID aleatorio y un token opaco de 384 bits
-  derivado con HMAC-SHA-384 y una clave exclusiva
-  `GuestAccessTokens__DerivationKey`.
+  derivado con HMAC-SHA-384. La llave activa se selecciona con
+  `GuestAccessTokens__ActiveKeyId` y se obtiene de
+  `GuestAccessTokens__Keys__<KeyId>`.
 - PostgreSQL conserva únicamente SHA-256 del token. La derivación permite que un
   usuario con `guest-links.view` vuelva a copiar un enlace activo sin almacenar
   el secreto reversible.
-- La clave de derivación debe tener al menos 64 caracteres, ser distinta de la
-  clave JWT y permanecer estable durante la vigencia de los enlaces. Rotarla
-  exige regenerar los accesos que deban volver a copiarse.
+- Cada clave de derivación debe tener al menos 64 caracteres, ser distinta de
+  la clave JWT y permanecer en configuración durante la vigencia de sus
+  enlaces. Los secretos no se almacenan en PostgreSQL; únicamente
+  `GuestAccessLink.DerivationKeyId` identifica la versión usada.
 - Regenerar crea otro identificador y marca el anterior `Replaced`; revocar y
   expirar bloquean la proyección.
 - La consulta pública tiene rate limiting y proyecta únicamente el grupo del
@@ -218,3 +220,91 @@ Los límites de invitados se aplican en backend: Community 100, Event Complete
 300 y Planner Pro 500 invitados activos por evento, con advertencias al 80 % y
 90 % y bloqueo al 100 %. Los overrides quedan auditados. La facturación y el
 cambio comercial de plan continúan fuera de este sprint.
+
+## Seguridad RSVP del Sprint 2B
+
+### Versionado de tokens de acceso público
+
+- Los tokens de invitado usan derivación HMAC-SHA-384 con llave versionada
+  (`GuestAccessTokenOptions` multi-key: `ActiveKeyId` + `Keys`).
+- `GuestAccessLink` conserva `DerivationKeyId` por enlace para permitir
+  validación histórica tras rotación.
+- `GuestAccessTokenService` deriva con la llave activa para enlaces nuevos y
+  reconstruye con la llave histórica para validación.
+- Las llaves se configuran de forma segura, nunca en Git, base de datos, logs
+  ni auditoría.
+- La aplicación falla al iniciar si la llave activa requerida no está
+  configurada.
+
+### Protección de datos sensibles
+
+- `GuestDietaryAndAccessibility` está protegido por permisos separados:
+  `guest-sensitive-data.view`, `.manage` y `.export`.
+- Owner y OrganizationAdmin reciben esos permisos por defecto. Planner no los
+  recibe durante esta remediación y necesita una concesión explícita.
+- Consentimiento explícito requerido en la respuesta RSVP para recolectar
+  datos dietéticos y de accesibilidad.
+- DTO administrativos, públicos y de portal son contratos separados; el portal
+  nunca expone datos sensibles de otros invitados.
+- Las opciones "ninguna" y "prefiero no responder" están siempre disponibles y
+  nunca son obligatorias.
+
+### Idempotencia de entregas
+
+- Cada `RsvpSubmission` incluye una llave originada en el cliente y un
+  `RequestFingerprint` SHA-256 del contenido normalizado.
+- La restricción única abarca organización, evento, grupo y llave.
+- Reintentos con la misma llave y fingerprint devuelven la entrega existente;
+  contenido distinto con la misma llave devuelve `409 Conflict`.
+- La proyección `CurrentGuestRsvp` se actualiza atómicamente en la misma
+  transacción que la entrega.
+- Control de concurrencia en backend: sin patrón "último en guardar gana".
+
+### Validación efectiva en backend
+
+- Grupo, invitados nombrados, acompañantes, revisión, pertenencia y estado de
+  opciones de transporte y hospedaje se validan en el servidor.
+- La capacidad de transporte se decide bajo bloqueo de fila en PostgreSQL.
+- Los payloads operativos y respuestas deben ser JSON válido y se aplican
+  límites explícitos a nombres, llaves y motivos.
+- El motor completo de reglas para tipos, longitudes, opciones y visibilidad
+  condicional de preguntas no forma parte de esta remediación; no se afirma
+  esa validación como entregada.
+
+### Rate limiting y exposición pública
+
+- `/api/guest/rsvp/{token}` aplica rate limiting por origen.
+- Estado RSVP y formulario público proyectan solo el grupo del token. Incluyen
+  los identificadores opacos de invitados necesarios para responder, pero no
+  exponen correos, teléfonos, tenant, finanzas ni auditoría.
+- Respuestas `Cache-Control: no-store, private`, `Pragma: no-cache` y
+  `Referrer-Policy: no-referrer`.
+- `RsvpSubmissionSource` expone si la respuesta fue capturada manualmente por
+  la organización; no oculta el origen al invitado.
+
+### Seguridad en exportaciones CSV
+
+- Exportaciones de asistencia, catering, transporte, hospedaje y datos
+  sensibles requieren permisos específicos por tipo.
+- Neutralización de formula injection: celdas que comienzan con `=`, `+`, `-`
+  o `@` reciben apóstrofo de prefijo.
+- Exportaciones de datos sensibles requieren `guest-sensitive-data.export` y
+  producen auditoría adicional.
+- Los archivos exportados no se cachean ni se almacenan permanentemente sin
+  solicitud explícita.
+
+### Auditoría RSVP
+
+Se auditan como mínimo:
+
+- Actualización, publicación, apertura y cierre de configuración.
+- Creación, revisión, aprobación y publicación de formulario.
+- Captura manual con fuente y motivo, especialmente `SupportCorrection`.
+- Correcciones y apertura/cierre de excepciones por grupo.
+- Exportaciones de datos sensibles.
+- Marcas de recordatorio.
+
+Metadata permitida: identificadores, estados, fuentes, `IdempotencyKey`,
+`RevisionNumber` y correlación. Metadata prohibida: tokens de acceso, llaves
+de derivación, contenido completo de respuestas y datos sensibles de
+invitados.

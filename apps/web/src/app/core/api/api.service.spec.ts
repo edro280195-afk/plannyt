@@ -9,10 +9,16 @@ import { environment } from '../../../environments/environment';
 import {
   AcceptInvitationRequest,
   CreateClientRequest,
+  EventAccommodationOptionRequest,
   EventDetailsRequest,
+  EventMenuOptionRequest,
+  EventMenuRequest,
+  EventTransportOptionRequest,
   LoginRequest,
   RegisterAndAcceptInvitationRequest,
   RegisterPlannerRequest,
+  ReminderTemplateRequest,
+  RsvpSubmissionRequest,
   UpdateClientRequest,
   UpdateOrganizationRequest,
   UpsertParticipantRequest,
@@ -1046,6 +1052,272 @@ describe('ApiService', () => {
     expectRequest('GET', `${portalUrl}/links`);
     service.markPortalGuestLinkShared('event-1', 'link-1').subscribe();
     expectRequest('POST', `${portalUrl}/links/link-1/mark-shared`, null);
+  });
+
+  it('maps RSVP idempotency, exceptions and sensitive operations', () => {
+    const submission: RsvpSubmissionRequest = {
+      expectedRevision: 4,
+      overallStatus: 'Confirmed',
+      contactName: 'Familia Luna',
+      contactEmail: null,
+      contactPhone: null,
+      guests: [],
+      answers: [],
+      consentSnapshot: null,
+    };
+    const manual = {
+      source: 'SupportCorrection' as const,
+      reason: 'Corrección solicitada por soporte',
+      submission,
+    };
+
+    service
+      .submitGuestRsvp(
+        'private/token',
+        submission,
+        'attempt-public-rsvp-000001',
+      )
+      .subscribe();
+    const publicSubmit = controller.expectOne(
+      `${baseUrl}/guest/rsvp/private/token/submit`,
+    );
+    expect(publicSubmit.request.method).toBe('POST');
+    expect(publicSubmit.request.body).toEqual(submission);
+    expect(publicSubmit.request.headers.get('Idempotency-Key')).toBe(
+      'attempt-public-rsvp-000001',
+    );
+    publicSubmit.flush({});
+
+    service
+      .manualRsvpCapture(
+        'org-1',
+        'event-1',
+        'group-1',
+        manual,
+        'attempt-manual-rsvp-000001',
+      )
+      .subscribe();
+    const manualSubmit = controller.expectOne(
+      `${eventUrl}/rsvp/groups/group-1/manual-capture`,
+    );
+    expect(manualSubmit.request.method).toBe('POST');
+    expect(manualSubmit.request.body).toEqual(manual);
+    expect(manualSubmit.request.headers.get('Idempotency-Key')).toBe(
+      'attempt-manual-rsvp-000001',
+    );
+    manualSubmit.flush({});
+
+    service.getPortalRsvpDashboard('event-1').subscribe();
+    expectRequest(
+      'GET',
+      `${baseUrl}/client-portal/events/event-1/rsvp/dashboard`,
+    );
+    service
+      .manualPortalRsvpCapture(
+        'event-1',
+        'group-1',
+        manual,
+        'attempt-portal-rsvp-000001',
+      )
+      .subscribe();
+    const portalSubmit = controller.expectOne(
+      `${baseUrl}/client-portal/events/event-1/rsvp/groups/group-1/manual-capture`,
+    );
+    expect(portalSubmit.request.method).toBe('POST');
+    expect(portalSubmit.request.body).toEqual(manual);
+    expect(portalSubmit.request.headers.get('Idempotency-Key')).toBe(
+      'attempt-portal-rsvp-000001',
+    );
+    portalSubmit.flush({});
+
+    service.closeRsvpGroupException('org-1', 'event-1', 'group-1').subscribe();
+    expectRequest(
+      'POST',
+      `${eventUrl}/rsvp/groups/group-1/exception/close`,
+      null,
+    );
+    service.getRsvpSensitiveData('org-1', 'event-1').subscribe();
+    expectRequest('GET', `${eventUrl}/rsvp/sensitive-data`);
+    service.exportRsvpSensitiveData('org-1', 'event-1').subscribe();
+    expectBlobRequest(`${eventUrl}/rsvp/exports/sensitive`);
+
+    const groupException = {
+      expiresAt: '2027-01-01T00:00:00Z',
+      reason: 'Atención autorizada',
+    };
+    service
+      .openRsvpGroupException(
+        'org-1',
+        'event-1',
+        'group-1',
+        groupException,
+      )
+      .subscribe();
+    expectRequest(
+      'POST',
+      `${eventUrl}/rsvp/groups/group-1/exception`,
+      groupException,
+    );
+
+    const menu: EventMenuRequest = {
+      name: 'Cena',
+      description: null,
+      menuCategory: 'AdultMeal',
+      selectionRequired: true,
+      minimumSelections: 1,
+      maximumSelections: 1,
+      sortOrder: 0,
+    };
+    const menuOption: EventMenuOptionRequest = {
+      name: 'Vegetariano',
+      description: null,
+      dietaryTags: 'vegetariano',
+      capacity: null,
+      sortOrder: 0,
+    };
+    service.getEventMenus('org-1', 'event-1').subscribe();
+    expectRequest('GET', `${eventUrl}/menus`);
+    service.createEventMenu('org-1', 'event-1', menu).subscribe();
+    expectRequest('POST', `${eventUrl}/menus`, menu);
+    service
+      .addMenuOption(
+        'org-1',
+        'event-1',
+        'menu-1',
+        menuOption,
+      )
+      .subscribe();
+    expectRequest(
+      'POST',
+      `${eventUrl}/menus/menu-1/options`,
+      menuOption,
+    );
+
+    const transport: EventTransportOptionRequest = {
+      name: 'Camioneta',
+      description: null,
+      direction: 'ToCeremony',
+      pickupPoint: 'Lobby',
+      departureAt: null,
+      returnAt: null,
+      capacity: 10,
+      allowWaitlist: true,
+      sortOrder: 0,
+    };
+    service.getTransportOptions('org-1', 'event-1').subscribe();
+    expectRequest('GET', `${eventUrl}/transport`);
+    service
+      .createTransportOption('org-1', 'event-1', transport)
+      .subscribe();
+    expectRequest('POST', `${eventUrl}/transport`, transport);
+
+    const accommodation: EventAccommodationOptionRequest = {
+      name: 'Hotel',
+      description: null,
+      address: null,
+      bookingUrl: null,
+      bookingCode: null,
+      bookingDeadline: null,
+      contactInformation: null,
+      sortOrder: 0,
+    };
+    service.getAccommodationOptions('org-1', 'event-1').subscribe();
+    expectRequest('GET', `${eventUrl}/accommodation`);
+    service
+      .createAccommodationOption(
+        'org-1',
+        'event-1',
+        accommodation,
+      )
+      .subscribe();
+    expectRequest(
+      'POST',
+      `${eventUrl}/accommodation`,
+      accommodation,
+    );
+
+    const reminder: ReminderTemplateRequest = {
+      name: 'Pendientes',
+      channel: 'GeneralCopy',
+      segmentType: 'Pending',
+      messageTemplate: 'Confirma tu asistencia',
+    };
+    service.getReminderTemplates('org-1', 'event-1').subscribe();
+    expectRequest('GET', `${eventUrl}/rsvp/reminders/templates`);
+    service
+      .createReminderTemplate('org-1', 'event-1', reminder)
+      .subscribe();
+    expectRequest(
+      'POST',
+      `${eventUrl}/rsvp/reminders/templates`,
+      reminder,
+    );
+    service
+      .markReminderSent(
+        'org-1',
+        'event-1',
+        'group-1',
+        'template-1',
+        { note: 'Enviado manualmente' },
+      )
+      .subscribe();
+    expectRequest(
+      'POST',
+      `${eventUrl}/rsvp/reminders/groups/group-1/templates/template-1/mark-sent`,
+      { note: 'Enviado manualmente' },
+    );
+
+    service.getGuestRsvpState('private-token').subscribe();
+    expectRequest(
+      'GET',
+      `${baseUrl}/guest/rsvp/private-token/state`,
+    );
+  });
+
+  it('maps optional query and multipart variants', () => {
+    service.getProspects('org-1').subscribe();
+    expectRequest(
+      'GET',
+      `${organizationUrl}/prospects?page=1&pageSize=100`,
+    );
+    service.getProposals('org-1').subscribe();
+    expectRequest(
+      'GET',
+      `${organizationUrl}/proposals?page=1&pageSize=100&search=`,
+    );
+
+    const externalFile = new File(['pdf'], 'vigente.pdf', {
+      type: 'application/pdf',
+    });
+    service
+      .createExternalContract('org-1', {
+        eventId: 'event-1',
+        clientId: 'client-1',
+        name: 'Contrato vigente',
+        contractGrandTotal: 10000,
+        currencyCode: 'MXN',
+        validUntil: '2027-01-01T00:00:00Z',
+        file: externalFile,
+      })
+      .subscribe();
+    const external = controller.expectOne(
+      `${organizationUrl}/contracts/external`,
+    );
+    const form = external.request.body as FormData;
+    expect(form.get('validUntil')).toBe('2027-01-01T00:00:00Z');
+    external.flush({});
+
+    service.getPaymentPlans('org-1').subscribe();
+    expectRequest('GET', `${organizationUrl}/payment-plans`);
+    service.getPayments('org-1').subscribe();
+    expectRequest('GET', `${organizationUrl}/payments`);
+    service.getPortalPayments().subscribe();
+    expectRequest('GET', `${baseUrl}/client-portal/payments`);
+    service.getGuestDashboard('org-1', 'event-1').subscribe();
+    expectRequest(
+      'GET',
+      `${eventUrl}/guests/dashboard`,
+    );
   });
 
   function expectRequest(method: string, url: string, body?: unknown): TestRequest {

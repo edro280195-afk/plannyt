@@ -322,6 +322,7 @@ internal sealed class GuestAccessLinkConfiguration
         builder.ToTable("guest_access_links");
         builder.HasKey(entity => entity.Id);
         builder.Property(entity => entity.TokenHash).HasMaxLength(64).IsRequired();
+        builder.Property(entity => entity.DerivationKeyId).HasMaxLength(32).IsRequired();
         builder.Property(entity => entity.Status).HasConversion<string>().HasMaxLength(24);
         builder.HasIndex(entity => entity.TokenHash).IsUnique();
         builder.HasIndex(entity => new

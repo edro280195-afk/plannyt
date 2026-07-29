@@ -89,6 +89,29 @@ import {
   UpdateClientRequest,
   UpdateOrganizationRequest,
   UpsertParticipantRequest,
+  EventAccommodationOptionRequest,
+  EventAccommodationOptionResponse,
+  EventMenuOptionRequest,
+  EventMenuOptionResponse,
+  EventMenuRequest,
+  EventMenuResponse,
+  EventTransportOptionRequest,
+  EventTransportOptionResponse,
+  GuestRsvpStateResponse,
+  ManualRsvpRequest,
+  MarkReminderRequest,
+  OpenGroupExceptionRequest,
+  ReminderTemplateRequest,
+  ReminderTemplateResponse,
+  RsvpDashboardResponse,
+  RsvpFormResponse,
+  RsvpFormVersionResponse,
+  RsvpGroupSummaryResponse,
+  RsvpSettingsRequest,
+  RsvpSettingsResponse,
+  RsvpSubmissionRequest,
+  RsvpSubmissionResponse,
+  SensitiveGuestDataResponse,
 } from '../models/api.models';
 
 @Injectable({ providedIn: 'root' })
@@ -1754,6 +1777,181 @@ export class ApiService {
     return this.http.post<GuestAccessLink>(
       `${this.portalGuestUrl(eventId)}/links/${linkId}/mark-shared`,
       null,
+    );
+  }
+
+  // === RSVP ===
+
+  getRsvpSettings(organizationId: string, eventId: string): Observable<RsvpSettingsResponse> {
+    return this.http.get<RsvpSettingsResponse>(`${this.eventUrl(organizationId, eventId)}/rsvp/settings`);
+  }
+
+  updateRsvpSettings(organizationId: string, eventId: string, request: RsvpSettingsRequest): Observable<RsvpSettingsResponse> {
+    return this.http.put<RsvpSettingsResponse>(`${this.eventUrl(organizationId, eventId)}/rsvp/settings`, request);
+  }
+
+  publishRsvpSettings(organizationId: string, eventId: string): Observable<RsvpSettingsResponse> {
+    return this.http.post<RsvpSettingsResponse>(`${this.eventUrl(organizationId, eventId)}/rsvp/settings/publish`, {});
+  }
+
+  openRsvp(organizationId: string, eventId: string): Observable<RsvpSettingsResponse> {
+    return this.http.post<RsvpSettingsResponse>(`${this.eventUrl(organizationId, eventId)}/rsvp/settings/open`, {});
+  }
+
+  closeRsvp(organizationId: string, eventId: string): Observable<RsvpSettingsResponse> {
+    return this.http.post<RsvpSettingsResponse>(`${this.eventUrl(organizationId, eventId)}/rsvp/settings/close`, {});
+  }
+
+  getRsvpForm(organizationId: string, eventId: string): Observable<RsvpFormResponse> {
+    return this.http.get<RsvpFormResponse>(`${this.eventUrl(organizationId, eventId)}/rsvp/form`);
+  }
+
+  createRsvpForm(organizationId: string, eventId: string): Observable<RsvpFormResponse> {
+    return this.http.post<RsvpFormResponse>(`${this.eventUrl(organizationId, eventId)}/rsvp/form`, {});
+  }
+
+  createRsvpFormVersion(organizationId: string, eventId: string, questionsJson: string, menuJson: string, transportJson: string, accommodationJson: string): Observable<RsvpFormVersionResponse> {
+    return this.http.post<RsvpFormVersionResponse>(`${this.eventUrl(organizationId, eventId)}/rsvp/form/version`, { questionsJson, menuJson, transportJson, accommodationJson });
+  }
+
+  submitRsvpFormReview(organizationId: string, eventId: string): Observable<RsvpFormResponse> {
+    return this.http.post<RsvpFormResponse>(`${this.eventUrl(organizationId, eventId)}/rsvp/form/submit-review`, {});
+  }
+
+  approveRsvpForm(organizationId: string, eventId: string, versionId: string): Observable<RsvpFormVersionResponse> {
+    return this.http.post<RsvpFormVersionResponse>(`${this.eventUrl(organizationId, eventId)}/rsvp/form/versions/${versionId}/approve`, {});
+  }
+
+  publishRsvpForm(organizationId: string, eventId: string, versionId: string): Observable<RsvpFormVersionResponse> {
+    return this.http.post<RsvpFormVersionResponse>(`${this.eventUrl(organizationId, eventId)}/rsvp/form/versions/${versionId}/publish`, {});
+  }
+
+  getRsvpDashboard(organizationId: string, eventId: string): Observable<RsvpDashboardResponse> {
+    return this.http.get<RsvpDashboardResponse>(`${this.eventUrl(organizationId, eventId)}/rsvp/dashboard`);
+  }
+
+  getPortalRsvpDashboard(eventId: string): Observable<RsvpDashboardResponse> {
+    return this.http.get<RsvpDashboardResponse>(
+      `${this.baseUrl}/client-portal/events/${eventId}/rsvp/dashboard`,
+    );
+  }
+
+  getRsvpSensitiveData(
+    organizationId: string,
+    eventId: string,
+  ): Observable<SensitiveGuestDataResponse[]> {
+    return this.http.get<SensitiveGuestDataResponse[]>(
+      `${this.eventUrl(organizationId, eventId)}/rsvp/sensitive-data`,
+    );
+  }
+
+  exportRsvpSensitiveData(organizationId: string, eventId: string): Observable<Blob> {
+    return this.http.get(
+      `${this.eventUrl(organizationId, eventId)}/rsvp/exports/sensitive`,
+      { responseType: 'blob' },
+    );
+  }
+
+  manualRsvpCapture(
+    organizationId: string,
+    eventId: string,
+    groupId: string,
+    request: ManualRsvpRequest,
+    idempotencyKey: string,
+  ): Observable<RsvpSubmissionResponse> {
+    return this.http.post<RsvpSubmissionResponse>(
+      `${this.eventUrl(organizationId, eventId)}/rsvp/groups/${groupId}/manual-capture`,
+      request,
+      { headers: { 'Idempotency-Key': idempotencyKey } },
+    );
+  }
+
+  manualPortalRsvpCapture(
+    eventId: string,
+    groupId: string,
+    request: ManualRsvpRequest,
+    idempotencyKey: string,
+  ): Observable<RsvpSubmissionResponse> {
+    return this.http.post<RsvpSubmissionResponse>(
+      `${this.baseUrl}/client-portal/events/${eventId}/rsvp/groups/${groupId}/manual-capture`,
+      request,
+      { headers: { 'Idempotency-Key': idempotencyKey } },
+    );
+  }
+
+  openRsvpGroupException(organizationId: string, eventId: string, groupId: string, request: OpenGroupExceptionRequest): Observable<void> {
+    return this.http.post<void>(`${this.eventUrl(organizationId, eventId)}/rsvp/groups/${groupId}/exception`, request);
+  }
+
+  closeRsvpGroupException(
+    organizationId: string,
+    eventId: string,
+    groupId: string,
+  ): Observable<void> {
+    return this.http.post<void>(
+      `${this.eventUrl(organizationId, eventId)}/rsvp/groups/${groupId}/exception/close`,
+      null,
+    );
+  }
+
+  // Menus
+  getEventMenus(organizationId: string, eventId: string): Observable<EventMenuResponse[]> {
+    return this.http.get<EventMenuResponse[]>(`${this.eventUrl(organizationId, eventId)}/menus`);
+  }
+
+  createEventMenu(organizationId: string, eventId: string, request: EventMenuRequest): Observable<EventMenuResponse> {
+    return this.http.post<EventMenuResponse>(`${this.eventUrl(organizationId, eventId)}/menus`, request);
+  }
+
+  addMenuOption(organizationId: string, eventId: string, menuId: string, request: EventMenuOptionRequest): Observable<EventMenuOptionResponse> {
+    return this.http.post<EventMenuOptionResponse>(`${this.eventUrl(organizationId, eventId)}/menus/${menuId}/options`, request);
+  }
+
+  // Transport
+  getTransportOptions(organizationId: string, eventId: string): Observable<EventTransportOptionResponse[]> {
+    return this.http.get<EventTransportOptionResponse[]>(`${this.eventUrl(organizationId, eventId)}/transport`);
+  }
+
+  createTransportOption(organizationId: string, eventId: string, request: EventTransportOptionRequest): Observable<EventTransportOptionResponse> {
+    return this.http.post<EventTransportOptionResponse>(`${this.eventUrl(organizationId, eventId)}/transport`, request);
+  }
+
+  // Accommodation
+  getAccommodationOptions(organizationId: string, eventId: string): Observable<EventAccommodationOptionResponse[]> {
+    return this.http.get<EventAccommodationOptionResponse[]>(`${this.eventUrl(organizationId, eventId)}/accommodation`);
+  }
+
+  createAccommodationOption(organizationId: string, eventId: string, request: EventAccommodationOptionRequest): Observable<EventAccommodationOptionResponse> {
+    return this.http.post<EventAccommodationOptionResponse>(`${this.eventUrl(organizationId, eventId)}/accommodation`, request);
+  }
+
+  // Reminders
+  getReminderTemplates(organizationId: string, eventId: string): Observable<ReminderTemplateResponse[]> {
+    return this.http.get<ReminderTemplateResponse[]>(`${this.eventUrl(organizationId, eventId)}/rsvp/reminders/templates`);
+  }
+
+  createReminderTemplate(organizationId: string, eventId: string, request: ReminderTemplateRequest): Observable<ReminderTemplateResponse> {
+    return this.http.post<ReminderTemplateResponse>(`${this.eventUrl(organizationId, eventId)}/rsvp/reminders/templates`, request);
+  }
+
+  markReminderSent(organizationId: string, eventId: string, groupId: string, templateId: string, request: MarkReminderRequest): Observable<void> {
+    return this.http.post<void>(`${this.eventUrl(organizationId, eventId)}/rsvp/reminders/groups/${groupId}/templates/${templateId}/mark-sent`, request);
+  }
+
+  // Public RSVP
+  getGuestRsvpState(token: string): Observable<GuestRsvpStateResponse> {
+    return this.http.get<GuestRsvpStateResponse>(`${this.baseUrl}/guest/rsvp/${token}/state`);
+  }
+
+  submitGuestRsvp(
+    token: string,
+    request: RsvpSubmissionRequest,
+    idempotencyKey: string,
+  ): Observable<RsvpSubmissionResponse> {
+    return this.http.post<RsvpSubmissionResponse>(
+      `${this.baseUrl}/guest/rsvp/${token}/submit`,
+      request,
+      { headers: { 'Idempotency-Key': idempotencyKey } },
     );
   }
 

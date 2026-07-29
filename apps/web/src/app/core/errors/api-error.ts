@@ -4,6 +4,7 @@ interface ProblemDetails {
   title?: string;
   detail?: string;
   errors?: Record<string, string[]>;
+  reloadRequired?: boolean;
 }
 
 export function getApiErrorMessage(error: unknown): string {
@@ -25,6 +26,15 @@ export function getApiErrorMessage(error: unknown): string {
     (error.status === 0
       ? 'No fue posible conectar con la API.'
       : 'No fue posible completar la operación.')
+  );
+}
+
+export function requiresReload(error: unknown): boolean {
+  return (
+    error instanceof HttpErrorResponse &&
+    error.status === 409 &&
+    isProblemDetails(error.error) &&
+    error.error.reloadRequired === true
   );
 }
 

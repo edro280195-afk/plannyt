@@ -30,12 +30,20 @@ import { ToastService } from '../../core/ui/toast.service';
             <span class="eyebrow">{{ currentEvent.eventType }}</span>
             <h1>{{ currentEvent.name }}</h1>
             <p>{{ currentEvent.city }}, {{ currentEvent.countryCode }}</p>
-            <a
-              class="btn btn--primary"
-              [routerLink]="['/portal/events', eventId, 'guest-experience']"
-            >
-              Colaborar en invitados
-            </a>
+            <div class="button-row">
+              <a
+                class="btn btn--primary"
+                [routerLink]="['/portal/events', eventId, 'guest-experience']"
+              >
+                Colaborar en invitados
+              </a>
+              <a
+                class="btn btn--secondary"
+                [routerLink]="['/portal/events', eventId, 'rsvp']"
+              >
+                Ver RSVP
+              </a>
+            </div>
           </div>
         </header>
 

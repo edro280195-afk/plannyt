@@ -5,6 +5,7 @@ using Plannyt.Api.BuildingBlocks.Errors;
 using Plannyt.Api.Infrastructure.Persistence;
 using Plannyt.Api.Modules.Access.Authorization;
 using Plannyt.Api.Modules.Audit.Application;
+using Plannyt.Api.Modules.Audit.Domain;
 using Plannyt.Api.Modules.Guests.Application;
 using Plannyt.Api.Modules.Guests.Domain;
 using Plannyt.Api.Modules.Invitations.Domain;
@@ -486,7 +487,7 @@ public sealed class PortalGuestCollaborationService(
             access.OrganizationId,
             eventId,
             access.UserAccountId,
-            "portal.guest_link.marked_shared",
+            AuditActions.PortalGuestLinkMarkedShared,
             nameof(GuestAccessLink),
             link.Id);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -498,7 +499,7 @@ public sealed class PortalGuestCollaborationService(
         var publicUrl = link.Status == GuestAccessLinkStatus.Active
                         && !link.IsExpired(timeProvider.GetUtcNow())
             ? $"{frontendOptions.Value.PublicUrl.TrimEnd('/')}/i/"
-              + Uri.EscapeDataString(tokenService.Reveal(link.Id))
+              + Uri.EscapeDataString(tokenService.Reveal(link.Id, link.DerivationKeyId))
             : null;
         return new GuestAccessLinkResponse(
             link.Id,

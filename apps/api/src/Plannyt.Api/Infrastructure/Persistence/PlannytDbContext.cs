@@ -12,6 +12,7 @@ using Plannyt.Api.Modules.Invitations.Domain;
 using Plannyt.Api.Modules.Organizations.Domain;
 using Plannyt.Api.Modules.Payments.Domain;
 using Plannyt.Api.Modules.Proposals.Domain;
+using Plannyt.Api.Modules.Rsvp.Domain;
 
 namespace Plannyt.Api.Infrastructure.Persistence;
 
@@ -130,6 +131,25 @@ public sealed class PlannytDbContext(DbContextOptions<PlannytDbContext> options)
 
     public DbSet<GuestAccessLink> GuestAccessLinks => Set<GuestAccessLink>();
 
+    public DbSet<EventRsvpSettings> EventRsvpSettings => Set<EventRsvpSettings>();
+    public DbSet<RsvpForm> RsvpForms => Set<RsvpForm>();
+    public DbSet<RsvpFormVersion> RsvpFormVersions => Set<RsvpFormVersion>();
+    public DbSet<CurrentGuestRsvp> CurrentGuestRsvps => Set<CurrentGuestRsvp>();
+    public DbSet<RsvpSubmission> RsvpSubmissions => Set<RsvpSubmission>();
+    public DbSet<RsvpSubmissionGuest> RsvpSubmissionGuests => Set<RsvpSubmissionGuest>();
+    public DbSet<RsvpSubmissionAnswer> RsvpSubmissionAnswers => Set<RsvpSubmissionAnswer>();
+    public DbSet<EventMenu> EventMenus => Set<EventMenu>();
+    public DbSet<EventMenuOption> EventMenuOptions => Set<EventMenuOption>();
+    public DbSet<GuestDietaryAndAccessibility> GuestDietaryAndAccessibilities => Set<GuestDietaryAndAccessibility>();
+    public DbSet<EventTransportOption> EventTransportOptions => Set<EventTransportOption>();
+    public DbSet<GuestTransportSelection> GuestTransportSelections => Set<GuestTransportSelection>();
+    public DbSet<GuestTransportSelectionHistory> GuestTransportSelectionHistory =>
+        Set<GuestTransportSelectionHistory>();
+    public DbSet<EventAccommodationOption> EventAccommodationOptions => Set<EventAccommodationOption>();
+    public DbSet<GuestAccommodationSelection> GuestAccommodationSelections => Set<GuestAccommodationSelection>();
+    public DbSet<RsvpGroupException> RsvpGroupExceptions => Set<RsvpGroupException>();
+    public DbSet<ReminderTemplate> ReminderTemplates => Set<ReminderTemplate>();
+    public DbSet<EventReminderLog> EventReminderLogs => Set<EventReminderLog>();
     public DbSet<EventAccess> EventAccesses => Set<EventAccess>();
 
     public DbSet<AccessInvitation> AccessInvitations => Set<AccessInvitation>();
@@ -204,6 +224,27 @@ public sealed class PlannytDbContext(DbContextOptions<PlannytDbContext> options)
                 throw new InvalidOperationException(
                     "Una versión aprobada o publicada no puede eliminarse.");
             }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<RsvpSubmission>()
+            .Where(entry => entry.State is EntityState.Modified or EntityState.Deleted))
+        {
+            throw new InvalidOperationException("Las entregas RSVP son inmutables.");
+        }
+
+        foreach (var entry in ChangeTracker.Entries<RsvpFormVersion>()
+            .Where(entry => entry.State == EntityState.Modified
+                && entry.Properties.Any(property =>
+                    property.IsModified
+                    && property.Metadata.Name is
+                        nameof(RsvpFormVersion.SettingsSnapshot)
+                        or nameof(RsvpFormVersion.QuestionsSnapshot)
+                        or nameof(RsvpFormVersion.MenuSnapshot)
+                        or nameof(RsvpFormVersion.TransportSnapshot)
+                        or nameof(RsvpFormVersion.AccommodationSnapshot)
+                        or nameof(RsvpFormVersion.VersionNumber))))
+        {
+            throw new InvalidOperationException("El contenido de una versión de formulario RSVP es inmutable.");
         }
     }
 }

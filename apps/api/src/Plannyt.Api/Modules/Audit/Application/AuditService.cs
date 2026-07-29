@@ -13,6 +13,23 @@ public sealed class AuditService(
         Guid? organizationId,
         Guid? eventId,
         Guid? actorUserId,
+        AuditAction action,
+        string entityType,
+        Guid entityId,
+        IReadOnlyDictionary<string, object?>? metadata = null) =>
+        Add(
+            organizationId,
+            eventId,
+            actorUserId,
+            action.Value,
+            entityType,
+            entityId,
+            metadata);
+
+    public void Add(
+        Guid? organizationId,
+        Guid? eventId,
+        Guid? actorUserId,
         string action,
         string entityType,
         Guid entityId,

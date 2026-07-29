@@ -137,6 +137,48 @@ public static class Permissions
 
     public const string AuditView = "audit.view";
 
+    // RSVP Settings
+    public const string RsvpSettingsView = "rsvp-settings.view";
+    public const string RsvpSettingsManage = "rsvp-settings.manage";
+    public const string RsvpSettingsPublish = "rsvp-settings.publish";
+    public const string RsvpSettingsOpenClose = "rsvp-settings.open-close";
+
+    // RSVP Forms
+    public const string RsvpFormsView = "rsvp-forms.view";
+    public const string RsvpFormsCreate = "rsvp-forms.create";
+    public const string RsvpFormsUpdateDraft = "rsvp-forms.update-draft";
+    public const string RsvpFormsSubmitReview = "rsvp-forms.submit-review";
+    public const string RsvpFormsApprove = "rsvp-forms.approve";
+    public const string RsvpFormsPublish = "rsvp-forms.publish";
+
+    // RSVP Responses
+    public const string RsvpResponsesView = "rsvp-responses.view";
+    public const string RsvpResponsesCreateManual = "rsvp-responses.create-manual";
+    public const string RsvpResponsesCorrect = "rsvp-responses.correct";
+    public const string RsvpResponsesReopen = "rsvp-responses.reopen";
+    public const string RsvpResponsesExport = "rsvp-responses.export";
+    public const string RsvpResponsesViewHistory = "rsvp-responses.view-history";
+
+    // Event Menus
+    public const string EventMenusView = "event-menus.view";
+    public const string EventMenusManage = "event-menus.manage";
+    public const string EventMenusExport = "event-menus.export";
+
+    // Guest Travel
+    public const string GuestTravelView = "guest-travel.view";
+    public const string GuestTravelManage = "guest-travel.manage";
+    public const string GuestTravelExport = "guest-travel.export";
+
+    // Guest Sensitive Data
+    public const string GuestSensitiveDataView = "guest-sensitive-data.view";
+    public const string GuestSensitiveDataManage = "guest-sensitive-data.manage";
+    public const string GuestSensitiveDataExport = "guest-sensitive-data.export";
+
+    // Guest Reminders
+    public const string GuestRemindersView = "guest-reminders.view";
+    public const string GuestRemindersManage = "guest-reminders.manage";
+    public const string GuestRemindersMarkSent = "guest-reminders.mark-sent";
+
     public static IReadOnlySet<string> All { get; } = new HashSet<string>(
     [
         OrganizationView,
@@ -249,6 +291,34 @@ public static class Permissions
         DocumentsViewInternal,
         DocumentsUploadInternal,
         DocumentsDelete,
+        RsvpSettingsView,
+        RsvpSettingsManage,
+        RsvpSettingsPublish,
+        RsvpSettingsOpenClose,
+        RsvpFormsView,
+        RsvpFormsCreate,
+        RsvpFormsUpdateDraft,
+        RsvpFormsSubmitReview,
+        RsvpFormsApprove,
+        RsvpFormsPublish,
+        RsvpResponsesView,
+        RsvpResponsesCreateManual,
+        RsvpResponsesCorrect,
+        RsvpResponsesReopen,
+        RsvpResponsesExport,
+        RsvpResponsesViewHistory,
+        EventMenusView,
+        EventMenusManage,
+        EventMenusExport,
+        GuestTravelView,
+        GuestTravelManage,
+        GuestTravelExport,
+        GuestSensitiveDataView,
+        GuestSensitiveDataManage,
+        GuestSensitiveDataExport,
+        GuestRemindersView,
+        GuestRemindersManage,
+        GuestRemindersMarkSent,
         AuditView
     ], StringComparer.Ordinal);
 }

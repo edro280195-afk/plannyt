@@ -157,11 +157,13 @@ y móvil. La cobertura frontend exige al menos 85% global.
 Las entregas se organizan en commits lógicos locales. El push se realiza solo
 cuando el responsable del repositorio lo solicita.
 
-## Configuración del Sprint 2A
+## Configuración de enlaces privados de invitados
 
 - Los enlaces privados de invitados requieren
-  `GuestAccessTokens__DerivationKey`, una clave estable de al menos 64
-  caracteres y distinta de `Jwt__SigningKey`.
+  `GuestAccessTokens__ActiveKeyId` y una entrada
+  `GuestAccessTokens__Keys__<KeyId>` de al menos 64 caracteres, distinta de
+  `Jwt__SigningKey`. Las llaves históricas permanecen en el secret manager
+  mientras existan enlaces que conserven su `DerivationKeyId`.
 - `GuestPlan__DefaultTier` acepta `Community`, `EventComplete` o `PlannerPro`.
   `GuestPlan__OrganizationOverrides__{organizationId}` permite un override de
   soporte mientras se integra el módulo comercial de planes.
