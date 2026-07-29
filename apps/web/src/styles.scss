@@ -2,14 +2,14 @@
   color-scheme: light;
   --ink: #172f35;
   --ink-soft: #486166;
-  --ink-faint: #74878a;
+  --ink-faint: #566c70;
   --canvas: #f7f4ee;
   --surface: #fffdf9;
   --surface-soft: #f1ede5;
   --line: #dedbd3;
   --line-strong: #c9c8c1;
-  --coral: #d76f59;
-  --coral-dark: #b6523f;
+  --coral: #b6523f;
+  --coral-dark: #963b2d;
   --coral-soft: #f7e2dc;
   --sage: #789387;
   --sage-dark: #42675d;
@@ -3531,7 +3531,7 @@ a.catalog-card:hover {
   margin: 1.25rem 0;
 }
 
-.metric-card {
+.guest-metrics .metric-card {
   display: grid;
   gap: 0.35rem;
   min-height: 130px;
@@ -3542,12 +3542,12 @@ a.catalog-card:hover {
   box-shadow: var(--shadow-sm);
 }
 
-.metric-card small,
-.metric-card span {
+.guest-metrics .metric-card small,
+.guest-metrics .metric-card span {
   color: var(--ink-faint);
 }
 
-.metric-card strong {
+.guest-metrics .metric-card strong {
   font-family: var(--font-display);
   font-size: 2.2rem;
 }

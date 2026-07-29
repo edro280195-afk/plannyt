@@ -1,4 +1,5 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
+import { A11yModule } from '@angular/cdk/a11y';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -20,7 +21,7 @@ type CatalogTab = 'services' | 'packages' | 'coupons';
 
 @Component({
   selector: 'app-catalog-page',
-  imports: [FormsModule, CurrencyPipe, DatePipe],
+  imports: [A11yModule, FormsModule, CurrencyPipe, DatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
@@ -175,14 +176,32 @@ type CatalogTab = 'services' | 'packages' | 'coupons';
       }
 
       @if (showEditor()) {
-        <div class="modal-layer" role="dialog" aria-modal="true">
-          <form class="modal card card--padded form-stack" (ngSubmit)="saveCurrent()">
+        <div
+          class="modal-layer"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="catalog-editor-title"
+          (keydown.escape)="showEditor.set(false)"
+        >
+          <form
+            class="modal card card--padded form-stack"
+            cdkTrapFocus
+            [cdkTrapFocusAutoCapture]="true"
+            (ngSubmit)="saveCurrent()"
+          >
             <div class="section-heading">
               <div>
                 <span class="eyebrow">Nuevo registro</span>
-                <h2>{{ editorTitle() }}</h2>
+                <h2 id="catalog-editor-title">{{ editorTitle() }}</h2>
               </div>
-              <button class="icon-button" type="button" (click)="showEditor.set(false)">×</button>
+              <button
+                class="icon-button"
+                type="button"
+                aria-label="Cerrar editor de catálogo"
+                (click)="showEditor.set(false)"
+              >
+                ×
+              </button>
             </div>
             @if (tab() === 'services') {
               <div class="form-grid">

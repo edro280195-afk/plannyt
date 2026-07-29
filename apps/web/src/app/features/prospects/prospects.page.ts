@@ -1,4 +1,5 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
+import { A11yModule } from '@angular/cdk/a11y';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -20,7 +21,7 @@ interface PipelineColumn {
 
 @Component({
   selector: 'app-prospects-page',
-  imports: [FormsModule, RouterLink, CurrencyPipe, DatePipe],
+  imports: [A11yModule, FormsModule, RouterLink, CurrencyPipe, DatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page page--wide">
@@ -68,7 +69,7 @@ interface PipelineColumn {
           <div class="skeleton skeleton--row"></div>
         </div>
       } @else {
-        <div class="pipeline-board" aria-label="Pipeline de prospectos">
+        <div class="pipeline-board" tabindex="0" aria-label="Pipeline de prospectos">
           @for (column of columns; track column.status) {
             <section class="pipeline-column">
               <header>
@@ -111,14 +112,27 @@ interface PipelineColumn {
           role="dialog"
           aria-modal="true"
           aria-labelledby="new-prospect-title"
+          (keydown.escape)="showCreate.set(false)"
         >
-          <form class="modal card card--padded form-stack" (ngSubmit)="create()">
+          <form
+            class="modal card card--padded form-stack"
+            cdkTrapFocus
+            [cdkTrapFocusAutoCapture]="true"
+            (ngSubmit)="create()"
+          >
             <div class="section-heading">
               <div>
                 <span class="eyebrow">Nueva oportunidad</span>
                 <h2 id="new-prospect-title">Registrar prospecto</h2>
               </div>
-              <button class="icon-button" type="button" (click)="showCreate.set(false)">×</button>
+              <button
+                class="icon-button"
+                type="button"
+                aria-label="Cerrar registro de prospecto"
+                (click)="showCreate.set(false)"
+              >
+                ×
+              </button>
             </div>
             <div class="form-grid">
               <label class="span-2">

@@ -1,10 +1,22 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { PwaUpdateService } from './core/pwa/pwa-update.service';
 import { App } from './app';
 
 describe('App', () => {
+  const updateReady = signal(false);
+  const pwaUpdate = {
+    updateReady,
+    activating: signal(false),
+    activateUpdate: vi.fn(),
+  };
+
   beforeEach(async () => {
+    updateReady.set(false);
+    pwaUpdate.activateUpdate.mockReset();
     await TestBed.configureTestingModule({
       imports: [App],
+      providers: [{ provide: PwaUpdateService, useValue: pwaUpdate }],
     }).compileComponents();
   });
 
@@ -20,5 +32,18 @@ describe('App', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('router-outlet')).toBeTruthy();
     expect(compiled.querySelector('app-toast-host')).toBeTruthy();
+  });
+
+  it('offers an explicit reload when a PWA update is ready', () => {
+    updateReady.set(true);
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
+    const banner = compiled.querySelector<HTMLElement>('[role="status"]');
+    const button = compiled.querySelector<HTMLButtonElement>('.update-banner button');
+
+    expect(banner?.textContent).toContain('nueva versión');
+    button?.click();
+    expect(pwaUpdate.activateUpdate).toHaveBeenCalledOnce();
   });
 });

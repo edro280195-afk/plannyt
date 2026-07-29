@@ -1,2 +1,10 @@
 <router-outlet />
 <app-toast-host />
+@if (pwaUpdate.updateReady()) {
+  <section class="update-banner" role="status" aria-live="polite">
+    <span>Hay una nueva versión de Plannyt disponible.</span>
+    <button type="button" [disabled]="pwaUpdate.activating()" (click)="pwaUpdate.activateUpdate()">
+      {{ pwaUpdate.activating() ? 'Actualizando…' : 'Actualizar ahora' }}
+    </button>
+  </section>
+}

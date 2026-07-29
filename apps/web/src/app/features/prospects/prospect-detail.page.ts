@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { A11yModule } from '@angular/cdk/a11y';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -16,7 +17,7 @@ import { ToastService } from '../../core/ui/toast.service';
 
 @Component({
   selector: 'app-prospect-detail-page',
-  imports: [FormsModule, RouterLink, DatePipe],
+  imports: [A11yModule, FormsModule, RouterLink, DatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page page--narrow">
@@ -239,14 +240,29 @@ import { ToastService } from '../../core/ui/toast.service';
         </div>
 
         @if (showConversion()) {
-          <div class="modal-layer" role="dialog" aria-modal="true">
-            <section class="modal card card--padded">
+          <div
+            class="modal-layer"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="prospect-conversion-title"
+            (keydown.escape)="showConversion.set(false)"
+          >
+            <section
+              class="modal card card--padded"
+              cdkTrapFocus
+              [cdkTrapFocusAutoCapture]="true"
+            >
               <div class="section-heading">
                 <div>
                   <span class="eyebrow">Conversión controlada</span>
-                  <h2>Elegir cliente</h2>
+                  <h2 id="prospect-conversion-title">Elegir cliente</h2>
                 </div>
-                <button class="icon-button" type="button" (click)="showConversion.set(false)">
+                <button
+                  class="icon-button"
+                  type="button"
+                  aria-label="Cerrar conversión de prospecto"
+                  (click)="showConversion.set(false)"
+                >
                   ×
                 </button>
               </div>
@@ -299,14 +315,32 @@ import { ToastService } from '../../core/ui/toast.service';
           </div>
         }
         @if (showEvent()) {
-          <div class="modal-layer" role="dialog" aria-modal="true">
-            <form class="modal card card--padded form-stack" (ngSubmit)="createPreliminaryEvent()">
+          <div
+            class="modal-layer"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="preliminary-event-title"
+            (keydown.escape)="showEvent.set(false)"
+          >
+            <form
+              class="modal card card--padded form-stack"
+              cdkTrapFocus
+              [cdkTrapFocusAutoCapture]="true"
+              (ngSubmit)="createPreliminaryEvent()"
+            >
               <div class="section-heading">
                 <div>
                   <span class="eyebrow">Sin confirmar</span>
-                  <h2>Nuevo evento preliminar</h2>
+                  <h2 id="preliminary-event-title">Nuevo evento preliminar</h2>
                 </div>
-                <button class="icon-button" type="button" (click)="showEvent.set(false)">×</button>
+                <button
+                  class="icon-button"
+                  type="button"
+                  aria-label="Cerrar alta de evento preliminar"
+                  (click)="showEvent.set(false)"
+                >
+                  ×
+                </button>
               </div>
               <div class="form-grid">
                 <label class="span-2"

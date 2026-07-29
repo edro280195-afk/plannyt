@@ -8,7 +8,7 @@ Actualizado: 2026-07-29
 |---|---:|---:|---:|
 | Crítica | 0 | 0 | 0 |
 | Alta | 0 | 2 | 0 |
-| Media | 1 | 4 | 1 |
+| Media | 1 | 6 | 1 |
 | Baja | 0 | 2 | 0 |
 
 ## QA-001 — El seed demo no inicia con la cuenta cliente preexistente
@@ -183,7 +183,7 @@ Actualizado: 2026-07-29
   E2E interceptan cualquier origen mediante `**/api/**`.
 - **Prueba de regresión:** Suite de identidad frontend, recorrido real de doce
   recargas y suite E2E completa.
-- **Commit:** Pendiente.
+- **Commit:** `3d0236f`.
 - **Estado:** Corregido.
 
 ## QA-009 — Logout no se propaga a otras pestañas abiertas
@@ -204,7 +204,7 @@ Actualizado: 2026-07-29
   personal; cada pestaña limpia su estado en memoria y navega al acceso.
 - **Prueba de regresión:** `clears local state when another tab broadcasts
   logout`, prueba de revocación backend y recorrido manual en dos pestañas.
-- **Commit:** Pendiente.
+- **Commit:** `3d0236f`.
 - **Estado:** Corregido.
 
 ## QA-010 — Operaciones sensibles agotan el límite de renovación de sesión
@@ -229,5 +229,57 @@ Actualizado: 2026-07-29
   minuto e IP; credenciales y demás acciones sensibles continúan en 10.
 - **Prueba de regresión:** `Refresh_DoesNotShareTheCredentialRateLimit` y doce
   renovaciones reales consecutivas.
+- **Commit:** `3d0236f`.
+- **Estado:** Corregido.
+
+## QA-011 — Contraste y navegación por teclado insuficientes
+
+- **Severidad:** Media.
+- **Módulo:** Frontend / accesibilidad.
+- **Ruta:** `/app/dashboard`, `/portal/events/:id`, `/app/prospects` y
+  diálogos de prospectos/catálogo.
+- **Rol:** Anónimo, Owner y cliente.
+- **Precondición:** Abrir las superficies con estilos de producción.
+- **Pasos:** Ejecutar axe WCAG 2 A/AA y recorrer el diálogo con teclado.
+- **Resultado anterior:** Axe reportaba contraste serio entre 3.22:1 y 3.95:1
+  en texto secundario, botón primario, métricas y fechas; el tablero horizontal
+  no era enfocable. Los diálogos no atrapaban foco, no restauraban el origen y
+  algunos carecían de nombre accesible.
+- **Resultado esperado:** Sin violaciones automáticas serias/críticas y ciclo de
+  teclado completo con Escape y restauración de foco.
+- **Evidencia:** Fallos deterministas de `accessibility.spec.ts` en Chromium.
+- **Causa:** Tokens claros sobre superficies suaves, un selector global de
+  métricas de Invitados que sobrescribía Dashboard y modales personalizados sin
+  utilidades de foco.
+- **Solución aplicada:** Tokens con contraste AA, estilos de métricas limitados
+  a `.guest-metrics`, tablero enfocable y `A11yModule` con `cdkTrapFocus`,
+  autocaptura, Escape, nombres accesibles y restauración.
+- **Prueba de regresión:** Axe en acceso, dashboard, portal, propuesta pública y
+  diálogo; doce ciclos de Tab dentro del diálogo, Escape y foco devuelto.
+- **Commit:** Pendiente.
+- **Estado:** Corregido.
+
+## QA-012 — No existe aviso cuando una nueva versión PWA está lista
+
+- **Severidad:** Media.
+- **Módulo:** Frontend / PWA / caché.
+- **Ruta:** Toda la aplicación instalada.
+- **Rol:** Cualquier usuario.
+- **Precondición:** Un service worker activo detecta una versión nueva.
+- **Pasos:** Publicar otro build y mantener abierta la versión anterior.
+- **Resultado anterior:** `SwUpdate` no se consumía; el usuario podía continuar
+  con el shell antiguo hasta cerrar o forzar recarga. En QA, un worker previo de
+  `localhost:4200` llegó a servir rutas antiguas.
+- **Resultado esperado:** Aviso persistente y acción explícita para activar y
+  recargar la versión lista.
+- **Evidencia:** Navegador real en el origen de desarrollo y revisión estática
+  de `app.config.ts`.
+- **Causa:** Solo se registraba `ngsw-worker.js`; no había manejo de
+  `VERSION_READY`.
+- **Solución aplicada:** `PwaUpdateService` y banner accesible, persistente,
+  compatible con safe areas y protegido contra doble activación. `ngsw-config`
+  continúa limitado a estáticos y no incorpora `/api`, PDFs ni datos privados.
+- **Prueba de regresión:** Unidad del evento `VERSION_READY`, render/acción del
+  banner, build de producción y revisión de `ngsw.json`.
 - **Commit:** Pendiente.
 - **Estado:** Corregido.

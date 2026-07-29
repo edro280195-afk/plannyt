@@ -2,3 +2,46 @@
   display: block;
   min-height: 100%;
 }
+
+.update-banner {
+  position: fixed;
+  z-index: 1000;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  left: max(1rem, env(safe-area-inset-left));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  max-width: 720px;
+  margin-inline: auto;
+  padding: 0.85rem 1rem;
+  color: #fff;
+  background: var(--ink);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+}
+
+.update-banner button {
+  flex: 0 0 auto;
+  padding: 0.55rem 0.8rem;
+  color: #fff;
+  background: var(--coral-dark);
+  border: 1px solid rgb(255 255 255 / 45%);
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.update-banner button:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+
+@media (max-width: 520px) {
+  .update-banner {
+    align-items: stretch;
+    flex-direction: column;
+    text-align: center;
+  }
+}
