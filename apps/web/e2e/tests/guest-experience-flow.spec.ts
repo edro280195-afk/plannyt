@@ -8,7 +8,7 @@ test.describe('Sprint 2A · invitados y experiencia digital', () => {
   }) => {
     api.useProfile('owner');
     const state = createGuestExperienceState();
-    await page.route('https://localhost:7139/api/**', async (route) => {
+    await page.route('**/api/**', async (route) => {
       if (!(await handleGuestExperienceApi(route, state))) {
         await route.fallback();
       }

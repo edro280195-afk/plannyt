@@ -67,6 +67,9 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": {
+            "proxyConfig": "proxy.conf.json"
+          },
           "configurations": {
             "production": {
               "buildTarget": "plannyt-web:build:production"
@@ -80,9 +83,7 @@
         "test": {
           "builder": "@angular/build:unit-test",
           "options": {
-            "coverageExclude": [
-              "src/app/features/rsvp/rsvp-form-editor.page.ts"
-            ],
+            "coverageExclude": ["src/app/features/rsvp/rsvp-form-editor.page.ts"],
             "coverageThresholds": {
               "statements": 85,
               "branches": 85,

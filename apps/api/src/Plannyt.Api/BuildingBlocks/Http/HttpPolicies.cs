@@ -8,4 +8,5 @@ public static class CorsPolicies
 public static class RateLimitPolicies
 {
     public const string Sensitive = "Sensitive";
+    public const string Session = "Session";
 }

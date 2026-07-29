@@ -91,9 +91,12 @@ npm.cmd start
 - Swagger: `https://localhost:7139/swagger`
 - Readiness: `https://localhost:7139/health/ready`
 
-En macOS usa `npm` en lugar de `npm.cmd`. En desarrollo Angular llama
-directamente a la API HTTPS para que la cookie `Secure` de refresh funcione. El
-build de producción usa `/api` y presupone un reverse proxy del mismo origen.
+En desarrollo, Angular envía `/api` mediante `proxy.conf.json` hacia la API
+HTTPS. Así el refresh cookie conserva `Secure`, `HttpOnly` y `SameSite=Lax`
+sin romper la restauración de sesión al recargar.
+
+En macOS usa `npm` en lugar de `npm.cmd`. El build de producción también usa
+`/api` y presupone un reverse proxy del mismo origen.
 
 ## Datos demo opcionales
 

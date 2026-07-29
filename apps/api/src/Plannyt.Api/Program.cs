@@ -255,6 +255,23 @@ builder.Services.AddRateLimiter(options =>
                 AutoReplenishment = true
             });
     });
+    options.AddPolicy(RateLimitPolicies.Session, httpContext =>
+    {
+        var permitLimit = httpContext.RequestServices
+            .GetRequiredService<
+                Microsoft.Extensions.Options.IOptions<RateLimitOptions>>()
+            .Value
+            .SessionPermitLimit;
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = permitLimit,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            });
+    });
 });
 
 builder.Services

@@ -440,7 +440,7 @@ async function installQuestionRsvpMock(
     persisted: 0,
   };
   await page.route(
-    'https://localhost:7139/api/guest/rsvp/**',
+    '**/api/guest/rsvp/**',
     async (route) => {
       if (route.request().method() === 'GET') {
         await json(
@@ -507,7 +507,7 @@ async function alteredSubmission(
 ): Promise<number> {
   return page.evaluate(async (submittedAnswer) => {
     const response = await fetch(
-      'https://localhost:7139/api/guest/rsvp/altered/submit',
+      '/api/guest/rsvp/altered/submit',
       {
         method: 'POST',
         headers: {

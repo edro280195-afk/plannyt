@@ -73,7 +73,7 @@ public static class AuthEndpoints
                     return Results.Ok(result.Response);
                 })
             .AllowAnonymous()
-            .RequireRateLimiting(RateLimitPolicies.Sensitive);
+            .RequireRateLimiting(RateLimitPolicies.Session);
 
         group.MapPost(
                 "/logout",

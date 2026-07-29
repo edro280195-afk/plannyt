@@ -8,4 +8,7 @@ public sealed class RateLimitOptions
 
     [Range(1, 10_000)]
     public int SensitivePermitLimit { get; init; } = 10;
+
+    [Range(1, 10_000)]
+    public int SessionPermitLimit { get; init; } = 60;
 }

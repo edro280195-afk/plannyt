@@ -243,7 +243,7 @@ export const test = base.extend<PlannytFixtures>({
       },
     };
 
-    await page.route('https://localhost:7139/api/**', async (route) => {
+    await page.route('**/api/**', async (route) => {
       const request = route.request();
       const url = new URL(request.url());
       if (url.pathname === '/api/auth/login' || url.pathname === '/api/auth/register-planner') {

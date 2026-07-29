@@ -141,5 +141,29 @@ describe('AuthService', () => {
 
     expect(service.isAuthenticated()).toBe(false);
     expect(router.navigate).toHaveBeenCalledWith(['/auth/login']);
+    expect(localStorage.length).toBe(0);
+  });
+
+  it('clears local state when another tab broadcasts logout', () => {
+    api.login.mockReturnValue(of(authResponse));
+    api.getMe.mockReturnValue(of(meResponse));
+    service
+      .login({
+        email: 'planner@plannyt.mx',
+        password: 'a-secure-password',
+        isPersistent: true,
+      })
+      .subscribe();
+
+    window.dispatchEvent(
+      new StorageEvent('storage', {
+        key: 'plannyt_session_event',
+        newValue: 'logout:1785360000000',
+      }),
+    );
+
+    expect(service.isAuthenticated()).toBe(false);
+    expect(service.me()).toBeNull();
+    expect(router.navigate).toHaveBeenCalledWith(['/auth/login']);
   });
 });

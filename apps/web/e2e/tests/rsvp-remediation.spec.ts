@@ -109,7 +109,7 @@ test.describe('Sprint 2B.2 · remediación RSVP', () => {
           contactName: 'Contenido deliberadamente distinto',
         };
         const response = await fetch(
-          'https://localhost:7139/api/guest/rsvp/fingerprint-conflict-token/submit',
+          '/api/guest/rsvp/fingerprint-conflict-token/submit',
           {
             method: 'POST',
             headers: {
@@ -174,7 +174,7 @@ test.describe('Sprint 2B.2 · remediación RSVP', () => {
     page,
   }) => {
     test.slow();
-    await page.route('https://localhost:7139/api/guest/rsvp/**', async (route) => {
+    await page.route('**/api/guest/rsvp/**', async (route) => {
       const token = route.request().url().split('/').at(-2);
       if (token === 'invalid-token') {
         await problem(route, 404, 'Enlace inválido.');
@@ -236,7 +236,7 @@ test.describe('Sprint 2B.2 · remediación RSVP', () => {
     api.useProfile('portal');
     const captures: RecordedSubmission[] = [];
     await page.route(
-      'https://localhost:7139/api/client-portal/events/event-1/rsvp/form',
+      '**/api/client-portal/events/event-1/rsvp/form',
       async (route) => {
         await json(route, {
           id: 'version-1',
@@ -244,7 +244,7 @@ test.describe('Sprint 2B.2 · remediación RSVP', () => {
       },
     );
     await page.route(
-      'https://localhost:7139/api/client-portal/events/event-1/rsvp/groups/group-1/manual-capture',
+      '**/api/client-portal/events/event-1/rsvp/groups/group-1/manual-capture',
       async (route) => {
         captures.push(recordSubmission(route));
         await json(route, submissionResponse(captures.length), 201);
@@ -369,7 +369,7 @@ async function installPublicRsvpMock(
   page: Page,
   options: PublicMockOptions,
 ): Promise<void> {
-  await page.route('https://localhost:7139/api/guest/rsvp/**', async (route) => {
+  await page.route('**/api/guest/rsvp/**', async (route) => {
     const request = route.request();
     if (request.method() === 'GET') {
       const state = options.state?.() ?? rsvpState(0, options.transport);
@@ -566,7 +566,7 @@ async function installProfessionalRsvpDashboardMock(
   onSensitiveExport: () => void = () => undefined,
 ): Promise<void> {
   const eventUrl =
-    'https://localhost:7139/api/organizations/org-1/events/event-1';
+    '**/api/organizations/org-1/events/event-1';
   await page.route(`${eventUrl}/rsvp/dashboard`, async (route) => {
     await json(route, {
       totalGroups: 1,

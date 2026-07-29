@@ -7,8 +7,8 @@ Actualizado: 2026-07-29
 | Severidad | Abiertos | Corregidos | Diferidos |
 |---|---:|---:|---:|
 | Crítica | 0 | 0 | 0 |
-| Alta | 0 | 1 | 0 |
-| Media | 1 | 2 | 1 |
+| Alta | 0 | 2 | 0 |
+| Media | 1 | 4 | 1 |
 | Baja | 0 | 2 | 0 |
 
 ## QA-001 — El seed demo no inicia con la cuenta cliente preexistente
@@ -36,7 +36,7 @@ Actualizado: 2026-07-29
 - **Prueba de regresión:** `SeedAsync_WhenClientAccountAlreadyExists_ReusesGlobalAccount`;
   además, el arranque real creó el acceso faltante de Mariana y el login
   respondió 200.
-- **Commit:** Pendiente.
+- **Commit:** `f52998b`.
 - **Estado:** Corregido.
 
 ## QA-002 — El escenario E2E de corrección RSVP es inestable en la suite completa
@@ -56,7 +56,7 @@ Actualizado: 2026-07-29
 - **Solución prevista:** Eliminar la condición de carrera o ajustar la espera a
   un resultado observable real, sin `waitForTimeout`.
 - **Prueba de regresión:** Suite completa y repetición aislada.
-- **Commit:** Pendiente.
+- **Commit:** `f52998b`.
 - **Estado:** Abierto.
 
 ## QA-003 — El documento OpenAPI de ASP.NET devuelve 500
@@ -82,7 +82,7 @@ Actualizado: 2026-07-29
 - **Prueba de regresión:** `RequestContracts_CanGenerateJsonSchemas` recorre
   todos los contratos `*Request`; `OpenApiDocument_InDevelopment_ReturnsOperations`
   valida el documento HTTP.
-- **Commit:** Pendiente.
+- **Commit:** `f52998b`.
 - **Estado:** Corregido.
 
 ## QA-004 — Tooling Angular arrastra una dependencia con path traversal
@@ -108,7 +108,7 @@ Actualizado: 2026-07-29
   desplegado. No ejecutar `ng mcp` sobre contenido no confiable en Windows
   hasta contar con una corrección compatible.
 - **Prueba de regresión:** `npm ci`, build, tests y `npm audit`.
-- **Commit:** Pendiente.
+- **Commit:** `f52998b`.
 - **Estado:** Diferido.
 
 ## QA-005 — README fija una versión .NET distinta de `global.json`
@@ -123,7 +123,7 @@ Actualizado: 2026-07-29
 - **Solución aplicada:** README y arquitectura documentan `10.0.300` o un
   parche posterior compatible mediante `latestPatch`.
 - **Prueba de regresión:** `dotnet --version` y build.
-- **Commit:** Pendiente.
+- **Commit:** `f52998b`.
 - **Estado:** Corregido.
 
 ## QA-006 — El reporte Sprint 2B contradice el tag existente
@@ -138,7 +138,7 @@ Actualizado: 2026-07-29
 - **Solución aplicada:** El reporte distingue la fecha de su redacción del
   estado actual y registra el commit exacto del tag sin crearlo ni moverlo.
 - **Prueba de regresión:** `git tag --points-at HEAD`.
-- **Commit:** Pendiente.
+- **Commit:** `f52998b`.
 - **Estado:** Corregido.
 
 ## QA-007 — JSON malformado se reporta como error interno
@@ -158,5 +158,76 @@ Actualizado: 2026-07-29
   nivel de log de solicitud rechazada.
 - **Prueba de regresión:**
   `Login_WhenJsonIsMalformed_ReturnsBadRequestProblemDetails`.
+- **Commit:** `f52998b`.
+- **Estado:** Corregido.
+
+## QA-008 — La sesión local no se restaura después de recargar
+
+- **Severidad:** Alta.
+- **Módulo:** Frontend / identidad / entorno de desarrollo.
+- **Ruta:** Cualquier ruta privada abierta desde `http://localhost:4200`.
+- **Rol:** Cualquier usuario autenticado.
+- **Precondición:** API HTTPS y frontend HTTP según la ejecución documentada.
+- **Pasos:** Iniciar sesión, abrir `/app/dashboard` y recargar.
+- **Resultado anterior:** `POST /api/auth/refresh` no enviaba
+  `plannyt_refresh`; la aplicación redirigía al login.
+- **Resultado esperado:** La cookie `Secure`, `HttpOnly` y `SameSite=Lax` se
+  conserva y restaura la sesión en rutas profundas.
+- **Evidencia:** Recorrido real en navegador; antes de la corrección la
+  renovación respondió 401 sin cookie. Después, doce recargas consecutivas
+  conservaron `/app/dashboard`.
+- **Causa:** El navegador aplica `SameSite` de forma sensible al esquema:
+  frontend HTTP y API HTTPS son cross-site aunque compartan hostname.
+- **Solución aplicada:** Angular usa `/api` y `proxy.conf.json` en desarrollo;
+  producción mantiene el contrato de reverse proxy del mismo origen. Los mocks
+  E2E interceptan cualquier origen mediante `**/api/**`.
+- **Prueba de regresión:** Suite de identidad frontend, recorrido real de doce
+  recargas y suite E2E completa.
+- **Commit:** Pendiente.
+- **Estado:** Corregido.
+
+## QA-009 — Logout no se propaga a otras pestañas abiertas
+
+- **Severidad:** Media.
+- **Módulo:** Frontend / sesiones.
+- **Ruta:** Área profesional o portal en dos pestañas.
+- **Rol:** Usuario autenticado.
+- **Precondición:** Dos pestañas comparten la misma sesión.
+- **Pasos:** Cerrar sesión en la primera pestaña y observar la segunda.
+- **Resultado anterior:** El backend revocaba la sesión, pero la segunda
+  pestaña conservaba el token y la pantalla hasta su siguiente solicitud.
+- **Resultado esperado:** Todas las pestañas limpian memoria y vuelven al login
+  inmediatamente.
+- **Evidencia:** Prueba manual real con dos pestañas sobre API/PostgreSQL.
+- **Causa:** `AuthService` no comunicaba el cierre entre contextos de ventana.
+- **Solución aplicada:** Evento efímero en `storage`, sin token ni dato
+  personal; cada pestaña limpia su estado en memoria y navega al acceso.
+- **Prueba de regresión:** `clears local state when another tab broadcasts
+  logout`, prueba de revocación backend y recorrido manual en dos pestañas.
+- **Commit:** Pendiente.
+- **Estado:** Corregido.
+
+## QA-010 — Operaciones sensibles agotan el límite de renovación de sesión
+
+- **Severidad:** Media.
+- **Módulo:** API / rate limiting / identidad.
+- **Ruta:** `POST /api/auth/refresh`.
+- **Rol:** Usuario autenticado.
+- **Precondición:** Varias operaciones sensibles desde la misma IP en un
+  minuto.
+- **Pasos:** Iniciar sesión, ejecutar acciones protegidas por la política
+  `Sensitive` y recargar varias rutas.
+- **Resultado anterior:** Registro, login, refresh y operaciones de negocio
+  compartían un único cupo de 10 solicitudes por IP; la renovación devolvía 429
+  y la UI terminaba anónima.
+- **Resultado esperado:** Las credenciales conservan un límite estricto sin que
+  otras operaciones expulsen sesiones válidas.
+- **Evidencia:** Recorrido de rutas real; la sesión cayó al abrir Eventos tras
+  consumir el cupo compartido.
+- **Causa:** `/auth/refresh` reutilizaba `RateLimitPolicies.Sensitive`.
+- **Solución aplicada:** Política `Session` independiente de 60 renovaciones por
+  minuto e IP; credenciales y demás acciones sensibles continúan en 10.
+- **Prueba de regresión:** `Refresh_DoesNotShareTheCredentialRateLimit` y doce
+  renovaciones reales consecutivas.
 - **Commit:** Pendiente.
 - **Estado:** Corregido.

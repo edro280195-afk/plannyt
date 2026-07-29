@@ -1,4 +1,4 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import {
   catchError,
@@ -22,8 +22,11 @@ import { ApiService } from '../api/api.service';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
+  private static readonly SessionEventKey = 'plannyt_session_event';
+
   private readonly api = inject(ApiService);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly accessTokenState = signal<string | null>(null);
   private readonly meState = signal<MeResponse | null>(null);
   private refreshRequest: Observable<AuthResponse> | null = null;
@@ -35,6 +38,18 @@ export class AuthService {
   readonly primaryOrganization = computed(() => this.meState()?.organizations[0] ?? null);
   readonly hasProfessionalAccess = computed(() => (this.meState()?.organizations.length ?? 0) > 0);
   readonly hasPortalAccess = computed(() => (this.meState()?.eventAccesses.length ?? 0) > 0);
+
+  constructor() {
+    const handleSessionEvent = (event: StorageEvent): void => {
+      if (event.key === AuthService.SessionEventKey && event.newValue?.startsWith('logout:')) {
+        this.clearSession();
+        void this.router.navigate(['/auth/login']);
+      }
+    };
+
+    window.addEventListener('storage', handleSessionEvent);
+    this.destroyRef.onDestroy(() => window.removeEventListener('storage', handleSessionEvent));
+  }
 
   restore(): Observable<void> {
     this.restoring.set(true);
@@ -102,8 +117,7 @@ export class AuthService {
       .pipe(
         catchError(() => of(undefined)),
         finalize(() => {
-          this.clearSession();
-          void this.router.navigate(['/auth/login']);
+          this.finishLogout();
         }),
       )
       .subscribe();
@@ -112,8 +126,7 @@ export class AuthService {
   logoutAll(): Observable<void> {
     return this.api.logoutAll().pipe(
       finalize(() => {
-        this.clearSession();
-        void this.router.navigate(['/auth/login']);
+        this.finishLogout();
       }),
     );
   }
@@ -125,5 +138,20 @@ export class AuthService {
 
   private applyAuth(response: AuthResponse): void {
     this.accessTokenState.set(response.accessToken);
+  }
+
+  private finishLogout(): void {
+    this.clearSession();
+    this.broadcastLogout();
+    void this.router.navigate(['/auth/login']);
+  }
+
+  private broadcastLogout(): void {
+    try {
+      localStorage.setItem(AuthService.SessionEventKey, `logout:${Date.now().toString()}`);
+      localStorage.removeItem(AuthService.SessionEventKey);
+    } catch {
+      // El backend revoca la sesión aunque el navegador bloquee Storage.
+    }
   }
 }
