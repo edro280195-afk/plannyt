@@ -109,29 +109,29 @@ Leyenda: `✓` concedido por el rol base; `—` denegado por defecto.
 encima de los que posee. Los grants permiten adaptar esta matriz sin crear nuevos
 roles rígidos.
 
-## Matriz inicial de acceso del cliente
+## Matriz actual de acceso del cliente
 
-En el Sprint 0 el portal es de consulta. Todos los roles de cliente reciben solo:
+Todos los roles reciben 13 permisos de consulta compartida para evento,
+participantes, invitados, grupos, diseño, enlaces, RSVP, documentos, contratos,
+firmas, plan de pagos y pagos. Ningún rol de portal recibe datos internos ni
+información sensible por defecto.
 
-- `events.view`
-- `events.shared-data.view`
-- `participants.view`
-- `documents.view-shared`
+Las mutaciones siguen mínimo privilegio:
 
-Esto aplica a:
+| Rol | Permisos efectivos | Acciones adicionales |
+|---|---:|---|
+| `ClientAuthority` | 29 | Flujo completo del portal |
+| `ClientPrimary` | 29 | Flujo completo del portal |
+| `ClientCollaborator` | 27 | Invitados, grupos, RSVP y colaboración de diseño |
+| `ClientGuestManager` | 25 | Invitados, grupos, enlaces compartidos y RSVP |
+| `ClientPayer` | 14 | Reportar pagos |
+| `ClientApprover` | 14 | Aprobar diseño de invitación |
+| `ClientViewer` | 13 | Solo consulta compartida |
 
-- `ClientAuthority`
-- `ClientPrimary`
-- `ClientCollaborator`
-- `ClientGuestManager`
-- `ClientPayer`
-- `ClientApprover`
-- `ClientViewer`
-
-Los nombres conservan intención de negocio para módulos futuros, pero no conceden
-permisos administrativos ni capacidades aún inexistentes. En particular, no
-reciben `events.internal-data.view`, administración de accesos, carga de archivos
-ni modificación del evento durante este sprint.
+Los grants explícitos todavía pueden ampliar o negar una acción en un evento
+concreto; `Deny` conserva precedencia. Ningún rol recibe
+`events.internal-data.view`, administración de accesos, carga interna de
+archivos ni permisos de información sensible.
 
 ## Algoritmo de permisos efectivos
 

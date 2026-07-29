@@ -330,49 +330,89 @@ public static class RolePermissionCatalog
                     Permissions.AuditView)
             };
 
-    private static readonly IReadOnlySet<string> ClientPortalPermissions = Set(
+    private static readonly IReadOnlySet<string> ClientPortalViewPermissions = Set(
         Permissions.EventsView,
         Permissions.EventsSharedDataView,
         Permissions.ParticipantsView,
         Permissions.GuestsView,
+        Permissions.InvitationGroupsView,
+        Permissions.InvitationDesignsView,
+        Permissions.GuestLinksView,
+        Permissions.RsvpResponsesView,
+        Permissions.DocumentsViewShared,
+        Permissions.ContractsView,
+        Permissions.SignaturesView,
+        Permissions.PaymentPlansView,
+        Permissions.PaymentsView);
+
+    private static readonly IReadOnlySet<string> ClientGuestManagementPermissions = Set(
         Permissions.GuestsCreate,
         Permissions.GuestsUpdate,
         Permissions.GuestsArchive,
         Permissions.GuestsImport,
         Permissions.GuestsManageTags,
-        Permissions.InvitationGroupsView,
         Permissions.InvitationGroupsCreate,
         Permissions.InvitationGroupsUpdate,
         Permissions.InvitationGroupsArchive,
         Permissions.InvitationGroupsManageCapacity,
-        Permissions.InvitationDesignsView,
-        Permissions.InvitationDesignsUpdateDraft,
-        Permissions.InvitationDesignsSubmitReview,
-        Permissions.InvitationDesignsApprove,
-        Permissions.GuestLinksView,
         Permissions.GuestLinksMarkShared,
-        Permissions.RsvpResponsesView,
         Permissions.RsvpResponsesCreateManual,
-        Permissions.RsvpResponsesCorrect,
-        Permissions.DocumentsViewShared,
-        Permissions.ContractsView,
-        Permissions.SignaturesView,
-        Permissions.PaymentPlansView,
-        Permissions.PaymentsView,
-        Permissions.PaymentsCreate);
+        Permissions.RsvpResponsesCorrect);
+
+    private static readonly IReadOnlySet<string> ClientInvitationCollaborationPermissions = Set(
+        Permissions.InvitationDesignsUpdateDraft,
+        Permissions.InvitationDesignsSubmitReview);
+
+    private static readonly IReadOnlyDictionary<EventAccessRole, IReadOnlySet<string>>
+        EventAccessPermissions =
+            new Dictionary<EventAccessRole, IReadOnlySet<string>>
+            {
+                [EventAccessRole.ClientAuthority] = Union(
+                    ClientPortalViewPermissions,
+                    ClientGuestManagementPermissions,
+                    ClientInvitationCollaborationPermissions,
+                    Set(
+                        Permissions.InvitationDesignsApprove,
+                        Permissions.PaymentsCreate)),
+                [EventAccessRole.ClientPrimary] = Union(
+                    ClientPortalViewPermissions,
+                    ClientGuestManagementPermissions,
+                    ClientInvitationCollaborationPermissions,
+                    Set(
+                        Permissions.InvitationDesignsApprove,
+                        Permissions.PaymentsCreate)),
+                [EventAccessRole.ClientCollaborator] = Union(
+                    ClientPortalViewPermissions,
+                    ClientGuestManagementPermissions,
+                    ClientInvitationCollaborationPermissions),
+                [EventAccessRole.ClientGuestManager] = Union(
+                    ClientPortalViewPermissions,
+                    ClientGuestManagementPermissions),
+                [EventAccessRole.ClientPayer] = Union(
+                    ClientPortalViewPermissions,
+                    Set(Permissions.PaymentsCreate)),
+                [EventAccessRole.ClientApprover] = Union(
+                    ClientPortalViewPermissions,
+                    Set(Permissions.InvitationDesignsApprove)),
+                [EventAccessRole.ClientViewer] = Copy(
+                    ClientPortalViewPermissions)
+            };
 
     public static IReadOnlySet<string> GetFor(OrganizationRole role) =>
         OrganizationPermissions[role];
 
     public static IReadOnlySet<string> GetFor(EventAccessRole role)
-    {
-        _ = role;
-        return ClientPortalPermissions;
-    }
+        => EventAccessPermissions[role];
 
     private static IReadOnlySet<string> Set(params string[] permissions) =>
         new HashSet<string>(permissions, StringComparer.Ordinal);
 
     private static IReadOnlySet<string> Copy(IEnumerable<string> permissions) =>
         new HashSet<string>(permissions, StringComparer.Ordinal);
+
+    private static IReadOnlySet<string> Union(
+        params IEnumerable<string>[] permissionGroups) =>
+        new HashSet<string>(
+            permissionGroups.SelectMany(permissions => permissions),
+            StringComparer.Ordinal);
 }

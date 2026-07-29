@@ -27,21 +27,17 @@ se consideran una frontera de seguridad.
 | Assistant | 32 | Consulta y edición operativa limitada; sin acciones críticas |
 | Commercial | 42 | CRM, propuestas y contratación comercial limitada; sin finanzas, invitados o RSVP |
 | Finance | 30 | Consulta comercial/contratos y operación financiera; sin edición de invitados/invitación/RSVP |
-| Cualquier rol de portal | 29 | Todos los roles cliente comparten el mismo set base en el corte actual |
+| ClientAuthority | 29 | Flujo completo del portal |
+| ClientPrimary | 29 | Flujo completo del portal |
+| ClientCollaborator | 27 | Colaboración de invitados, RSVP y diseño; sin aprobar ni pagar |
+| ClientGuestManager | 25 | Invitados, grupos, enlaces compartidos y RSVP |
+| ClientPayer | 14 | Consulta compartida y creación de pagos |
+| ClientApprover | 14 | Consulta compartida y aprobación de invitación |
+| ClientViewer | 13 | Solo consulta compartida |
 
-Roles del portal con el mismo set base:
-
-- ClientAuthority
-- ClientPrimary
-- ClientCollaborator
-- ClientGuestManager
-- ClientPayer
-- ClientApprover
-- ClientViewer
-
-Esto es una decisión existente del producto, no una simplificación introducida
-por la auditoría. Las diferencias nominales todavía no producen permisos base
-distintos.
+La auditoría encontró y corrigió que los siete roles recibían antes los mismos
+29 permisos, lo que permitía mutaciones incompatibles con `ClientViewer`,
+`ClientPayer` y `ClientApprover`.
 
 PlatformAdmin y PlatformSupport no tienen rutas ni funciones accesibles en el
 corte implementado.
@@ -68,13 +64,13 @@ Leyenda:
 | Firmas/evidencia | T | T | T | P | — | P | V | V |
 | Planes/pagos | T | T | T | P | — | — | T | P |
 | Eventos/participantes | T | T | T | P | P | P | V | V |
-| Invitados/grupos/CSV | T | T | T | P | P | — | — | P |
-| Diseños de invitación | T | T | T, sin bypass | P | P | — | — | P |
-| Enlaces de invitado | T | T | T | P | generar/marcar | — | — | ver/marcar |
+| Invitados/grupos/CSV | T | T | T | P | P | — | — | Por rol |
+| Diseños de invitación | T | T | T, sin bypass | P | P | — | — | Por rol |
+| Enlaces de invitado | T | T | T | P | generar/marcar | — | — | Por rol |
 | Documentos compartidos | T | T | T | T | P | P | V | V |
 | Documentos internos | T | T | T | T | P | — | V | — |
 | Configuración/formularios RSVP | T | T | T | — | — | — | — | — |
-| Respuestas RSVP | T | T | T | P | — | — | — | P |
+| Respuestas RSVP | T | T | T | P | — | — | — | Por rol |
 | Menús/transporte/recordatorios | T | T | T | P | — | — | — | — |
 | Datos sensibles RSVP | T | T | S | S | S | S | S | S |
 | Auditoría | T | T | V | — | — | — | V | — |
@@ -90,7 +86,7 @@ Leyenda:
 | Publicar/cancelar contrato | Roles permitidos | Roles sin permiso | `contracts.publish/cancel` | Resolver probado | Tenant/evento validados | Integración/E2E mock | Parcial |
 | Aprobar/rechazar/reembolsar pago | Owner/Admin/Planner/Finance | Commercial/Assistant/portal | `payments.*` | Resolver probado | Tenant/contrato validados | Integración/E2E mock | Parcial |
 | Confirmar evento | Owner/Admin/Planner | Resto | `events.confirm` más readiness | Resolver probado | Tenant/evento validados | Integración/E2E mock | Automatizado backend |
-| Publicar invitación | Owner/Admin/Planner/Coordinator | Assistant/portal | `invitation-designs.publish` | Resolver probado | Tenant/evento validados | Integración/E2E mock | Parcial |
+| Publicar invitación | Owner/Admin/Planner/Coordinator | Assistant y todos los roles portal | `invitation-designs.publish` | Resolver probado | Tenant/evento validados | Integración/E2E mock | Parcial |
 | Regenerar/revocar enlace | Owner/Admin/Planner/Coordinator | Assistant/portal | `guest-links.regenerate/revoke` | Resolver probado | Tenant/evento validados | Integración/E2E mock | Parcial |
 | Corregir RSVP | Owner/Admin/Planner o grant; portal posee corrección de su evento | Roles sin permiso | `rsvp-responses.correct` | Resolver probado | Tenant/evento/grupo validados | Integración/E2E mock | Parcial |
 | Ver/gestionar/exportar sensibles | Owner/Admin o grant explícito | Todos los demás | `guest-sensitive-data.*` separado | Resolver probado | Tenant/evento validados | Integración/E2E mock | Automatizado backend; UI parcial |
@@ -113,19 +109,19 @@ Leyenda:
 | Datos sensibles separados | Endpoints/permisos/DTO y pruebas RSVP | Pasa |
 | Revocación de sesión inmediata | `SessionValidationMiddleware` y pruebas auth | Cubierto backend |
 | Revocación de acceso inmediata | `PortalAccessService` consulta PostgreSQL en cada uso | Cubierto backend |
+| `ClientViewer` intenta crear grupo | `ClientViewer_CanReadButCannotCreateInvitationGroups` | 403; lectura permanece disponible |
+| Matriz de roles cliente | `ClientPortalRolePermissionTests` | Los siete roles respetan mínimo privilegio |
 
 ## Riesgos y huecos aún abiertos
 
 1. No existe una prueba matricial automática que recorra los 139 permisos para
-   los siete roles organizacionales y los siete roles del portal.
-2. Los roles de portal tienen hoy permisos base idénticos. Debe confirmarse en
-   cada flujo que esta decisión no conceda una acción incompatible con la
-   intención nominal del rol.
-3. El frontend solo aplica guard al permiso de entrada de la ruta. Los controles
+   los siete roles organizacionales; los siete roles del portal ya cuentan con
+   regresión de su matriz base.
+2. El frontend solo aplica guard al permiso de entrada de la ruta. Los controles
    internos dependen de condiciones por pantalla; falta terminar la revisión de
-   los 201 botones.
-4. Aún no se ha demostrado con navegador real el pegado de cada URL prohibida.
-5. No hay UI general para administrar grants `Allow`/`Deny`; las pruebas actuales
+   los 202 botones.
+3. Aún no se ha demostrado con navegador real el pegado de cada URL prohibida.
+4. No hay UI general para administrar grants `Allow`/`Deny`; las pruebas actuales
    validan el resolver y operaciones seleccionadas.
 
 Estos huecos no se consideran aprobados y se actualizarán durante la regresión.

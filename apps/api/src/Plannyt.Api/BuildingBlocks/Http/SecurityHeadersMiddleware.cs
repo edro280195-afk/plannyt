@@ -14,11 +14,14 @@ public sealed class SecurityHeadersMiddleware(RequestDelegate next)
                 "camera=(), geolocation=(), microphone=(), payment=(), usb=()";
             headers.ContentSecurityPolicy =
                 "default-src 'none'; frame-ancestors 'none'; base-uri 'none'";
-            if (context.Request.Path.StartsWithSegments(
-                    "/api/public/invitations"))
+            if (context.Request.Path.StartsWithSegments("/api"))
             {
                 headers.CacheControl = "no-store, private";
                 headers.Pragma = "no-cache";
+                headers.Expires = "0";
+            }
+            if (IsTokenizedPublicPath(context.Request.Path))
+            {
                 headers["Referrer-Policy"] = "no-referrer";
                 headers["X-Robots-Tag"] = "noindex, nofollow, noarchive";
             }
@@ -27,4 +30,9 @@ public sealed class SecurityHeadersMiddleware(RequestDelegate next)
 
         await next(context);
     }
+
+    private static bool IsTokenizedPublicPath(PathString path) =>
+        path.StartsWithSegments("/api/public")
+        || path.StartsWithSegments("/api/guest")
+        || path.StartsWithSegments("/api/access-invitations");
 }

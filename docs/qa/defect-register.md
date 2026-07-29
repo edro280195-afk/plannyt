@@ -6,9 +6,9 @@ Actualizado: 2026-07-29
 
 | Severidad | Abiertos | Corregidos | Diferidos |
 |---|---:|---:|---:|
-| Crítica | 0 | 0 | 0 |
+| Crítica | 0 | 1 | 0 |
 | Alta | 0 | 2 | 0 |
-| Media | 1 | 6 | 1 |
+| Media | 1 | 7 | 1 |
 | Baja | 0 | 2 | 0 |
 
 ## QA-001 — El seed demo no inicia con la cuenta cliente preexistente
@@ -256,7 +256,7 @@ Actualizado: 2026-07-29
   autocaptura, Escape, nombres accesibles y restauración.
 - **Prueba de regresión:** Axe en acceso, dashboard, portal, propuesta pública y
   diálogo; doce ciclos de Tab dentro del diálogo, Escape y foco devuelto.
-- **Commit:** Pendiente.
+- **Commit:** `5715c71`.
 - **Estado:** Corregido.
 
 ## QA-012 — No existe aviso cuando una nueva versión PWA está lista
@@ -281,5 +281,54 @@ Actualizado: 2026-07-29
   continúa limitado a estáticos y no incorpora `/api`, PDFs ni datos privados.
 - **Prueba de regresión:** Unidad del evento `VERSION_READY`, render/acción del
   banner, build de producción y revisión de `ngsw.json`.
+- **Commit:** `5715c71`.
+- **Estado:** Corregido.
+
+## QA-013 — Respuestas privadas permiten caché HTTP implícita
+
+- **Severidad:** Media.
+- **Módulo:** API / seguridad / caché.
+- **Ruta:** Endpoints `/api`, en especial propuestas, firmas, invitaciones, RSVP
+  y accesos por token.
+- **Rol:** Autenticado o poseedor de enlace privado.
+- **Precondición:** Navegador o intermediario con caché HTTP habilitada.
+- **Pasos:** Consultar una respuesta privada y revisar sus encabezados.
+- **Resultado anterior:** Solo `/api/public/invitations` declaraba `no-store`;
+  otras respuestas dependían del comportamiento implícito del cliente.
+- **Resultado esperado:** Ninguna respuesta API queda reutilizable desde caché;
+  los endpoints con token tampoco envían referer ni se indexan.
+- **Evidencia:** Revisión de `SecurityHeadersMiddleware` y respuestas reales.
+- **Causa:** La excepción de seguridad se añadió para invitaciones, pero no se
+  generalizó al crecer propuestas, firmas, RSVP y portal.
+- **Solución aplicada:** Todo `/api` envía `Cache-Control: no-store, private`,
+  `Pragma: no-cache` y `Expires: 0`; `/api/public`, `/api/guest` y
+  `/api/access-invitations` agregan `no-referrer` y `X-Robots-Tag`.
+- **Prueba de regresión:** Cuatro casos nuevos en `HealthAndHeadersTests`,
+  incluyendo 401 y tres familias de enlace.
+- **Commit:** Pendiente.
+- **Estado:** Corregido.
+
+## QA-014 — ClientViewer y roles especializados reciben mutaciones ajenas
+
+- **Severidad:** Crítica.
+- **Módulo:** Backend / permisos / portal del cliente.
+- **Ruta:** Endpoints `/api/client-portal/events/:id/*`.
+- **Rol:** `ClientViewer`, `ClientPayer`, `ClientApprover` y demás roles cliente.
+- **Precondición:** Acceso activo a un evento.
+- **Pasos:** Invitar como `ClientViewer` y crear un grupo, corregir RSVP,
+  modificar invitación o reportar un pago.
+- **Resultado anterior:** Los siete roles resolvían el mismo set de 29 permisos;
+  el backend aceptaba mutaciones aunque la relación nominal fuera de consulta.
+- **Resultado esperado:** Mínimo privilegio por rol, con `Deny` y grants
+  explícitos todavía aplicables.
+- **Evidencia:** `RolePermissionCatalog.GetFor(EventAccessRole)` ignoraba el
+  parámetro; la matriz documentada seguía describiendo el portal de Sprint 0.
+- **Causa:** Al agregar módulos de Invitados, contratación y RSVP se amplió un
+  set común provisional sin dividirlo por rol.
+- **Solución aplicada:** 13 permisos compartidos de lectura y sets de acción
+  separados: Authority/Primary 29, Collaborator 27, GuestManager 25,
+  Payer/Approver 14 y Viewer 13.
+- **Prueba de regresión:** 14 casos unitarios sobre los siete roles y prueba
+  HTTP real donde `ClientViewer` conserva lectura pero recibe 403 al crear grupo.
 - **Commit:** Pendiente.
 - **Estado:** Corregido.

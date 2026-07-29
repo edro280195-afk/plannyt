@@ -327,10 +327,64 @@ public sealed class InvitationPortalFlowTests(ApiFactory factory)
         Assert.Equal(HttpStatusCode.Forbidden, publishResponse.StatusCode);
     }
 
+    [Fact]
+    public async Task ClientViewer_CanReadButCannotCreateInvitationGroups()
+    {
+        var planner = await TestSessionFactory.RegisterPlannerAsync(
+            factory,
+            "portal-viewer");
+        var eventId = await CreateEventAsync(planner);
+        var invitation = await CreateEventInvitationAsync(
+            planner,
+            eventId,
+            $"portal-viewer-{Guid.NewGuid():N}@example.invalid",
+            "ClientViewer");
+        using var acceptance = await factory.CreateClient().PostAsJsonAsync(
+            $"/api/access-invitations/{invitation.Token}/register-and-accept",
+            new
+            {
+                password = "Correct-Horse-Battery-Staple-123!",
+                firstName = "Cliente",
+                lastName = "Consulta",
+                preferredLanguage = "es",
+                timeZone = "America/Matamoros"
+            });
+        acceptance.EnsureSuccessStatusCode();
+        var auth = await acceptance.Content.ReadFromJsonAsync<JsonElement>();
+        var clientToken = auth.GetProperty("accessToken").GetString()
+            ?? throw new InvalidOperationException("No se recibió access token.");
+
+        using var workspaceRequest = TestSessionFactory.CreateAuthorizedRequest(
+            HttpMethod.Get,
+            $"/api/client-portal/events/{eventId}/guest-experience",
+            clientToken);
+        using var workspaceResponse =
+            await factory.CreateClient().SendAsync(workspaceRequest);
+        Assert.Equal(HttpStatusCode.OK, workspaceResponse.StatusCode);
+
+        using var groupRequest = TestSessionFactory.CreateAuthorizedRequest(
+            HttpMethod.Post,
+            $"/api/client-portal/events/{eventId}/guest-experience/groups",
+            clientToken,
+            JsonContent.Create(new
+            {
+                groupType = "Family",
+                displayName = "Intento no permitido",
+                allowedGuestCount = 2,
+                allowUnnamedCompanions = false,
+                maxUnnamedCompanions = 0
+            }));
+        using var groupResponse =
+            await factory.CreateClient().SendAsync(groupRequest);
+
+        Assert.Equal(HttpStatusCode.Forbidden, groupResponse.StatusCode);
+    }
+
     private async Task<InvitationLink> CreateEventInvitationAsync(
         TestSession planner,
         Guid eventId,
-        string targetEmail)
+        string targetEmail,
+        string intendedEventRole = "ClientPrimary")
     {
         using var request = TestSessionFactory.CreateAuthorizedRequest(
             HttpMethod.Post,
@@ -339,7 +393,7 @@ public sealed class InvitationPortalFlowTests(ApiFactory factory)
             JsonContent.Create(new
             {
                 targetEmail,
-                intendedEventRole = "ClientPrimary"
+                intendedEventRole
             }));
         using var response = await factory.CreateClient().SendAsync(request);
         response.EnsureSuccessStatusCode();

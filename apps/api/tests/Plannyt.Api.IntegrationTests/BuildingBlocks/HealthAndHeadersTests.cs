@@ -73,6 +73,40 @@ public sealed class HealthAndHeadersTests(ApiFactory factory)
     }
 
     [Fact]
+    public async Task ApiResponse_EvenWhenUnauthorized_DisablesHttpCaching()
+    {
+        using var response = await _client.GetAsync("/api/auth/me");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.True(response.Headers.CacheControl?.NoStore);
+        Assert.True(response.Headers.CacheControl?.Private);
+        Assert.Equal(
+            "no-cache",
+            Assert.Single(response.Headers.GetValues("Pragma")));
+        Assert.Equal(
+            "0",
+            Assert.Single(response.Content.Headers.GetValues("Expires")));
+    }
+
+    [Theory]
+    [InlineData("/api/public/proposals/invalid-token")]
+    [InlineData("/api/guest/rsvp/invalid-token/state")]
+    [InlineData("/api/access-invitations/invalid-token")]
+    public async Task TokenizedPublicResponse_DisablesReferrersAndIndexing(
+        string path)
+    {
+        using var response = await _client.GetAsync(path);
+
+        Assert.Equal(
+            "no-referrer",
+            Assert.Single(response.Headers.GetValues("Referrer-Policy")));
+        Assert.Equal(
+            "noindex, nofollow, noarchive",
+            Assert.Single(response.Headers.GetValues("X-Robots-Tag")));
+        Assert.True(response.Headers.CacheControl?.NoStore);
+    }
+
+    [Fact]
     public async Task OpenApiDocument_InDevelopment_ReturnsOperations()
     {
         using var response = await _client.GetAsync("/openapi/v1.json");
