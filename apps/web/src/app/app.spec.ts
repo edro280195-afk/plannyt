@@ -13,6 +13,7 @@ describe('App', () => {
 
   beforeEach(async () => {
     updateReady.set(false);
+    pwaUpdate.activating.set(false);
     pwaUpdate.activateUpdate.mockReset();
     await TestBed.configureTestingModule({
       imports: [App],
@@ -45,5 +46,19 @@ describe('App', () => {
     expect(banner?.textContent).toContain('nueva versión');
     button?.click();
     expect(pwaUpdate.activateUpdate).toHaveBeenCalledOnce();
+  });
+
+  it('disables the update action while activation is in progress', () => {
+    updateReady.set(true);
+    pwaUpdate.activating.set(true);
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    const button = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+      '.update-banner button',
+    );
+
+    expect(button?.disabled).toBe(true);
+    expect(button?.textContent).toContain('Actualizando');
+    pwaUpdate.activating.set(false);
   });
 });

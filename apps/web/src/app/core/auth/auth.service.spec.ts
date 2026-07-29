@@ -166,4 +166,26 @@ describe('AuthService', () => {
     expect(service.me()).toBeNull();
     expect(router.navigate).toHaveBeenCalledWith(['/auth/login']);
   });
+
+  it('keeps the session when another storage key changes', () => {
+    api.login.mockReturnValue(of(authResponse));
+    api.getMe.mockReturnValue(of(meResponse));
+    service
+      .login({
+        email: 'planner@plannyt.mx',
+        password: 'a-secure-password',
+        isPersistent: true,
+      })
+      .subscribe();
+
+    window.dispatchEvent(
+      new StorageEvent('storage', {
+        key: 'unrelated_preference',
+        newValue: 'changed',
+      }),
+    );
+
+    expect(service.isAuthenticated()).toBe(true);
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
 });

@@ -70,7 +70,9 @@ test('completa contratación, firmas, anticipo y confirmación del evento', asyn
   await expect(page.getByText('Listo para confirmar')).toBeVisible();
   page.once('dialog', (dialog) => dialog.accept());
   await page.getByRole('button', { name: 'Confirmar evento' }).click();
-  await expect(page.getByText('Evento confirmado')).toBeVisible();
+  await expect(
+    page.locator('.notice--success').getByText('Evento confirmado', { exact: true }),
+  ).toBeVisible();
   await expect(page.getByText('Confirmado', { exact: true })).toBeVisible();
 });
 

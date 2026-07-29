@@ -203,65 +203,68 @@ const clientDetail = {
 };
 
 export const test = base.extend<PlannytFixtures>({
-  api: async ({ page }, use) => {
-    let profile: ProfileKind = 'anonymous';
-    const requests: RecordedRequest[] = [];
-    const commercial: CommercialState = {
-      prospectCreated: false,
-      prospectConverted: false,
-      activityCreated: false,
-      serviceCreated: false,
-      packageCreated: false,
-      proposalCreated: false,
-      proposalStatus: 'Draft',
-      proposalVersion: 0,
-      contractCreated: false,
-      contractPublished: false,
-      clientSignerAdded: false,
-      clientSigned: false,
-      plannerSigned: false,
-      planStatus: 'None',
-      paymentStatus: 'None',
-      receiptUploaded: false,
-      paymentAllocated: false,
-      eventConfirmed: false,
-    };
-    const api: ApiMock = {
-      requests,
-      useProfile(value): void {
-        profile = value;
-      },
-      prepareContractingScenario(): void {
-        commercial.prospectCreated = true;
-        commercial.prospectConverted = true;
-        commercial.proposalCreated = true;
-        commercial.proposalStatus = 'Accepted';
-        commercial.proposalVersion = 1;
-      },
-      requestFor(method, path) {
-        return requests.find((request) => request.method === method && request.path === path);
-      },
-    };
+  api: [
+    async ({ page }, use) => {
+      let profile: ProfileKind = 'anonymous';
+      const requests: RecordedRequest[] = [];
+      const commercial: CommercialState = {
+        prospectCreated: false,
+        prospectConverted: false,
+        activityCreated: false,
+        serviceCreated: false,
+        packageCreated: false,
+        proposalCreated: false,
+        proposalStatus: 'Draft',
+        proposalVersion: 0,
+        contractCreated: false,
+        contractPublished: false,
+        clientSignerAdded: false,
+        clientSigned: false,
+        plannerSigned: false,
+        planStatus: 'None',
+        paymentStatus: 'None',
+        receiptUploaded: false,
+        paymentAllocated: false,
+        eventConfirmed: false,
+      };
+      const api: ApiMock = {
+        requests,
+        useProfile(value): void {
+          profile = value;
+        },
+        prepareContractingScenario(): void {
+          commercial.prospectCreated = true;
+          commercial.prospectConverted = true;
+          commercial.proposalCreated = true;
+          commercial.proposalStatus = 'Accepted';
+          commercial.proposalVersion = 1;
+        },
+        requestFor(method, path) {
+          return requests.find((request) => request.method === method && request.path === path);
+        },
+      };
 
-    await page.route('**/api/**', async (route) => {
-      const request = route.request();
-      const url = new URL(request.url());
-      if (url.pathname === '/api/auth/login' || url.pathname === '/api/auth/register-planner') {
-        profile = 'owner';
-      } else if (url.pathname === '/api/access-invitations/client-token/register-and-accept') {
-        profile = 'portal';
-      }
-      const bodyText = request.postData();
-      requests.push({
-        method: request.method(),
-        path: url.pathname,
-        body: parseRecordedBody(bodyText),
+      await page.route('**/api/**', async (route) => {
+        const request = route.request();
+        const url = new URL(request.url());
+        if (url.pathname === '/api/auth/login' || url.pathname === '/api/auth/register-planner') {
+          profile = 'owner';
+        } else if (url.pathname === '/api/access-invitations/client-token/register-and-accept') {
+          profile = 'portal';
+        }
+        const bodyText = request.postData();
+        requests.push({
+          method: request.method(),
+          path: url.pathname,
+          body: parseRecordedBody(bodyText),
+        });
+        await fulfillApi(route, profile, commercial);
       });
-      await fulfillApi(route, profile, commercial);
-    });
 
-    await use(api);
-  },
+      await use(api);
+    },
+    { auto: true },
+  ],
 });
 
 export { expect };
@@ -801,11 +804,7 @@ function meResponse(profile: Exclude<ProfileKind, 'anonymous'>): object {
         role: profile === 'limited' ? 'Assistant' : 'Owner',
         permissions:
           profile === 'limited'
-            ? [
-                'events.view',
-                'rsvp-settings.view',
-                'rsvp-responses.view',
-              ]
+            ? ['events.view', 'rsvp-settings.view', 'rsvp-responses.view']
             : ownerPermissions,
       },
     ],

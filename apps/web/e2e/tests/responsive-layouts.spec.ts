@@ -9,10 +9,11 @@ const viewports = [
   { width: 1920, height: 1080 },
 ];
 
-test('dashboard y portal evitan scroll horizontal global en viewports objetivo', async (
-  { page, api },
-  testInfo,
-) => {
+test('dashboard y portal evitan scroll horizontal global en viewports objetivo', async ({
+  page,
+  api,
+}, testInfo) => {
+  test.slow();
   test.skip(
     testInfo.project.name !== 'chromium',
     'La matriz se ejecuta una sola vez porque establece cada viewport de forma explícita.',
