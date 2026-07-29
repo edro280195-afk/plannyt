@@ -252,8 +252,10 @@ recordatorios, con formulario versionado y entregas inmutables.
 ```mermaid
 flowchart LR
     Settings["EventRsvpSettings + reglas"] --> Form["RsvpForm + RsvpFormVersion"]
-    Form --> Public["Captura pública por token"]
-    Form --> Manual["Captura manual administrativa"]
+    Form --> Definition["Parser de catálogo y snapshot"]
+    Definition --> Engine["Motor de alcance, visibilidad y tipos"]
+    Engine --> Public["Captura pública por token"]
+    Engine --> Manual["Captura manual administrativa"]
     Public --> Submission["RsvpSubmission inmutable"]
     Manual --> Submission
     Submission --> Current["CurrentGuestRsvp vigente"]
@@ -271,6 +273,17 @@ flowchart LR
 - El formulario versionado sigue el mismo patrón que propuestas y diseños de
   invitación: borrador mutable, revisión, aprobación y versión publicada
   inmutable.
+- `RsvpQuestionDefinitionParser` controla el contrato de los ocho tipos y
+  valida por completo cada snapshot al crearlo y nuevamente al publicarlo.
+  Angular obtiene el catálogo de la API; su validación es una ayuda de UX, no
+  una frontera de confianza.
+- `RsvpQuestionEngine` no ejecuta expresiones. Recorre un árbol cerrado y
+  limitado, calcula destinatarios por alcance, evalúa visibilidad con el
+  contexto del grupo y normaliza las respuestas antes del fingerprint.
+- El coordinador selecciona la versión publicada exacta presentada. Una
+  revisión iniciada queda ligada a esa versión aunque después se publique
+  otra; los snapshots de pregunta y opción conservan la interpretación
+  histórica.
 - Las entregas son append-only con llave de cliente, `RequestFingerprint`,
   `RevisionNumber` y `PreviousSubmissionId`; `SaveChanges` rechaza cualquier
   modificación o eliminación.
@@ -284,5 +297,7 @@ flowchart LR
   existentes.
 - La captura pública usa un DTO propio que omite datos sensibles. La lectura
   profesional sensible está separada y exige permiso explícito.
+- Las preguntas sensibles siguen esa misma separación; sus respuestas no
+  aparecen en el DTO general ni en exportaciones comunes.
 - Los recordatorios no integran un servicio externo de envío; el módulo solo
   gestiona plantillas y registros de marca manual.

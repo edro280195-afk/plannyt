@@ -10,13 +10,23 @@ public sealed class RsvpSubmissionAnswer
     public Guid? GuestId { get; private set; }
     public string AnswerValue { get; private set; } = string.Empty;
     public string? DisplayValueSnapshot { get; private set; }
+    public string QuestionLabelSnapshot { get; private set; } = string.Empty;
+    public RsvpQuestionType QuestionTypeSnapshot { get; private set; }
+    public string OptionLabelsSnapshot { get; private set; } = "[]";
+    public string? GuestDisplayNameSnapshot { get; private set; }
+    public bool IsSensitive { get; private set; }
 
     public static RsvpSubmissionAnswer Create(
         Guid rsvpSubmissionId,
         string questionId,
         Guid? guestId,
         string answerValue,
-        string? displayValueSnapshot)
+        string? displayValueSnapshot,
+        string questionLabelSnapshot,
+        RsvpQuestionType questionTypeSnapshot,
+        string optionLabelsSnapshot,
+        string? guestDisplayNameSnapshot,
+        bool isSensitive)
     {
         return new RsvpSubmissionAnswer
         {
@@ -25,7 +35,12 @@ public sealed class RsvpSubmissionAnswer
             QuestionId = questionId,
             GuestId = guestId,
             AnswerValue = answerValue,
-            DisplayValueSnapshot = displayValueSnapshot
+            DisplayValueSnapshot = displayValueSnapshot,
+            QuestionLabelSnapshot = questionLabelSnapshot,
+            QuestionTypeSnapshot = questionTypeSnapshot,
+            OptionLabelsSnapshot = optionLabelsSnapshot,
+            GuestDisplayNameSnapshot = guestDisplayNameSnapshot,
+            IsSensitive = isSensitive
         };
     }
 }

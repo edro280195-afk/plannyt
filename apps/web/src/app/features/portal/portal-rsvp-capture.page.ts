@@ -105,10 +105,24 @@ export class PortalRsvpCapturePage {
 
   protected readonly result = signal<RsvpSubmissionResponse | null>(null);
   protected readonly submitting = signal(false);
+  private readonly formVersionId = signal<string | null>(null);
   private readonly idempotencyAttempt = new IdempotencyAttempt();
 
+  constructor() {
+    this.api.getPortalRsvpForm(this.eventId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (form) => this.formVersionId.set(form.id),
+        error: (error) =>
+          this.toast.error(getApiErrorMessage(error)),
+      });
+  }
+
   protected submit(): void {
-    if (this.form.invalid || this.submitting()) return;
+    const formVersionId = this.formVersionId();
+    if (this.form.invalid || this.submitting() || !formVersionId) {
+      return;
+    }
     this.submitting.set(true);
     const eventId = this.route.snapshot.params['id'] as string;
     const f = this.form.getRawValue();
@@ -116,6 +130,7 @@ export class PortalRsvpCapturePage {
       source: f.source,
       reason: f.reason,
       submission: {
+        rsvpFormVersionId: formVersionId,
         expectedRevision: f.expectedRevision,
         overallStatus: f.overallStatus,
         contactName: f.contactName || null,

@@ -3,8 +3,15 @@ import { HttpErrorResponse } from '@angular/common/http';
 interface ProblemDetails {
   title?: string;
   detail?: string;
-  errors?: Record<string, string[]>;
+  errors?: Record<string, string[]> | RsvpValidationError[];
   reloadRequired?: boolean;
+}
+
+export interface RsvpValidationError {
+  questionId: string | null;
+  guestId: string | null;
+  code: string;
+  message: string;
 }
 
 export function getApiErrorMessage(error: unknown): string {
@@ -13,7 +20,7 @@ export function getApiErrorMessage(error: unknown): string {
   }
 
   const problem = isProblemDetails(error.error) ? error.error : null;
-  if (problem?.errors) {
+  if (problem?.errors && !Array.isArray(problem.errors)) {
     const firstError = Object.values(problem.errors).flat()[0];
     if (firstError) {
       return firstError;
@@ -29,6 +36,17 @@ export function getApiErrorMessage(error: unknown): string {
   );
 }
 
+export function getRsvpValidationErrors(
+  error: unknown,
+): RsvpValidationError[] {
+  if (!(error instanceof HttpErrorResponse)
+      || !isProblemDetails(error.error)
+      || !Array.isArray(error.error.errors)) {
+    return [];
+  }
+  return error.error.errors.filter(isRsvpValidationError);
+}
+
 export function requiresReload(error: unknown): boolean {
   return (
     error instanceof HttpErrorResponse &&
@@ -40,4 +58,19 @@ export function requiresReload(error: unknown): boolean {
 
 function isProblemDetails(value: unknown): value is ProblemDetails {
   return typeof value === 'object' && value !== null;
+}
+
+function isRsvpValidationError(
+  value: unknown,
+): value is RsvpValidationError {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Partial<RsvpValidationError>;
+  return (
+    (typeof candidate.questionId === 'string'
+      || candidate.questionId === null)
+    && (typeof candidate.guestId === 'string'
+      || candidate.guestId === null)
+    && typeof candidate.code === 'string'
+    && typeof candidate.message === 'string'
+  );
 }

@@ -5,7 +5,11 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { ActivatedRoute } from '@angular/router';
 import { ApiService } from '../../core/api/api.service';
 import { IdempotencyAttempt } from '../../core/api/idempotency-attempt';
-import { getApiErrorMessage, requiresReload } from '../../core/errors/api-error';
+import {
+  getApiErrorMessage,
+  getRsvpValidationErrors,
+  requiresReload,
+} from '../../core/errors/api-error';
 import type {
   EventAccommodationOptionResponse,
   EventMenuResponse,
@@ -21,12 +25,30 @@ import type {
   AccommodationSelectionStatus,
 } from '../../core/models/api.models';
 import { ToastService } from '../../core/ui/toast.service';
+import {
+  type RsvpDraftAnswer,
+  type RsvpQuestionInstance,
+  clearHiddenAnswers,
+  hasDraftAnswer,
+  rsvpAnswerKey,
+  serializeDraftAnswer,
+  visibleQuestionInstances,
+} from './rsvp-question-engine';
 
 interface WizardGuest {
+  responseGuestId: string;
   eventGuestId: string | null;
   displayName: string;
   ageCategory: string;
+  guestType: string;
+  isPrimaryContact: boolean;
+  isUnnamedCompanion: boolean;
   isNamed: boolean;
+}
+
+interface WizardCompanion {
+  responseGuestId: string;
+  displayName: string;
 }
 
 function safeJsonParse<T>(json: string | null | undefined, fallback: T): T {
@@ -36,6 +58,34 @@ function safeJsonParse<T>(json: string | null | undefined, fallback: T): T {
   } catch {
     return fallback;
   }
+}
+
+function normalizeQuestionSnapshot(
+  questions: RsvpQuestion[],
+): RsvpQuestion[] {
+  return questions.map((question) => {
+    const rawOptions = (question.options ?? []) as unknown[];
+    return {
+      ...question,
+      isSensitive: question.isSensitive ?? false,
+      options: rawOptions.map((option, index) =>
+        typeof option === 'string'
+          ? {
+              key: option,
+              label: option,
+              isActive: true,
+              sortOrder: index,
+            }
+          : option as RsvpQuestion['options'][number]),
+      visibilityRule: question.visibilityRule ?? {
+        conditionType: 'Always',
+        referenceQuestionId: null,
+        expectedValue: null,
+        conditions: [],
+      },
+      validationRules: question.validationRules ?? {},
+    };
+  });
 }
 
 @Component({
@@ -162,13 +212,17 @@ function safeJsonParse<T>(json: string | null | undefined, fallback: T): T {
               <section class="wizard-step">
                 <h2>Acompañantes</h2>
                 <p>Puedes agregar hasta <strong>{{ availableCompanionSlots() }}</strong> acompañante(s).</p>
-                @for (name of companions(); track name; let i = $index) {
+                @for (
+                  companion of companions();
+                  track companion.responseGuestId;
+                  let i = $index
+                ) {
                   <div class="form-group companion-row">
                     <label>Acompañante {{ i + 1 }}</label>
                     <div class="companion-row__inputs">
                       <input
                         type="text"
-                        [value]="name"
+                        [value]="companion.displayName"
                         (input)="updateCompanionName(i, eventValue($event))"
                         placeholder="Nombre del acompañante"
                       />
@@ -362,35 +416,79 @@ function safeJsonParse<T>(json: string | null | undefined, fallback: T): T {
             @case (7) {
               <section class="wizard-step">
                 <h2>Preguntas adicionales</h2>
-                @for (question of parsedQuestions(); track question.id) {
-                  <div class="form-group">
+                @for (
+                  instance of visibleQuestions();
+                  track instance.answerKey
+                ) {
+                  <div
+                    class="form-group question-instance"
+                    [class.question-instance--sensitive]="
+                      instance.question.isSensitive
+                    "
+                  >
                     <label>
-                      {{ question.label }}
-                      @if (question.isRequired) { <small class="required-mark">*</small> }
+                      {{ instance.question.label }}
+                      @if (instance.guest) {
+                        <small>· {{ instance.guest.displayName }}</small>
+                      }
+                      @if (instance.question.isRequired) {
+                        <small class="required-mark">*</small>
+                      }
                     </label>
-                    @if (question.helpText) {
-                      <small class="help-text">{{ question.helpText }}</small>
+                    @if (instance.question.helpText) {
+                      <small class="help-text">
+                        {{ instance.question.helpText }}
+                      </small>
                     }
-                    @switch (question.questionType) {
+                    @if (instance.question.isSensitive) {
+                      <small class="sensitive-hint">
+                        🔒 Esta respuesta recibe tratamiento restringido y
+                        no se guarda en el navegador.
+                      </small>
+                    }
+                    @switch (instance.question.questionType) {
                       @case ('ShortText') {
                         <input
                           type="text"
-                          [value]="questionAnswers()[question.id] ?? ''"
-                          (input)="setAnswer(question.id, eventValue($event))"
-                          [placeholder]="'Tu respuesta'"
+                          [value]="answerText(instance)"
+                          [minLength]="
+                            instance.question.validationRules.minLength ?? null
+                          "
+                          [maxLength]="
+                            instance.question.validationRules.maxLength
+                              ?? 500
+                          "
+                          (input)="setQuestionInput(
+                            instance,
+                            eventValue($event)
+                          )"
+                          placeholder="Tu respuesta"
                         />
                       }
                       @case ('LongText') {
                         <textarea
-                          [value]="questionAnswers()[question.id] ?? ''"
-                          (input)="setAnswer(question.id, eventValue($event))"
-                          [placeholder]="'Tu respuesta'"
+                          [value]="answerText(instance)"
+                          [minLength]="
+                            instance.question.validationRules.minLength ?? null
+                          "
+                          [maxLength]="
+                            instance.question.validationRules.maxLength
+                              ?? 5000
+                          "
+                          (input)="setQuestionInput(
+                            instance,
+                            eventValue($event)
+                          )"
+                          placeholder="Tu respuesta"
                         ></textarea>
                       }
                       @case ('YesNo') {
                         <select
-                          [value]="questionAnswers()[question.id] ?? ''"
-                          (change)="setAnswer(question.id, eventValue($event))"
+                          [value]="answerText(instance)"
+                          (change)="setQuestionBoolean(
+                            instance,
+                            eventValue($event)
+                          )"
                         >
                           <option value="">Selecciona…</option>
                           <option value="true">Sí</option>
@@ -399,26 +497,43 @@ function safeJsonParse<T>(json: string | null | undefined, fallback: T): T {
                       }
                       @case ('SingleChoice') {
                         <select
-                          [value]="questionAnswers()[question.id] ?? ''"
-                          (change)="setAnswer(question.id, eventValue($event))"
+                          [value]="answerText(instance)"
+                          (change)="setQuestionInput(
+                            instance,
+                            eventValue($event)
+                          )"
                         >
                           <option value="">Selecciona…</option>
-                          @for (opt of question.options; track opt) {
-                            <option [value]="opt">{{ opt }}</option>
+                          @for (
+                            option of activeOptions(instance.question);
+                            track option.key
+                          ) {
+                            <option [value]="option.key">
+                              {{ option.label }}
+                            </option>
                           }
                         </select>
                       }
                       @case ('MultipleChoice') {
                         <div class="checkbox-group">
-                          @for (opt of question.options; track opt) {
+                          @for (
+                            option of activeOptions(instance.question);
+                            track option.key
+                          ) {
                             <label>
                               <input
                                 type="checkbox"
-                                [value]="opt"
-                                [checked]="isAnswerOptionSelected(question.id, opt)"
-                                (change)="toggleAnswerOption(question.id, opt)"
+                                [value]="option.key"
+                                [checked]="isAnswerOptionSelected(
+                                  instance,
+                                  option.key
+                                )"
+                                (change)="toggleAnswerOption(
+                                  instance,
+                                  option.key
+                                )"
                               />
-                              {{ opt }}
+                              {{ option.label }}
                             </label>
                           }
                         </div>
@@ -426,33 +541,64 @@ function safeJsonParse<T>(json: string | null | undefined, fallback: T): T {
                       @case ('Number') {
                         <input
                           type="number"
-                          [value]="questionAnswers()[question.id] ?? ''"
-                          (input)="setAnswer(question.id, eventValue($event))"
-                          [min]="question.validationRules?.minimum"
-                          [max]="question.validationRules?.maximum"
+                          [value]="answerText(instance)"
+                          (input)="setQuestionNumber(
+                            instance,
+                            eventValue($event)
+                          )"
+                          [min]="
+                            instance.question.validationRules.minimum ?? null
+                          "
+                          [max]="
+                            instance.question.validationRules.maximum ?? null
+                          "
+                          [step]="
+                            instance.question.validationRules.integerOnly
+                              ? 1
+                              : 'any'
+                          "
                         />
                       }
                       @case ('Date') {
                         <input
                           type="date"
-                          [value]="questionAnswers()[question.id] ?? ''"
-                          (input)="setAnswer(question.id, eventValue($event))"
+                          [value]="answerText(instance)"
+                          [min]="
+                            instance.question.validationRules.minimumDate
+                              ?? null
+                          "
+                          [max]="
+                            instance.question.validationRules.maximumDate
+                              ?? null
+                          "
+                          (input)="setQuestionInput(
+                            instance,
+                            eventValue($event)
+                          )"
                         />
                       }
                       @case ('InformationalConsent') {
                         <label class="consent-check">
                           <input
                             type="checkbox"
-                            [checked]="questionAnswers()[question.id] === 'true'"
-                            (change)="setAnswer(question.id, eventChecked($event) ? 'true' : 'false')"
+                            [checked]="answerBoolean(instance)"
+                            (change)="setQuestionConsent(
+                              instance,
+                              eventChecked($event)
+                            )"
                           />
-                          <span>{{ question.label }}</span>
+                          <span>Confirmo explícitamente</span>
                         </label>
                       }
                     }
+                    @if (questionError(instance); as backendError) {
+                      <p class="error" role="alert">{{ backendError }}</p>
+                    }
                   </div>
                 } @empty {
-                  <p>No hay preguntas adicionales configuradas.</p>
+                  <p>
+                    No hay preguntas visibles para las respuestas actuales.
+                  </p>
                 }
               </section>
             }
@@ -472,8 +618,14 @@ function safeJsonParse<T>(json: string | null | undefined, fallback: T): T {
                   } @empty {
                     <p>Sin invitados nombrados.</p>
                   }
-                  @for (name of companions(); track name) {
-                    <p>{{ name || '(sin nombre)' }}: <strong>Acompañante</strong></p>
+                  @for (
+                    companion of companions();
+                    track companion.responseGuestId
+                  ) {
+                    <p>
+                      {{ companion.displayName || '(sin nombre)' }}:
+                      <strong>Acompañante</strong>
+                    </p>
                   }
                 </div>
                 @if (parsedMenus().length > 0) {
@@ -513,11 +665,23 @@ function safeJsonParse<T>(json: string | null | undefined, fallback: T): T {
                     @if (accommodationForm.value.confirmationReference) { <p>Referencia: {{ accommodationForm.value.confirmationReference }}</p> }
                   </div>
                 }
-                @if (parsedQuestions().length > 0) {
+                @if (visibleQuestions().length > 0) {
                   <div class="summary-section">
                     <h3>Preguntas</h3>
-                    @for (question of parsedQuestions(); track question.id) {
-                      <p>{{ question.label }}: <strong>{{ answerDisplayValue(question) }}</strong></p>
+                    @for (
+                      instance of visibleQuestions();
+                      track instance.answerKey
+                    ) {
+                      <p>
+                        {{ instance.question.label }}
+                        @if (instance.guest) {
+                          <small>· {{ instance.guest.displayName }}</small>
+                        }
+                        :
+                        <strong>
+                          {{ answerDisplayValue(instance) }}
+                        </strong>
+                      </p>
                     }
                   </div>
                 }
@@ -1015,7 +1179,7 @@ export class PublicRsvpPage {
   protected readonly stepLabels = signal<string[]>([]);
 
   protected readonly attendanceStatus = signal<Record<string, GuestAttendanceStatus>>({});
-  protected readonly companions = signal<string[]>([]);
+  protected readonly companions = signal<WizardCompanion[]>([]);
   protected readonly guestMenuSelections = signal<Record<string, Record<string, string[]>>>({});
 
   protected readonly transportSelection = signal<string | null>(null);
@@ -1038,7 +1202,9 @@ export class PublicRsvpPage {
   protected readonly contactEmail = new FormControl('');
   protected readonly contactPhone = new FormControl('');
 
-  protected readonly questionAnswers = signal<Record<string, string>>({});
+  protected readonly questionAnswers =
+    signal<Record<string, RsvpDraftAnswer>>({});
+  protected readonly questionErrors = signal<Record<string, string>>({});
 
   protected readonly parsedMenus = signal<EventMenuResponse[]>([]);
   protected readonly parsedTransportOptions = signal<EventTransportOptionResponse[]>([]);
@@ -1049,26 +1215,72 @@ export class PublicRsvpPage {
     const s = this.state();
     if (!s) return [];
     if (s.currentResponse) {
+      const metadata = new Map(
+        s.guests.map((guest) => [guest.eventGuestId, guest]),
+      );
       return s.currentResponse.guests
         .filter((g) => !g.isUnnamedCompanion && g.eventGuestId)
-        .map((g) => ({
-          eventGuestId: g.eventGuestId!,
-          displayName: g.displayName,
-          ageCategory: g.ageCategory,
-          isNamed: true,
-        }));
+        .map((g) => {
+          const guestMetadata = metadata.get(g.eventGuestId!);
+          return {
+            responseGuestId: g.responseGuestId,
+            eventGuestId: g.eventGuestId!,
+            displayName: g.displayName,
+            ageCategory: g.ageCategory,
+            guestType: guestMetadata?.guestType ?? 'Other',
+            isPrimaryContact:
+              guestMetadata?.isPrimaryContact ?? false,
+            isUnnamedCompanion: false,
+            isNamed: true,
+          };
+        });
     }
     return s.guests.map((guest) => ({
+      responseGuestId: guest.eventGuestId,
       eventGuestId: guest.eventGuestId,
       displayName: guest.displayName,
       ageCategory: guest.ageCategory,
+      guestType: guest.guestType,
+      isPrimaryContact: guest.isPrimaryContact,
+      isUnnamedCompanion: false,
       isNamed: true,
     }));
   });
 
+  protected readonly questionVisibilityGuests = computed(() => [
+    ...this.wizardGuests().map((guest) => ({
+      ...guest,
+      attendanceStatus:
+        this.attendanceStatus()[guest.responseGuestId] ?? 'Pending',
+    })),
+    ...this.companions().map((companion) => ({
+      responseGuestId: companion.responseGuestId,
+      eventGuestId: null,
+      displayName: companion.displayName.trim() || 'Acompañante',
+      ageCategory: 'Adult',
+      guestType: 'Other',
+      attendanceStatus: 'Attending' as const,
+      isUnnamedCompanion: true,
+      isPrimaryContact: false,
+    })),
+  ]);
+
+  protected readonly visibleQuestions = computed<RsvpQuestionInstance[]>(
+    () => visibleQuestionInstances(
+      this.parsedQuestions(),
+      {
+        guests: this.questionVisibilityGuests(),
+        groupTags: this.state()?.groupTags ?? [],
+      },
+      this.questionAnswers(),
+    ),
+  );
+
   protected readonly attendingWizardGuests = computed<WizardGuest[]>(() => {
     return this.wizardGuests().filter(
-      (g) => (this.attendanceStatus()[g.eventGuestId ?? g.displayName] ?? 'Pending') === 'Attending',
+      (g) =>
+        (this.attendanceStatus()[g.responseGuestId] ?? 'Pending')
+        === 'Attending',
     );
   });
 
@@ -1132,7 +1344,12 @@ export class PublicRsvpPage {
         ),
       );
       this.parsedQuestions.set(
-        safeJsonParse<RsvpQuestion[]>(s.activeForm.questionsSnapshot, []),
+        normalizeQuestionSnapshot(
+          safeJsonParse<RsvpQuestion[]>(
+            s.activeForm.questionsSnapshot,
+            [],
+          ),
+        ),
       );
     }
   }
@@ -1163,7 +1380,10 @@ export class PublicRsvpPage {
 
     const unnamed = r.guests.filter((g) => g.isUnnamedCompanion);
     if (unnamed.length > 0) {
-      this.companions.set(unnamed.map((g) => g.displayName));
+      this.companions.set(unnamed.map((g) => ({
+        responseGuestId: g.responseGuestId,
+        displayName: g.displayName,
+      })));
     }
 
     const menuMap: Record<string, Record<string, string[]>> = {};
@@ -1228,8 +1448,19 @@ export class PublicRsvpPage {
     this.contactPhone.setValue(r.contactPhoneSnapshot ?? '');
 
     for (const a of r.answers) {
-      this.questionAnswers.update((map) => ({ ...map, [a.questionId]: a.answerValue }));
+      const question = this.parsedQuestions().find((item) =>
+        item.id === a.questionId);
+      if (!question) continue;
+      const key = rsvpAnswerKey(a.questionId, a.guestId);
+      this.questionAnswers.update((map) => ({
+        ...map,
+        [key]: this.parseStoredAnswer(
+          question,
+          a.answerValue,
+        ),
+      }));
     }
+    this.pruneHiddenAnswers();
   }
 
   protected isLastStep(): boolean {
@@ -1253,6 +1484,7 @@ export class PublicRsvpPage {
       ...map,
       [guestKey]: status as GuestAttendanceStatus,
     }));
+    this.pruneHiddenAnswers();
   }
 
   protected eventValue(event: Event): string {
@@ -1273,22 +1505,35 @@ export class PublicRsvpPage {
   protected declineAll(): void {
     const map: Record<string, GuestAttendanceStatus> = {};
     for (const g of this.wizardGuests()) {
-      map[g.eventGuestId ?? g.displayName] = 'NotAttending';
+      map[g.responseGuestId] = 'NotAttending';
     }
     this.attendanceStatus.set(map);
+    this.pruneHiddenAnswers();
   }
 
   protected addCompanion(): void {
     if (this.availableCompanionSlots() <= 0) return;
-    this.companions.update((list) => [...list, '']);
+    this.companions.update((list) => [
+      ...list,
+      {
+        responseGuestId: crypto.randomUUID(),
+        displayName: '',
+      },
+    ]);
+    this.pruneHiddenAnswers();
   }
 
   protected removeCompanion(index: number): void {
     this.companions.update((list) => list.filter((_, i) => i !== index));
+    this.pruneHiddenAnswers();
   }
 
   protected updateCompanionName(index: number, name: string): void {
-    this.companions.update((list) => list.map((n, i) => (i === index ? name : n)));
+    this.companions.update((list) =>
+      list.map((companion, currentIndex) =>
+        currentIndex === index
+          ? { ...companion, displayName: name }
+          : companion));
   }
 
   protected isMenuOptionSelected(guestKey: string, menuId: string, optionId: string): boolean {
@@ -1310,25 +1555,84 @@ export class PublicRsvpPage {
     });
   }
 
-  protected setAnswer(questionId: string, value: string): void {
-    this.questionAnswers.update((map) => ({ ...map, [questionId]: value }));
+  protected answerText(instance: RsvpQuestionInstance): string {
+    const answer = this.questionAnswers()[instance.answerKey];
+    if (answer === null || answer === undefined) return '';
+    return Array.isArray(answer) ? answer.join(',') : String(answer);
   }
 
-  protected isAnswerOptionSelected(questionId: string, option: string): boolean {
-    const raw = this.questionAnswers()[questionId] ?? '';
-    return raw.split(',').includes(option);
+  protected answerBoolean(instance: RsvpQuestionInstance): boolean {
+    return this.questionAnswers()[instance.answerKey] === true;
   }
 
-  protected toggleAnswerOption(questionId: string, option: string): void {
-    const raw = this.questionAnswers()[questionId] ?? '';
-    const selected = raw ? raw.split(',') : [];
+  protected setQuestionInput(
+    instance: RsvpQuestionInstance,
+    value: string,
+  ): void {
+    this.setQuestionAnswer(instance, value);
+  }
+
+  protected setQuestionBoolean(
+    instance: RsvpQuestionInstance,
+    value: string,
+  ): void {
+    this.setQuestionAnswer(
+      instance,
+      value === '' ? null : value === 'true',
+    );
+  }
+
+  protected setQuestionNumber(
+    instance: RsvpQuestionInstance,
+    value: string,
+  ): void {
+    const parsed = value.trim() === '' ? null : Number(value);
+    this.setQuestionAnswer(
+      instance,
+      parsed !== null && Number.isFinite(parsed) ? parsed : null,
+    );
+  }
+
+  protected setQuestionConsent(
+    instance: RsvpQuestionInstance,
+    value: boolean,
+  ): void {
+    this.setQuestionAnswer(instance, value);
+  }
+
+  protected isAnswerOptionSelected(
+    instance: RsvpQuestionInstance,
+    option: string,
+  ): boolean {
+    const answer = this.questionAnswers()[instance.answerKey];
+    return Array.isArray(answer) && answer.includes(option);
+  }
+
+  protected toggleAnswerOption(
+    instance: RsvpQuestionInstance,
+    option: string,
+  ): void {
+    const current = this.questionAnswers()[instance.answerKey];
+    const selected = Array.isArray(current) ? [...current] : [];
     const idx = selected.indexOf(option);
     if (idx >= 0) {
       selected.splice(idx, 1);
     } else {
       selected.push(option);
     }
-    this.questionAnswers.update((map) => ({ ...map, [questionId]: selected.join(',') }));
+    this.setQuestionAnswer(instance, selected);
+  }
+
+  protected activeOptions(question: RsvpQuestion) {
+    return [...question.options]
+      .filter((option) => option.isActive)
+      .sort((left, right) => left.sortOrder - right.sortOrder);
+  }
+
+  protected questionError(
+    instance: RsvpQuestionInstance,
+  ): string | null {
+    return this.questionErrors()[instance.answerKey] ?? null;
   }
 
   protected canProceed(): boolean {
@@ -1343,11 +1647,11 @@ export class PublicRsvpPage {
       const requireAll = s?.settings?.requireResponseForEveryNamedGuest ?? false;
       if (requireAll) {
         return guests.every(
-          (g) => !!this.attendanceStatus()[g.eventGuestId ?? g.displayName],
+          (g) => !!this.attendanceStatus()[g.responseGuestId],
         );
       }
       return guests.some((g) => {
-        const status = this.attendanceStatus()[g.eventGuestId ?? g.displayName];
+        const status = this.attendanceStatus()[g.responseGuestId];
         return status === 'Attending' || status === 'NotAttending' || status === 'Tentative';
       });
     }
@@ -1355,7 +1659,8 @@ export class PublicRsvpPage {
     if (step === 2) {
       if (!s?.allowUnnamedCompanions) return true;
       if (s.settings?.requireCompanionNames) {
-        return this.companions().every((name) => name.trim().length > 0);
+        return this.companions().every((companion) =>
+          companion.displayName.trim().length > 0);
       }
       return true;
     }
@@ -1384,10 +1689,15 @@ export class PublicRsvpPage {
     if (step === 5 || step === 6) return true;
 
     if (step === 7) {
-      for (const q of this.parsedQuestions()) {
-        if (q.isRequired) {
-          const answer = this.questionAnswers()[q.id];
-          if (!answer || answer.trim() === '') return false;
+      for (const instance of this.visibleQuestions()) {
+        if (instance.question.isRequired) {
+          const answer = this.questionAnswers()[instance.answerKey];
+          if (!hasDraftAnswer(answer)) return false;
+          if (instance.question.questionType
+              === 'InformationalConsent'
+              && answer !== true) {
+            return false;
+          }
         }
       }
       return true;
@@ -1453,32 +1763,47 @@ export class PublicRsvpPage {
     return opt ? `${menu.name}: ${opt.name}` : `${menu.name}: ${optionId}`;
   }
 
-  protected answerDisplayValue(question: RsvpQuestion): string {
-    const answer = this.questionAnswers()[question.id] ?? '';
-    if (!answer) return '—';
-    if (question.questionType === 'YesNo') {
-      return answer === 'true' ? 'Sí' : 'No';
+  protected answerDisplayValue(
+    instance: RsvpQuestionInstance,
+  ): string {
+    const answer = this.questionAnswers()[instance.answerKey];
+    if (!hasDraftAnswer(answer)) return '—';
+    if (instance.question.questionType === 'YesNo') {
+      return answer === true ? 'Sí' : 'No';
     }
-    if (question.questionType === 'InformationalConsent') {
-      return answer === 'true' ? 'Aceptado' : 'No aceptado';
+    if (instance.question.questionType === 'InformationalConsent') {
+      return answer === true ? 'Aceptado' : 'No aceptado';
     }
-    return answer;
+    if (Array.isArray(answer)) {
+      return answer
+        .map((key) =>
+          instance.question.options.find((option) =>
+            option.key === key)?.label ?? key)
+        .join(', ');
+    }
+    if (instance.question.questionType === 'SingleChoice') {
+      return instance.question.options.find((option) =>
+        option.key === String(answer))?.label ?? String(answer);
+    }
+    return String(answer);
   }
 
   protected submit(): void {
     const s = this.state();
-    if (!s || this.submitting()) return;
+    if (!s || !s.activeForm || this.submitting()) return;
     const token = this.route.snapshot.paramMap.get('token') ?? '';
     this.submitting.set(true);
+    this.questionErrors.set({});
 
     const overallStatus = this.computeOverallStatus();
     const guests: RsvpSubmissionGuestRequest[] = [];
 
     for (const wGuest of this.wizardGuests()) {
-      const key = wGuest.eventGuestId ?? wGuest.displayName;
+      const key = wGuest.responseGuestId;
       const status = this.attendanceStatus()[key] ?? 'Pending';
       const menuJson = JSON.stringify(this.guestMenuSelections()[key] ?? {});
       guests.push({
+        responseGuestId: wGuest.responseGuestId,
         eventGuestId: wGuest.eventGuestId,
         displayName: wGuest.displayName,
         ageCategory: wGuest.ageCategory,
@@ -1491,10 +1816,12 @@ export class PublicRsvpPage {
       });
     }
 
-    for (const name of this.companions()) {
+    for (const companion of this.companions()) {
       guests.push({
+        responseGuestId: companion.responseGuestId,
         eventGuestId: null,
-        displayName: name.trim() || 'Acompañante',
+        displayName:
+          companion.displayName.trim() || 'Acompañante',
         ageCategory: 'Adult',
         attendanceStatus: 'Attending',
         menuSelectionsJson: JSON.stringify({}),
@@ -1506,17 +1833,19 @@ export class PublicRsvpPage {
     }
 
     const answers: RsvpSubmissionAnswerRequest[] = [];
-    for (const q of this.parsedQuestions()) {
-      const value = this.questionAnswers()[q.id] ?? '';
+    for (const instance of this.visibleQuestions()) {
+      const value = this.questionAnswers()[instance.answerKey];
+      if (!hasDraftAnswer(value)) continue;
       answers.push({
-        questionId: q.id,
-        guestId: null,
-        answerValue: value,
-        displayValue: value,
+        questionId: instance.question.id,
+        guestId: instance.guest?.responseGuestId ?? null,
+        answerValue: serializeDraftAnswer(value ?? null),
+        displayValue: this.answerDisplayValue(instance),
       });
     }
 
     const request: RsvpSubmissionRequest = {
+      rsvpFormVersionId: s.activeForm.id,
       expectedRevision: s.revisionVersion,
       overallStatus,
       contactName: this.contactName.value || s.groupName,
@@ -1543,13 +1872,28 @@ export class PublicRsvpPage {
           this.toast.success('¡Respuesta enviada con éxito!');
         },
         error: (err) => {
+          const validationErrors = getRsvpValidationErrors(err);
+          if (validationErrors.length > 0) {
+            this.questionErrors.set(Object.fromEntries(
+              validationErrors
+                .filter((item) => item.questionId)
+                .map((item) => [
+                  rsvpAnswerKey(item.questionId!, item.guestId),
+                  item.message,
+                ]),
+            ));
+            this.activeStep.set(7);
+          }
           if (requiresReload(err)) {
             this.toast.error(
               'La respuesta cambió o la disponibilidad se actualizó. Recargamos los datos más recientes.',
             );
             this.init(token);
           } else {
-            this.toast.error(getApiErrorMessage(err));
+            this.toast.error(
+              validationErrors[0]?.message
+                ?? getApiErrorMessage(err),
+            );
           }
           this.submitting.set(false);
         },
@@ -1562,7 +1906,8 @@ export class PublicRsvpPage {
     if (guests.length === 0 && companionsCount === 0) return 'Incomplete';
 
     const statuses: GuestAttendanceStatus[] = guests.map(
-      (g) => this.attendanceStatus()[g.eventGuestId ?? g.displayName] ?? 'Pending',
+      (g) =>
+        this.attendanceStatus()[g.responseGuestId] ?? 'Pending',
     );
 
     const allAttending = statuses.every((s) => s === 'Attending') && companionsCount > 0
@@ -1594,6 +1939,59 @@ export class PublicRsvpPage {
 
   private buildAccommodationJson(): string {
     return JSON.stringify(this.accommodationForm.value);
+  }
+
+  private setQuestionAnswer(
+    instance: RsvpQuestionInstance,
+    value: RsvpDraftAnswer,
+  ): void {
+    this.questionAnswers.update((answers) => ({
+      ...answers,
+      [instance.answerKey]: value,
+    }));
+    this.questionErrors.update((errors) => {
+      const updated = { ...errors };
+      delete updated[instance.answerKey];
+      return updated;
+    });
+    this.pruneHiddenAnswers();
+  }
+
+  private pruneHiddenAnswers(): void {
+    this.questionAnswers.update((answers) =>
+      clearHiddenAnswers(
+        this.parsedQuestions(),
+        {
+          guests: this.questionVisibilityGuests(),
+          groupTags: this.state()?.groupTags ?? [],
+        },
+        answers,
+      ));
+  }
+
+  private parseStoredAnswer(
+    question: RsvpQuestion,
+    answerValue: string,
+  ): RsvpDraftAnswer {
+    try {
+      const value = JSON.parse(answerValue) as unknown;
+      switch (question.questionType) {
+        case 'MultipleChoice':
+          return Array.isArray(value)
+            ? value.filter((item): item is string =>
+                typeof item === 'string')
+            : [];
+        case 'YesNo':
+        case 'InformationalConsent':
+          return typeof value === 'boolean' ? value : null;
+        case 'Number':
+          return typeof value === 'number' ? value : null;
+        default:
+          return typeof value === 'string' ? value : null;
+      }
+    } catch {
+      return answerValue;
+    }
   }
 
   protected resetWizard(): void {

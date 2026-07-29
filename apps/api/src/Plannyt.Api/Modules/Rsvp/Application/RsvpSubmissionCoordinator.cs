@@ -35,7 +35,7 @@ public sealed class RsvpSubmissionCoordinator(
         CancellationToken cancellationToken)
     {
         var key = RsvpRequestFingerprint.ValidateIdempotencyKey(idempotencyKey);
-        var fingerprint = RsvpRequestFingerprint.Compute(request, "public");
+        var fingerprint = new SubmissionFingerprint();
 
         try
         {
@@ -61,7 +61,7 @@ public sealed class RsvpSubmissionCoordinator(
                     cancellationToken);
             return RsvpSubmissionConcurrencyPolicy.ResolveIdempotentRetry(
                 winner,
-                fingerprint);
+                fingerprint.RequiredValue);
         }
     }
 
@@ -125,9 +125,7 @@ public sealed class RsvpSubmissionCoordinator(
                 });
         }
 
-        var fingerprint = RsvpRequestFingerprint.Compute(
-            request.Submission,
-            $"manual:{request.Source}:{reason}");
+        var fingerprint = new SubmissionFingerprint();
         try
         {
             return await SubmitManualCoreAsync(
@@ -156,7 +154,7 @@ public sealed class RsvpSubmissionCoordinator(
                     cancellationToken);
             return RsvpSubmissionConcurrencyPolicy.ResolveIdempotentRetry(
                 winner,
-                fingerprint);
+                fingerprint.RequiredValue);
         }
     }
 
@@ -164,7 +162,7 @@ public sealed class RsvpSubmissionCoordinator(
         Guid accessLinkId,
         RsvpSubmissionRequest request,
         string key,
-        string fingerprint,
+        SubmissionFingerprint fingerprint,
         string? userAgent,
         string? ipAddress,
         CancellationToken cancellationToken)
@@ -184,22 +182,6 @@ public sealed class RsvpSubmissionCoordinator(
             link.EventId,
             link.InvitationGroupId,
             cancellationToken);
-        var existing = await FindByIdempotencyAsync(
-            link.OrganizationId,
-            link.EventId,
-            group.Id,
-            key,
-            cancellationToken);
-        if (existing is not null)
-        {
-            var winnerId =
-                RsvpSubmissionConcurrencyPolicy.ResolveIdempotentRetry(
-                    existing,
-                    fingerprint);
-            await transaction.CommitAsync(cancellationToken);
-            return winnerId;
-        }
-
         var settings = await dbContext.EventRsvpSettings
                            .SingleOrDefaultAsync(
                                entity =>
@@ -213,9 +195,6 @@ public sealed class RsvpSubmissionCoordinator(
             link.EventId,
             group.Id,
             cancellationToken);
-        RsvpSubmissionConcurrencyPolicy.ValidateExpectedRevision(
-            request.ExpectedRevision,
-            previous);
         var groupException = await dbContext.RsvpGroupExceptions
             .Where(entity =>
                 entity.OrganizationId == link.OrganizationId
@@ -229,6 +208,65 @@ public sealed class RsvpSubmissionCoordinator(
             groupException,
             previous is not null,
             now);
+        var formVersion = await GetSubmissionFormVersionAsync(
+            link.OrganizationId,
+            link.EventId,
+            request.RsvpFormVersionId,
+            previous,
+            cancellationToken);
+        var questionDefinitions =
+            ParseSubmissionQuestions(formVersion.QuestionsSnapshot);
+        var questionContext = await BuildQuestionContextAsync(
+            link.OrganizationId,
+            link.EventId,
+            group.Id,
+            request,
+            cancellationToken);
+        var requestWithGuestIds = request with
+        {
+            Guests = questionContext.NormalizedGuests
+        };
+        var parsedGuests = await ValidateAndParseGuestsAsync(
+            link.OrganizationId,
+            link.EventId,
+            group,
+            settings,
+            requestWithGuestIds,
+            cancellationToken);
+        var questionValidation =
+            RsvpQuestionEngine.ValidateAndNormalize(
+                questionDefinitions.Questions,
+                questionContext.EvaluationContext,
+                request.Answers,
+                request.ConsentSnapshot);
+        var normalizedRequest = requestWithGuestIds with
+        {
+            Answers = questionValidation.Answers
+                .Select(ToRequest)
+                .ToList()
+        };
+        fingerprint.Value = RsvpRequestFingerprint.Compute(
+            normalizedRequest,
+            "public");
+        var existing = await FindByIdempotencyAsync(
+            link.OrganizationId,
+            link.EventId,
+            group.Id,
+            key,
+            cancellationToken);
+        if (existing is not null)
+        {
+            var winnerId =
+                RsvpSubmissionConcurrencyPolicy.ResolveIdempotentRetry(
+                    existing,
+                    fingerprint.RequiredValue);
+            await transaction.CommitAsync(cancellationToken);
+            return winnerId;
+        }
+
+        RsvpSubmissionConcurrencyPolicy.ValidateExpectedRevision(
+            normalizedRequest.ExpectedRevision,
+            previous);
         if (!availability.CanRespond)
         {
             throw new ConflictException(
@@ -237,38 +275,28 @@ public sealed class RsvpSubmissionCoordinator(
                     : "La respuesta cambió o el periodo de cambios terminó.");
         }
 
-        var formVersionId = await GetPublishedFormVersionIdAsync(
-            link.OrganizationId,
-            link.EventId,
-            cancellationToken);
-        var parsedGuests = await ValidateAndParseGuestsAsync(
-            link.OrganizationId,
-            link.EventId,
-            group,
-            settings,
-            request,
-            cancellationToken);
         var submission = CreateSubmission(
             link.OrganizationId,
             link.EventId,
             group.Id,
-            formVersionId,
+            formVersion.Id,
             link.Id,
             previous,
             RsvpSubmissionSource.GuestPrivateLink,
-            request,
+            normalizedRequest,
             null,
             userAgent,
             ipAddress,
             key,
-            fingerprint,
+            fingerprint.RequiredValue,
             now);
         await PersistSubmissionAsync(
             submission,
             group,
             settings,
-            request,
+            normalizedRequest,
             parsedGuests,
+            questionValidation.Answers,
             null,
             AuditActions.RsvpSubmitted,
             null,
@@ -286,7 +314,7 @@ public sealed class RsvpSubmissionCoordinator(
         ManualRsvpRequest manualRequest,
         string reason,
         string key,
-        string fingerprint,
+        SubmissionFingerprint fingerprint,
         bool isPortal,
         CancellationToken cancellationToken)
     {
@@ -360,22 +388,6 @@ public sealed class RsvpSubmissionCoordinator(
             eventId,
             groupId,
             cancellationToken);
-        var existing = await FindByIdempotencyAsync(
-            organizationId,
-            eventId,
-            groupId,
-            key,
-            cancellationToken);
-        if (existing is not null)
-        {
-            var winnerId =
-                RsvpSubmissionConcurrencyPolicy.ResolveIdempotentRetry(
-                    existing,
-                    fingerprint);
-            await transaction.CommitAsync(cancellationToken);
-            return winnerId;
-        }
-
         var settings = await dbContext.EventRsvpSettings
                            .SingleOrDefaultAsync(
                                entity =>
@@ -389,35 +401,87 @@ public sealed class RsvpSubmissionCoordinator(
             eventId,
             groupId,
             cancellationToken);
-        RsvpSubmissionConcurrencyPolicy.ValidateExpectedRevision(
-            manualRequest.Submission.ExpectedRevision,
-            previous);
-        var formVersionId = await GetPublishedFormVersionIdAsync(
+        var formVersion = await GetSubmissionFormVersionAsync(
             organizationId,
             eventId,
+            manualRequest.Submission.RsvpFormVersionId,
+            previous,
             cancellationToken);
+        var questionDefinitions =
+            ParseSubmissionQuestions(formVersion.QuestionsSnapshot);
+        var questionContext = await BuildQuestionContextAsync(
+            organizationId,
+            eventId,
+            groupId,
+            manualRequest.Submission,
+            cancellationToken);
+        var requestWithGuestIds = manualRequest.Submission with
+        {
+            Guests = questionContext.NormalizedGuests
+        };
         var parsedGuests = await ValidateAndParseGuestsAsync(
             organizationId,
             eventId,
             group,
             settings,
-            manualRequest.Submission,
+            requestWithGuestIds,
             cancellationToken);
+        var questionValidation =
+            RsvpQuestionEngine.ValidateAndNormalize(
+                questionDefinitions.Questions,
+                questionContext.EvaluationContext,
+                manualRequest.Submission.Answers,
+                manualRequest.Submission.ConsentSnapshot);
+        if (questionValidation.ContainsSensitiveAnswers)
+        {
+            RequirePermission(
+                permissions,
+                Permissions.GuestSensitiveDataManage);
+        }
+
+        var normalizedRequest = requestWithGuestIds with
+        {
+            Answers = questionValidation.Answers
+                .Select(ToRequest)
+                .ToList()
+        };
+        fingerprint.Value = RsvpRequestFingerprint.Compute(
+            normalizedRequest,
+            $"manual:{manualRequest.Source}:{reason}");
+        var existing = await FindByIdempotencyAsync(
+            organizationId,
+            eventId,
+            groupId,
+            key,
+            cancellationToken);
+        if (existing is not null)
+        {
+            var winnerId =
+                RsvpSubmissionConcurrencyPolicy.ResolveIdempotentRetry(
+                    existing,
+                    fingerprint.RequiredValue);
+            await transaction.CommitAsync(cancellationToken);
+            return winnerId;
+        }
+
+        RsvpSubmissionConcurrencyPolicy.ValidateExpectedRevision(
+            normalizedRequest.ExpectedRevision,
+            previous);
         var now = timeProvider.GetUtcNow();
         var submission = CreateSubmission(
             organizationId,
             eventId,
             groupId,
-            formVersionId,
+            formVersion.Id,
             null,
             previous,
             manualRequest.Source,
-            manualRequest.Submission,
+            normalizedRequest,
             actorUserId,
             null,
             null,
             key,
-            fingerprint,
+            fingerprint.RequiredValue,
             now);
         var action = manualRequest.Source
                      == RsvpSubmissionSource.SupportCorrection
@@ -427,8 +491,9 @@ public sealed class RsvpSubmissionCoordinator(
             submission,
             group,
             settings,
-            manualRequest.Submission,
+            normalizedRequest,
             parsedGuests,
+            questionValidation.Answers,
             actorUserId,
             action,
             reason,
@@ -456,6 +521,7 @@ public sealed class RsvpSubmissionCoordinator(
         EventRsvpSettings settings,
         RsvpSubmissionRequest request,
         IReadOnlyList<ParsedGuestRequest> parsedGuests,
+        IReadOnlyList<NormalizedRsvpAnswer> normalizedAnswers,
         Guid? actorUserId,
         AuditAction action,
         string? reason,
@@ -472,6 +538,7 @@ public sealed class RsvpSubmissionCoordinator(
             dbContext.RsvpSubmissionGuests.Add(
                 RsvpSubmissionGuest.Create(
                     submission.Id,
+                    parsed.Request.ResponseGuestId,
                     parsed.Request.EventGuestId,
                     parsed.Request.DisplayName.Trim(),
                     parsed.Request.AgeCategory.Trim(),
@@ -491,15 +558,20 @@ public sealed class RsvpSubmissionCoordinator(
                 cancellationToken);
         }
 
-        foreach (var answer in request.Answers)
+        foreach (var answer in normalizedAnswers)
         {
             dbContext.RsvpSubmissionAnswers.Add(
                 RsvpSubmissionAnswer.Create(
                     submission.Id,
-                    answer.QuestionId.Trim(),
+                    answer.QuestionId,
                     answer.GuestId,
-                    EnsureJsonValue(answer.AnswerValue),
-                    Normalize(answer.DisplayValue)));
+                    answer.AnswerValue,
+                    answer.DisplayValue,
+                    answer.QuestionLabelSnapshot,
+                    answer.QuestionTypeSnapshot,
+                    answer.OptionLabelsSnapshot,
+                    answer.GuestDisplayNameSnapshot,
+                    answer.IsSensitive));
         }
 
         var sensitiveCount = await UpsertSensitiveDataAsync(
@@ -1188,9 +1260,11 @@ public sealed class RsvpSubmissionCoordinator(
         }
     }
 
-    private async Task<Guid> GetPublishedFormVersionIdAsync(
+    private async Task<RsvpFormVersion> GetSubmissionFormVersionAsync(
         Guid organizationId,
         Guid eventId,
+        Guid requestedVersionId,
+        RsvpSubmission? previous,
         CancellationToken cancellationToken)
     {
         var form = await dbContext.RsvpForms
@@ -1198,14 +1272,211 @@ public sealed class RsvpSubmissionCoordinator(
                        .SingleOrDefaultAsync(entity =>
                            entity.OrganizationId == organizationId
                            && entity.EventId == eventId
-                           && entity.Status == RsvpFormStatus.Published,
+                           && entity.ActivePublishedVersionId != null,
                            cancellationToken)
                    ?? throw new NotFoundException(
                        "No hay formulario publicado.");
-        return form.ActivePublishedVersionId
-               ?? throw new NotFoundException(
-                   "No hay versión activa del formulario.");
+        if (requestedVersionId == Guid.Empty)
+        {
+            throw VersionValidation(
+                "form_version_mismatch",
+                "La solicitud debe indicar la versión exacta del formulario presentado.");
+        }
+
+        var version = await dbContext.RsvpFormVersions
+            .AsNoTracking()
+            .SingleOrDefaultAsync(
+                entity =>
+                    entity.OrganizationId == organizationId
+                    && entity.RsvpFormId == form.Id
+                    && entity.Id == requestedVersionId,
+                cancellationToken);
+        if (version?.PublishedAt is null)
+        {
+            throw VersionValidation(
+                "form_version_mismatch",
+                "La versión indicada no es una versión publicada de este formulario.");
+        }
+
+        var isCurrentVersion =
+            previous is null
+            && form.ActivePublishedVersionId == requestedVersionId;
+        var continuesHistoricalEdition =
+            previous?.RsvpFormVersionId == requestedVersionId;
+        if (!isCurrentVersion && !continuesHistoricalEdition)
+        {
+            throw VersionValidation(
+                "form_version_mismatch",
+                "La versión indicada no corresponde al formulario vigente ni a la respuesta que se está editando.");
+        }
+
+        return version;
     }
+
+    private static RsvpQuestionDefinitionSet ParseSubmissionQuestions(
+        string snapshot)
+    {
+        try
+        {
+            return RsvpQuestionDefinitionParser.ParseAndValidate(snapshot);
+        }
+        catch (RequestValidationException)
+        {
+            throw VersionValidation(
+                "form_version_invalid",
+                "La versión publicada no puede utilizarse porque su definición no es válida.");
+        }
+    }
+
+    private async Task<QuestionSubmissionContext> BuildQuestionContextAsync(
+        Guid organizationId,
+        Guid eventId,
+        Guid groupId,
+        RsvpSubmissionRequest request,
+        CancellationToken cancellationToken)
+    {
+        var eventGuests = await dbContext.EventGuests
+            .AsNoTracking()
+            .Where(guest =>
+                guest.OrganizationId == organizationId
+                && guest.EventId == eventId
+                && guest.InvitationGroupId == groupId
+                && guest.ArchivedAt == null)
+            .ToDictionaryAsync(guest => guest.Id, cancellationToken);
+        var normalizedGuests =
+            new List<RsvpSubmissionGuestRequest>(request.Guests.Count);
+        var evaluationGuests =
+            new List<RsvpQuestionGuestContext>(request.Guests.Count);
+        var responseIds = new HashSet<Guid>();
+        foreach (var requestedGuest in request.Guests)
+        {
+            Guid responseGuestId;
+            AgeCategory ageCategory;
+            GuestType guestType;
+            bool isPrimaryContact;
+            if (requestedGuest.EventGuestId is { } eventGuestId)
+            {
+                if (!eventGuests.TryGetValue(eventGuestId, out var eventGuest))
+                {
+                    throw new RsvpValidationException(
+                    [
+                        new RsvpValidationError(
+                            null,
+                            eventGuestId,
+                            "guest_not_in_group",
+                            "El invitado no pertenece al grupo o evento.")
+                    ]);
+                }
+
+                if (requestedGuest.ResponseGuestId != Guid.Empty
+                    && requestedGuest.ResponseGuestId != eventGuestId)
+                {
+                    throw VersionValidation(
+                        "invalid_scope",
+                        "ResponseGuestId debe coincidir con EventGuestId para invitados nombrados.");
+                }
+
+                responseGuestId = eventGuestId;
+                ageCategory = eventGuest.AgeCategory;
+                guestType = eventGuest.GuestType;
+                isPrimaryContact = eventGuest.IsPrimaryContact;
+            }
+            else
+            {
+                if (!requestedGuest.IsUnnamedCompanion
+                    || requestedGuest.ResponseGuestId == Guid.Empty)
+                {
+                    throw VersionValidation(
+                        "invalid_scope",
+                        "Cada acompañante incluido debe tener un ResponseGuestId no vacío.");
+                }
+
+                if (!Enum.TryParse<AgeCategory>(
+                        requestedGuest.AgeCategory,
+                        ignoreCase: false,
+                        out ageCategory))
+                {
+                    throw VersionValidation(
+                        "invalid_value_type",
+                        "La categoría de edad del acompañante no es válida.");
+                }
+
+                responseGuestId = requestedGuest.ResponseGuestId;
+                guestType = GuestType.Other;
+                isPrimaryContact = false;
+            }
+
+            if (!responseIds.Add(responseGuestId))
+            {
+                throw VersionValidation(
+                    "invalid_scope",
+                    "ResponseGuestId no puede repetirse dentro de la entrega.");
+            }
+
+            var normalizedGuest = requestedGuest with
+            {
+                ResponseGuestId = responseGuestId
+            };
+            normalizedGuests.Add(normalizedGuest);
+            evaluationGuests.Add(new RsvpQuestionGuestContext(
+                responseGuestId,
+                requestedGuest.EventGuestId,
+                requestedGuest.DisplayName.Trim(),
+                ageCategory,
+                guestType,
+                requestedGuest.IsUnnamedCompanion,
+                isPrimaryContact,
+                requestedGuest.AttendanceStatus));
+        }
+
+        var groupTags = await (
+                from assignment in dbContext.InvitationGroupTags
+                    .AsNoTracking()
+                join tag in dbContext.GuestTags.AsNoTracking()
+                    on new
+                    {
+                        assignment.OrganizationId,
+                        assignment.EventId,
+                        Id = assignment.GuestTagId
+                    }
+                    equals new
+                    {
+                        tag.OrganizationId,
+                        tag.EventId,
+                        tag.Id
+                    }
+                where assignment.OrganizationId == organizationId
+                      && assignment.EventId == eventId
+                      && assignment.InvitationGroupId == groupId
+                      && tag.ArchivedAt == null
+                select tag.Name)
+            .ToHashSetAsync(StringComparer.Ordinal, cancellationToken);
+        return new QuestionSubmissionContext(
+            normalizedGuests,
+            new RsvpQuestionEvaluationContext(
+                evaluationGuests,
+                groupTags));
+    }
+
+    private static RsvpSubmissionAnswerRequest ToRequest(
+        NormalizedRsvpAnswer answer) =>
+        new(
+            answer.QuestionId,
+            answer.GuestId,
+            answer.AnswerValue,
+            answer.DisplayValue);
+
+    private static RsvpValidationException VersionValidation(
+        string code,
+        string message) =>
+        new(
+        [
+            new RsvpValidationError(
+                null,
+                null,
+                code,
+                message)
+        ]);
 
     private async Task<RsvpSubmission?> GetCurrentSubmissionAsync(
         Guid organizationId,
@@ -1445,6 +1716,20 @@ public sealed class RsvpSubmissionCoordinator(
         TransportPayload? Transport,
         AccommodationPayload? Accommodation,
         DietaryPayload? Dietary);
+
+    private sealed record QuestionSubmissionContext(
+        List<RsvpSubmissionGuestRequest> NormalizedGuests,
+        RsvpQuestionEvaluationContext EvaluationContext);
+
+    private sealed class SubmissionFingerprint
+    {
+        public string? Value { get; set; }
+
+        public string RequiredValue =>
+            Value
+            ?? throw new InvalidOperationException(
+                "El fingerprint normalizado no fue calculado.");
+    }
 
     private sealed record TransportPayload(Guid? TransportOptionId);
 

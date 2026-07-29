@@ -280,18 +280,27 @@ public sealed class RsvpService(
                                && entity.EventId == eventId,
                            ct)
                    ?? throw new NotFoundException("No hay formulario RSVP.");
+        if (form.Status is not (
+                RsvpFormStatus.Draft
+                or RsvpFormStatus.ChangesRequested))
+        {
+            throw new ConflictException(
+                "Crea un nuevo borrador antes de generar otra versión.");
+        }
         var settings = await FindSettingsAsync(
             organizationId,
             eventId,
             ct);
         var settingsJson =
             System.Text.Json.JsonSerializer.Serialize(MapSettings(settings));
+        var questionDefinitions =
+            RsvpQuestionDefinitionParser.ParseAndValidate(questionsJson);
         var version = RsvpFormVersion.Create(
             organizationId,
             form.Id,
             form.CurrentDraftVersion,
             settingsJson,
-            questionsJson,
+            questionDefinitions.NormalizedSnapshot,
             menuJson,
             transportJson,
             accommodationJson,
@@ -307,6 +316,117 @@ public sealed class RsvpService(
             version.Id);
         await dbContext.SaveChangesAsync(ct);
         return MapVersion(version);
+    }
+
+    public async Task<RsvpFormResponse> CreateNewDraftAsync(
+        Guid organizationId,
+        Guid eventId,
+        CancellationToken ct)
+    {
+        var access = await RequireEventAsync(
+            organizationId,
+            eventId,
+            Permissions.RsvpFormsUpdateDraft,
+            ct);
+        var form = await dbContext.RsvpForms
+                       .SingleOrDefaultAsync(
+                           entity =>
+                               entity.OrganizationId == organizationId
+                               && entity.EventId == eventId,
+                           ct)
+                   ?? throw new NotFoundException(
+                       "No hay formulario RSVP.");
+        form.NewDraft(timeProvider.GetUtcNow());
+        auditService.Add(
+            organizationId,
+            eventId,
+            access.UserAccountId,
+            AuditActions.RsvpFormDraftCreated,
+            "RsvpForm",
+            form.Id);
+        await dbContext.SaveChangesAsync(ct);
+        return new RsvpFormResponse(
+            form.Id,
+            form.Status,
+            form.CurrentDraftVersion,
+            form.ActivePublishedVersionId,
+            form.UpdatedAt);
+    }
+
+    public async Task<RsvpQuestionCatalogResponse> GetQuestionCatalogAsync(
+        Guid organizationId,
+        Guid eventId,
+        CancellationToken ct)
+    {
+        await RequireEventAsync(
+            organizationId,
+            eventId,
+            Permissions.RsvpFormsView,
+            ct);
+        return RsvpQuestionDefinitionParser.GetCatalog();
+    }
+
+    public async Task<RsvpFormVersionResponse> GetFormVersionAsync(
+        Guid organizationId,
+        Guid eventId,
+        Guid versionId,
+        CancellationToken ct)
+    {
+        await RequireEventAsync(
+            organizationId,
+            eventId,
+            Permissions.RsvpFormsView,
+            ct);
+        var form = await dbContext.RsvpForms
+                       .AsNoTracking()
+                       .SingleOrDefaultAsync(
+                           entity =>
+                               entity.OrganizationId == organizationId
+                               && entity.EventId == eventId,
+                           ct)
+                   ?? throw new NotFoundException(
+                       "No hay formulario RSVP.");
+        return await GetVersionAsync(
+                   organizationId,
+                   form.Id,
+                   versionId,
+                   ct)
+               ?? throw new NotFoundException(
+                   "No se encontró la versión.");
+    }
+
+    public async Task<RsvpFormVersionResponse> GetDraftFormVersionAsync(
+        Guid organizationId,
+        Guid eventId,
+        CancellationToken ct)
+    {
+        await RequireEventAsync(
+            organizationId,
+            eventId,
+            Permissions.RsvpFormsView,
+            ct);
+        var form = await dbContext.RsvpForms
+                       .AsNoTracking()
+                       .SingleOrDefaultAsync(
+                           entity =>
+                               entity.OrganizationId == organizationId
+                               && entity.EventId == eventId,
+                           ct)
+                   ?? throw new NotFoundException(
+                       "No hay formulario RSVP.");
+        var version = await dbContext.RsvpFormVersions
+            .AsNoTracking()
+            .SingleOrDefaultAsync(
+                entity =>
+                    entity.OrganizationId == organizationId
+                    && entity.RsvpFormId == form.Id
+                    && entity.VersionNumber
+                    == form.CurrentDraftVersion,
+                ct);
+        return version is null
+            ? throw new NotFoundException(
+                "El borrador todavía no tiene una versión guardada.")
+            : MapVersion(version);
     }
 
     public async Task<RsvpFormResponse> SubmitForReviewAsync(
@@ -410,6 +530,8 @@ public sealed class RsvpService(
                               ct)
                       ?? throw new NotFoundException(
                           "No se encontró la versión.");
+        RsvpQuestionDefinitionParser.ParseAndValidate(
+            version.QuestionsSnapshot);
         version.Publish(timeProvider.GetUtcNow());
         form.Publish(versionId, timeProvider.GetUtcNow());
         auditService.Add(
@@ -546,14 +668,17 @@ public sealed class RsvpService(
                     entity =>
                         entity.OrganizationId == orgId
                         && entity.EventId == eventId
-                        && entity.Status == RsvpFormStatus.Published,
+                        && entity.ActivePublishedVersionId != null,
                     ct);
             if (form?.ActivePublishedVersionId is not null)
             {
+                var presentedVersionId =
+                    lastSubmission?.RsvpFormVersionId
+                    ?? form.ActivePublishedVersionId.Value;
                 activeForm = await GetVersionAsync(
                     orgId,
                     form.Id,
-                    form.ActivePublishedVersionId.Value,
+                    presentedVersionId,
                     ct);
             }
 
@@ -577,8 +702,42 @@ public sealed class RsvpService(
             .Select(entity => new GuestRsvpInviteeResponse(
                 entity.Id,
                 (entity.FirstName + " " + entity.LastName).Trim(),
-                entity.AgeCategory.ToString()))
+                entity.AgeCategory.ToString(),
+                entity.GuestType.ToString(),
+                entity.IsPrimaryContact))
             .ToListAsync(ct);
+        var referencedGroupTags = activeForm is null
+            ? []
+            : GetReferencedGroupTags(
+                RsvpQuestionDefinitionParser
+                    .ParseAndValidate(activeForm.QuestionsSnapshot)
+                    .Questions);
+        var matchingGroupTags = referencedGroupTags.Count == 0
+            ? []
+            : await (
+                    from assignment in dbContext.InvitationGroupTags
+                        .AsNoTracking()
+                    join tag in dbContext.GuestTags.AsNoTracking()
+                        on new
+                        {
+                            assignment.OrganizationId,
+                            assignment.EventId,
+                            Id = assignment.GuestTagId
+                        }
+                        equals new
+                        {
+                            tag.OrganizationId,
+                            tag.EventId,
+                            tag.Id
+                        }
+                    where assignment.OrganizationId == orgId
+                          && assignment.EventId == eventId
+                          && assignment.InvitationGroupId == link.InvitationGroupId
+                          && tag.ArchivedAt == null
+                          && referencedGroupTags.Contains(tag.Name)
+                    orderby tag.Name
+                    select tag.Name)
+                .ToListAsync(ct);
 
         return new GuestRsvpStateResponse(
             group.Id,
@@ -593,7 +752,8 @@ public sealed class RsvpService(
             activeForm,
             currentResponse,
             lastSubmission?.RevisionNumber ?? 0,
-            namedGuests);
+            namedGuests,
+            matchingGroupTags);
     }
 
     public async Task<RsvpSubmissionResponse> SubmitRsvpAsync(
@@ -677,6 +837,35 @@ public sealed class RsvpService(
             access.Permissions.Contains(
                 Permissions.GuestSensitiveDataView),
             ct);
+    }
+
+    public async Task<RsvpFormVersionResponse>
+        GetPortalPublishedFormVersionAsync(
+            Guid eventId,
+            CancellationToken ct)
+    {
+        var access = await portalAccessService.RequireAsync(
+            eventId,
+            Permissions.RsvpResponsesCreateManual,
+            ct);
+        var form = await dbContext.RsvpForms
+                       .AsNoTracking()
+                       .SingleOrDefaultAsync(
+                           entity =>
+                               entity.OrganizationId
+                               == access.OrganizationId
+                               && entity.EventId == eventId
+                               && entity.ActivePublishedVersionId != null,
+                           ct)
+                   ?? throw new NotFoundException(
+                       "No hay formulario RSVP publicado.");
+        return await GetVersionAsync(
+                   access.OrganizationId,
+                   form.Id,
+                   form.ActivePublishedVersionId!.Value,
+                   ct)
+               ?? throw new NotFoundException(
+                   "No se encontró la versión publicada.");
     }
 
     public async Task<RsvpSubmissionResponse> PortalManualCaptureAsync(
@@ -803,10 +992,17 @@ public sealed class RsvpService(
                         && entity.AccommodationSelectionSnapshot != "{}",
                     ct);
             var hasSensitiveData = canViewSensitiveData
-                && currentRsvps.Any(current =>
-                    current.EventGuestId.HasValue
-                    && guestsWithSensitiveData.Contains(
-                        current.EventGuestId.Value));
+                && (currentRsvps.Any(current =>
+                        current.EventGuestId.HasValue
+                        && guestsWithSensitiveData.Contains(
+                            current.EventGuestId.Value))
+                    || (last is not null
+                        && await dbContext.RsvpSubmissionAnswers
+                            .AsNoTracking()
+                            .AnyAsync(answer =>
+                                answer.RsvpSubmissionId == last.Id
+                                && answer.IsSensitive,
+                                ct)));
             results.Add(
                 new RsvpGroupSummaryResponse(
                     group.Id,
@@ -1261,6 +1457,7 @@ public sealed class RsvpService(
             guests
                 .Select(
                     g => new RsvpSubmissionGuestResponse(
+                        g.ResponseGuestId,
                         g.EventGuestId,
                         g.DisplayName,
                         g.AgeCategory,
@@ -1272,12 +1469,17 @@ public sealed class RsvpService(
                         g.IsUnnamedCompanion))
                 .ToList(),
             answers
+                .Where(answer =>
+                    includeSensitiveData || !answer.IsSensitive)
                 .Select(
                     a => new RsvpSubmissionAnswerResponse(
                         a.QuestionId,
                         a.GuestId,
                         ReadJsonString(a.AnswerValue),
-                        a.DisplayValueSnapshot))
+                        a.DisplayValueSnapshot,
+                        a.QuestionLabelSnapshot,
+                        a.QuestionTypeSnapshot,
+                        a.OptionLabelsSnapshot))
                 .ToList());
     }
 
@@ -1344,6 +1546,33 @@ public sealed class RsvpService(
 
     private static string? Normalize(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static List<string> GetReferencedGroupTags(
+        IReadOnlyList<RsvpQuestion> questions) =>
+        questions
+            .SelectMany(question =>
+                GetReferencedGroupTags(question.VisibilityRule))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+    private static IEnumerable<string> GetReferencedGroupTags(
+        VisibilityRule rule)
+    {
+        if (rule.ConditionType
+            == RsvpVisibilityConditionType.GroupHasTag
+            && !string.IsNullOrWhiteSpace(rule.ExpectedValue))
+        {
+            yield return rule.ExpectedValue;
+        }
+
+        foreach (var condition in rule.Conditions)
+        {
+            foreach (var tag in GetReferencedGroupTags(condition))
+            {
+                yield return tag;
+            }
+        }
+    }
 
     private async Task<Invitations.Domain.GuestAccessLink> ResolveAccessLinkAsync(
         string token,

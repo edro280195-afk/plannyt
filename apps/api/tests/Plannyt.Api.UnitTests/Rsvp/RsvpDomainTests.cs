@@ -495,13 +495,16 @@ public sealed class RsvpFormTests
         var form = CreateForm();
         form.SubmitForReview(Now.AddMinutes(1));
         form.Approve(Now.AddMinutes(2));
-        form.Publish(Guid.NewGuid(), Now.AddMinutes(3));
+        var publishedVersionId = Guid.NewGuid();
+        form.Publish(publishedVersionId, Now.AddMinutes(3));
 
         form.NewDraft(Now.AddMinutes(4));
 
         Assert.Equal(RsvpFormStatus.Draft, form.Status);
         Assert.Equal(2, form.CurrentDraftVersion);
-        Assert.Null(form.ActivePublishedVersionId);
+        Assert.Equal(
+            publishedVersionId,
+            form.ActivePublishedVersionId);
     }
 
     [Fact]

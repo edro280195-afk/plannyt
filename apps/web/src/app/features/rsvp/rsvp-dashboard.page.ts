@@ -18,6 +18,7 @@ import {
   RsvpDashboardResponse,
   RsvpSettingsResponse,
   SensitiveGuestDataResponse,
+  SensitiveQuestionAnswerResponse,
 } from '../../core/models/api.models';
 
 @Component({
@@ -41,7 +42,7 @@ import {
           }
         }
         <a [routerLink]="['settings']" class="btn-link">Configuración</a>
-        <a [routerLink]="['menus']" class="btn-link">Menús y viaje</a>
+        <a [routerLink]="['form']" class="btn-link">Formulario</a>
         @if (canViewSensitiveData()) {
           <button class="btn" type="button" (click)="loadSensitiveData()">
             Ver datos sensibles
@@ -58,7 +59,11 @@ import {
         <section class="sensitive-panel" aria-label="Datos sensibles de invitados">
           <div class="sensitive-panel__header">
             <h2>Datos sensibles</h2>
-            <button class="btn" type="button" (click)="sensitiveData.set(null)">Cerrar</button>
+            <button
+              class="btn"
+              type="button"
+              (click)="closeSensitiveData()"
+            >Cerrar</button>
           </div>
           @if (records.length === 0) {
             <p>No hay datos sensibles registrados.</p>
@@ -89,6 +94,38 @@ import {
                 </tbody>
               </table>
             </div>
+          }
+          @if (sensitiveQuestionAnswers(); as questionAnswers) {
+            <h3>Respuestas sensibles del formulario</h3>
+            @if (questionAnswers.length === 0) {
+              <p>No hay respuestas sensibles en la revisión vigente.</p>
+            } @else {
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Pregunta</th>
+                      <th>Invitado</th>
+                      <th>Respuesta</th>
+                      <th>Revisión</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (
+                      answer of questionAnswers;
+                      track answer.submissionId + answer.questionId
+                    ) {
+                      <tr>
+                        <td>{{ answer.questionLabel }}</td>
+                        <td>{{ answer.guestDisplayName || 'Grupo' }}</td>
+                        <td>{{ answer.displayValue || answer.answerValue }}</td>
+                        <td>{{ answer.revisionNumber }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
           }
         </section>
       }
@@ -209,6 +246,8 @@ export class RsvpDashboardPage {
   protected readonly settings = signal<RsvpSettingsResponse | null>(null);
   protected readonly loading = signal(true);
   protected readonly sensitiveData = signal<SensitiveGuestDataResponse[] | null>(null);
+  protected readonly sensitiveQuestionAnswers =
+    signal<SensitiveQuestionAnswerResponse[] | null>(null);
   protected readonly canViewSensitiveData = computed(() =>
     this.org.hasPermission('guest-sensitive-data.view'),
   );
@@ -289,16 +328,30 @@ export class RsvpDashboardPage {
 
   protected loadSensitiveData(): void {
     if (!this.canViewSensitiveData()) return;
-    this.api
-      .getRsvpSensitiveData(
-        this.org.requireOrganizationId(),
+    const organizationId = this.org.requireOrganizationId();
+    forkJoin({
+      guestData: this.api.getRsvpSensitiveData(
+        organizationId,
         this.eventId(),
-      )
+      ),
+      questionAnswers: this.api.getRsvpSensitiveQuestionAnswers(
+        organizationId,
+        this.eventId(),
+      ),
+    })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (records) => this.sensitiveData.set(records),
+        next: ({ guestData, questionAnswers }) => {
+          this.sensitiveData.set(guestData);
+          this.sensitiveQuestionAnswers.set(questionAnswers);
+        },
         error: (err) => this.toast.error(getApiErrorMessage(err)),
       });
+  }
+
+  protected closeSensitiveData(): void {
+    this.sensitiveData.set(null);
+    this.sensitiveQuestionAnswers.set(null);
   }
 
   protected exportSensitiveData(): void {

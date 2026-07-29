@@ -74,3 +74,19 @@ public sealed class RequestValidationException(
 {
     public IReadOnlyDictionary<string, string[]> Errors { get; } = errors;
 }
+
+public sealed record RsvpValidationError(
+    string? QuestionId,
+    Guid? GuestId,
+    string Code,
+    string Message);
+
+public sealed class RsvpValidationException(
+    IReadOnlyList<RsvpValidationError> errors)
+    : ApiException(
+        StatusCodes.Status400BadRequest,
+        "La respuesta RSVP contiene errores",
+        "Corrige las respuestas indicadas antes de volver a enviar.")
+{
+    public IReadOnlyList<RsvpValidationError> Errors { get; } = errors;
+}

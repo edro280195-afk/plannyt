@@ -6,6 +6,7 @@ public sealed class RsvpSubmissionGuest
 
     public Guid Id { get; private set; }
     public Guid RsvpSubmissionId { get; private set; }
+    public Guid ResponseGuestId { get; private set; }
     public Guid? EventGuestId { get; private set; }
     public string DisplayName { get; private set; } = string.Empty;
     public string AgeCategory { get; private set; } = string.Empty;
@@ -19,6 +20,7 @@ public sealed class RsvpSubmissionGuest
 
     public static RsvpSubmissionGuest Create(
         Guid rsvpSubmissionId,
+        Guid responseGuestId,
         Guid? eventGuestId,
         string displayName,
         string ageCategory,
@@ -34,6 +36,7 @@ public sealed class RsvpSubmissionGuest
         {
             Id = Guid.NewGuid(),
             RsvpSubmissionId = rsvpSubmissionId,
+            ResponseGuestId = responseGuestId,
             EventGuestId = eventGuestId,
             DisplayName = displayName,
             AgeCategory = ageCategory,

@@ -106,12 +106,14 @@ import {
   RsvpDashboardResponse,
   RsvpFormResponse,
   RsvpFormVersionResponse,
+  RsvpQuestionCatalog,
   RsvpGroupSummaryResponse,
   RsvpSettingsRequest,
   RsvpSettingsResponse,
   RsvpSubmissionRequest,
   RsvpSubmissionResponse,
   SensitiveGuestDataResponse,
+  SensitiveQuestionAnswerResponse,
 } from '../models/api.models';
 
 @Injectable({ providedIn: 'root' })
@@ -1810,6 +1812,44 @@ export class ApiService {
     return this.http.post<RsvpFormResponse>(`${this.eventUrl(organizationId, eventId)}/rsvp/form`, {});
   }
 
+  createRsvpFormDraft(
+    organizationId: string,
+    eventId: string,
+  ): Observable<RsvpFormResponse> {
+    return this.http.post<RsvpFormResponse>(
+      `${this.eventUrl(organizationId, eventId)}/rsvp/form/new-draft`,
+      {},
+    );
+  }
+
+  getRsvpQuestionCatalog(
+    organizationId: string,
+    eventId: string,
+  ): Observable<RsvpQuestionCatalog> {
+    return this.http.get<RsvpQuestionCatalog>(
+      `${this.eventUrl(organizationId, eventId)}/rsvp/form/question-catalog`,
+    );
+  }
+
+  getRsvpFormVersion(
+    organizationId: string,
+    eventId: string,
+    versionId: string,
+  ): Observable<RsvpFormVersionResponse> {
+    return this.http.get<RsvpFormVersionResponse>(
+      `${this.eventUrl(organizationId, eventId)}/rsvp/form/versions/${versionId}`,
+    );
+  }
+
+  getRsvpDraftFormVersion(
+    organizationId: string,
+    eventId: string,
+  ): Observable<RsvpFormVersionResponse> {
+    return this.http.get<RsvpFormVersionResponse>(
+      `${this.eventUrl(organizationId, eventId)}/rsvp/form/draft-version`,
+    );
+  }
+
   createRsvpFormVersion(organizationId: string, eventId: string, questionsJson: string, menuJson: string, transportJson: string, accommodationJson: string): Observable<RsvpFormVersionResponse> {
     return this.http.post<RsvpFormVersionResponse>(`${this.eventUrl(organizationId, eventId)}/rsvp/form/version`, { questionsJson, menuJson, transportJson, accommodationJson });
   }
@@ -1836,12 +1876,29 @@ export class ApiService {
     );
   }
 
+  getPortalRsvpForm(
+    eventId: string,
+  ): Observable<RsvpFormVersionResponse> {
+    return this.http.get<RsvpFormVersionResponse>(
+      `${this.baseUrl}/client-portal/events/${eventId}/rsvp/form`,
+    );
+  }
+
   getRsvpSensitiveData(
     organizationId: string,
     eventId: string,
   ): Observable<SensitiveGuestDataResponse[]> {
     return this.http.get<SensitiveGuestDataResponse[]>(
       `${this.eventUrl(organizationId, eventId)}/rsvp/sensitive-data`,
+    );
+  }
+
+  getRsvpSensitiveQuestionAnswers(
+    organizationId: string,
+    eventId: string,
+  ): Observable<SensitiveQuestionAnswerResponse[]> {
+    return this.http.get<SensitiveQuestionAnswerResponse[]>(
+      `${this.eventUrl(organizationId, eventId)}/rsvp/sensitive-question-answers`,
     );
   }
 

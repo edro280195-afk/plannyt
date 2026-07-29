@@ -1,7 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Plannyt.Api.Infrastructure.Persistence;
@@ -162,7 +164,13 @@ public sealed class RsvpIntegrationTests(ApiFactory factory)
         var session = await TestSessionFactory.RegisterPlannerAsync(factory, "rsvp-close");
         var eventId = await CreateConfirmedEventAsync(session);
         var groupId = await CreateGroupAsync(session, eventId, "Familia Sección", 2);
-        await CreateGuestAsync(session, eventId, groupId, "Laura", "Sección", true);
+        var guestId = await CreateGuestAsync(
+            session,
+            eventId,
+            groupId,
+            "Laura",
+            "Sección",
+            true);
         await PublishInvitationExperienceAsync(session, eventId);
         var token = await GenerateLinkTokenAsync(session, eventId, groupId);
 
@@ -207,8 +215,8 @@ public sealed class RsvpIntegrationTests(ApiFactory factory)
                 {
                     new
                     {
-                        eventGuestId = (Guid?)null,
-                        displayName = "Laura",
+                        eventGuestId = (Guid?)guestId,
+                        displayName = "Laura Sección",
                         ageCategory = "Adult",
                         attendanceStatus = "Attending",
                         menuSelectionsJson = "[]",
@@ -218,7 +226,7 @@ public sealed class RsvpIntegrationTests(ApiFactory factory)
                         isUnnamedCompanion = false
                     }
                 },
-                answers = Array.Empty<object>(),
+                answers = CreateRequiredQuestionAnswers(),
                 consentSnapshot = (string?)null
             });
 
@@ -533,7 +541,7 @@ public sealed class RsvpIntegrationTests(ApiFactory factory)
                         isUnnamedCompanion = false
                     }
                 },
-                answers = Array.Empty<object>(),
+                answers = CreateRequiredQuestionAnswers(),
                 consentSnapshot = "\"Consentimiento otorgado vía web\""
             });
 
@@ -553,7 +561,13 @@ public sealed class RsvpIntegrationTests(ApiFactory factory)
         var session = await TestSessionFactory.RegisterPlannerAsync(factory, "rsvp-sub-closed");
         var eventId = await CreateConfirmedEventAsync(session);
         var groupId = await CreateGroupAsync(session, eventId, "Familia Cerrada", 1);
-        await CreateGuestAsync(session, eventId, groupId, "Diana", "Cerrada", true);
+        var guestId = await CreateGuestAsync(
+            session,
+            eventId,
+            groupId,
+            "Diana",
+            "Cerrada",
+            true);
         await PublishInvitationExperienceAsync(session, eventId);
         var token = await GenerateLinkTokenAsync(session, eventId, groupId);
 
@@ -596,8 +610,8 @@ public sealed class RsvpIntegrationTests(ApiFactory factory)
                 {
                     new
                     {
-                        eventGuestId = (Guid?)null,
-                        displayName = "Diana",
+                        eventGuestId = (Guid?)guestId,
+                        displayName = "Diana Cerrada",
                         ageCategory = "Adult",
                         attendanceStatus = "Attending",
                         menuSelectionsJson = "[]",
@@ -607,7 +621,7 @@ public sealed class RsvpIntegrationTests(ApiFactory factory)
                         isUnnamedCompanion = false
                     }
                 },
-                answers = Array.Empty<object>(),
+                answers = CreateRequiredQuestionAnswers(),
                 consentSnapshot = (string?)null
             });
 
@@ -725,8 +739,13 @@ public sealed class RsvpIntegrationTests(ApiFactory factory)
                 duplicateAnswers: true));
 
         Assert.Equal(
-            HttpStatusCode.InternalServerError,
+            HttpStatusCode.BadRequest,
             failed.StatusCode);
+        var validation = await failed.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Contains(
+            validation.GetProperty("errors").EnumerateArray(),
+            error => error.GetProperty("code").GetString()
+                     == "duplicate_answer");
         await using var scope = factory.Services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider
             .GetRequiredService<PlannytDbContext>();
@@ -746,6 +765,526 @@ public sealed class RsvpIntegrationTests(ApiFactory factory)
                 == scenario.Session.OrganizationId
                 && data.EventId == scenario.EventId
                 && data.EventGuestId == scenario.GuestId));
+    }
+
+    [Fact]
+    public async Task RSVP_Question_Engine_Persists_All_Types_With_Exact_Snapshots()
+    {
+        var scenario = await CreateOpenScenarioAsync(
+            "rsvp-question-types");
+        const string questionsJson = """
+            [
+              {"id":"short","questionType":"ShortText","scope":"InvitationGroup","category":"General","label":"Nombre corto","isRequired":true,"isActive":true,"sortOrder":0,"options":[]},
+              {"id":"long","questionType":"LongText","scope":"InvitationGroup","category":"General","label":"Comentario","isRequired":false,"isActive":true,"sortOrder":1,"options":[]},
+              {"id":"yes","questionType":"YesNo","scope":"InvitationGroup","category":"General","label":"¿Asistirá?","isRequired":true,"isActive":true,"sortOrder":2,"options":[]},
+              {"id":"single","questionType":"SingleChoice","scope":"InvitationGroup","category":"General","label":"Una opción","isRequired":true,"isActive":true,"sortOrder":3,"options":[{"key":"a","label":"Opción A","isActive":true,"sortOrder":0},{"key":"b","label":"Opción B","isActive":true,"sortOrder":1}]},
+              {"id":"multiple","questionType":"MultipleChoice","scope":"InvitationGroup","category":"General","label":"Varias opciones","isRequired":true,"isActive":true,"sortOrder":4,"options":[{"key":"a","label":"Opción A","isActive":true,"sortOrder":0},{"key":"b","label":"Opción B","isActive":true,"sortOrder":1},{"key":"c","label":"Opción C","isActive":true,"sortOrder":2}],"validationRules":{"minimumSelections":1,"maximumSelections":2}},
+              {"id":"number","questionType":"Number","scope":"InvitationGroup","category":"General","label":"Cantidad","isRequired":true,"isActive":true,"sortOrder":5,"options":[],"validationRules":{"minimum":1,"maximum":5}},
+              {"id":"date","questionType":"Date","scope":"InvitationGroup","category":"General","label":"Fecha","isRequired":true,"isActive":true,"sortOrder":6,"options":[],"validationRules":{"minimumDate":"2026-01-01","maximumDate":"2026-12-31"}},
+              {"id":"consent","questionType":"InformationalConsent","scope":"InvitationGroup","category":"Consent","label":"Autorizo el tratamiento","isRequired":true,"isSensitive":true,"isActive":true,"sortOrder":7,"options":[]}
+            ]
+            """;
+        var versionId = await CreateAndPublishNewFormVersionAsync(
+            scenario.Session,
+            scenario.EventId,
+            questionsJson);
+
+        using var response = await PostGuestRsvpAsync(
+            scenario.Token,
+            "attempt-question-types-000001",
+            CreateQuestionSubmissionBody(
+                scenario.GuestId,
+                0,
+                [
+                    QuestionAnswer("short", "\"  José  \""),
+                    QuestionAnswer("long", "\"Comentario amplio\""),
+                    QuestionAnswer("yes", "true"),
+                    QuestionAnswer("single", "\"b\""),
+                    QuestionAnswer("multiple", "[\"b\",\"a\"]"),
+                    QuestionAnswer("number", "3.50"),
+                    QuestionAnswer("date", "\"2026-10-10\""),
+                    QuestionAnswer("consent", "true")
+                ]));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var payload = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(7, payload.GetProperty("answers").GetArrayLength());
+        Assert.DoesNotContain(
+            payload.GetProperty("answers").EnumerateArray(),
+            answer => answer.GetProperty("questionId").GetString()
+                      == "consent");
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider
+            .GetRequiredService<PlannytDbContext>();
+        var submission = await dbContext.RsvpSubmissions
+            .SingleAsync(entity =>
+                entity.OrganizationId
+                == scenario.Session.OrganizationId
+                && entity.EventId == scenario.EventId
+                && entity.InvitationGroupId == scenario.GroupId);
+        Assert.Equal(versionId, submission.RsvpFormVersionId);
+        var answers = await dbContext.RsvpSubmissionAnswers
+            .Where(answer => answer.RsvpSubmissionId == submission.Id)
+            .OrderBy(answer => answer.QuestionId)
+            .ToListAsync();
+        Assert.Equal(8, answers.Count);
+        Assert.Equal(
+            "\"José\"",
+            answers.Single(answer =>
+                answer.QuestionId == "short").AnswerValue);
+        Assert.Equal(
+            ["a", "b"],
+            JsonSerializer.Deserialize<string[]>(
+                answers.Single(answer =>
+                    answer.QuestionId == "multiple").AnswerValue)!);
+        Assert.Equal(
+            "Nombre corto",
+            answers.Single(answer =>
+                answer.QuestionId == "short").QuestionLabelSnapshot);
+        Assert.True(
+            answers.Single(answer =>
+                answer.QuestionId == "consent").IsSensitive);
+
+        using var sensitiveRequest =
+            TestSessionFactory.CreateAuthorizedRequest(
+                HttpMethod.Get,
+                $"/api/organizations/{scenario.Session.OrganizationId}/events/{scenario.EventId}/rsvp/sensitive-question-answers",
+                scenario.Session.AccessToken);
+        using var sensitiveResponse = await factory.CreateClient()
+            .SendAsync(sensitiveRequest);
+        Assert.Equal(HttpStatusCode.OK, sensitiveResponse.StatusCode);
+        var sensitivePayload = await sensitiveResponse.Content
+            .ReadFromJsonAsync<JsonElement>();
+        var sensitiveAnswer = Assert.Single(
+            sensitivePayload.EnumerateArray());
+        Assert.Equal(
+            "consent",
+            sensitiveAnswer.GetProperty("questionId").GetString());
+        Assert.Equal(
+            "true",
+            sensitiveAnswer.GetProperty("answerValue").GetString());
+    }
+
+    [Fact]
+    public async Task RSVP_Invalid_Question_Leaves_No_Partial_Data()
+    {
+        var scenario = await CreateOpenScenarioAsync(
+            "rsvp-question-atomic");
+        const string questionsJson = """
+            [
+              {"id":"choice","questionType":"SingleChoice","scope":"InvitationGroup","category":"General","label":"Opción","isRequired":true,"isActive":true,"sortOrder":0,"options":[{"key":"a","label":"A","isActive":true,"sortOrder":0},{"key":"b","label":"B","isActive":true,"sortOrder":1}]},
+              {"id":"allergy","questionType":"LongText","scope":"InvitationGroup","category":"Dietary","label":"Alergias","isRequired":false,"isSensitive":true,"isActive":true,"sortOrder":1,"options":[]},
+              {"id":"consent","questionType":"InformationalConsent","scope":"InvitationGroup","category":"Consent","label":"Autorizo","isRequired":true,"isSensitive":true,"isActive":true,"sortOrder":2,"options":[]}
+            ]
+            """;
+        await CreateAndPublishNewFormVersionAsync(
+            scenario.Session,
+            scenario.EventId,
+            questionsJson);
+        Guid transportOptionId;
+        await using (var setupScope =
+                     factory.Services.CreateAsyncScope())
+        {
+            var setupDb = setupScope.ServiceProvider
+                .GetRequiredService<PlannytDbContext>();
+            var option = EventTransportOption.Create(
+                scenario.Session.OrganizationId,
+                scenario.EventId,
+                "Transporte atómico",
+                null,
+                TransportDirection.ToCeremony,
+                "Lobby",
+                Now.AddMonths(3),
+                null,
+                10,
+                false,
+                0,
+                Now);
+            setupDb.EventTransportOptions.Add(option);
+            await setupDb.SaveChangesAsync();
+            transportOptionId = option.Id;
+        }
+
+        using var response = await PostGuestRsvpAsync(
+            scenario.Token,
+            "attempt-question-atomic-000001",
+            CreateQuestionSubmissionBody(
+                scenario.GuestId,
+                0,
+                [
+                    QuestionAnswer("choice", "\"inexistente\""),
+                    QuestionAnswer("allergy", "\"Nueces\""),
+                    QuestionAnswer("consent", "true")
+                ],
+                transportOptionId: transportOptionId,
+                dietaryJson:
+                    """{"allergies":"Nueces","consentGranted":true}"""));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Contains(
+            problem.GetProperty("errors").EnumerateArray(),
+            error => error.GetProperty("code").GetString()
+                     == "invalid_option");
+
+        await using var verificationScope =
+            factory.Services.CreateAsyncScope();
+        var dbContext = verificationScope.ServiceProvider
+            .GetRequiredService<PlannytDbContext>();
+        Assert.False(await dbContext.RsvpSubmissions.AnyAsync(entity =>
+            entity.OrganizationId == scenario.Session.OrganizationId
+            && entity.EventId == scenario.EventId
+            && entity.InvitationGroupId == scenario.GroupId));
+        Assert.False(await (
+            from answer in dbContext.RsvpSubmissionAnswers
+            join submission in dbContext.RsvpSubmissions
+                on answer.RsvpSubmissionId equals submission.Id
+            where submission.OrganizationId
+                  == scenario.Session.OrganizationId
+                  && submission.EventId == scenario.EventId
+                  && submission.InvitationGroupId
+                  == scenario.GroupId
+            select answer).AnyAsync());
+        Assert.False(await dbContext.CurrentGuestRsvps.AnyAsync(entity =>
+            entity.OrganizationId == scenario.Session.OrganizationId
+            && entity.EventId == scenario.EventId
+            && entity.InvitationGroupId == scenario.GroupId));
+        Assert.False(await dbContext.GuestTransportSelections.AnyAsync(
+            entity =>
+                entity.OrganizationId
+                == scenario.Session.OrganizationId
+                && entity.EventId == scenario.EventId));
+        Assert.False(await dbContext.GuestDietaryAndAccessibilities
+            .AnyAsync(entity =>
+                entity.OrganizationId
+                == scenario.Session.OrganizationId
+                && entity.EventId == scenario.EventId));
+        Assert.False(await dbContext.AuditEntries.AnyAsync(entry =>
+            entry.OrganizationId == scenario.Session.OrganizationId
+            && entry.EventId == scenario.EventId
+            && entry.Action == AuditActions.RsvpSubmitted.Value));
+    }
+
+    [Fact]
+    public async Task RSVP_Historical_Edit_Uses_The_Previously_Presented_Version()
+    {
+        var scenario = await CreateOpenScenarioAsync(
+            "rsvp-historical-version");
+        Guid firstVersionId;
+        await using (var versionScope =
+                     factory.Services.CreateAsyncScope())
+        {
+            var versionDb = versionScope.ServiceProvider
+                .GetRequiredService<PlannytDbContext>();
+            firstVersionId = await versionDb.RsvpForms
+                .Where(form =>
+                    form.OrganizationId
+                    == scenario.Session.OrganizationId
+                    && form.EventId == scenario.EventId)
+                .Select(form =>
+                    form.ActivePublishedVersionId!.Value)
+                .SingleAsync();
+        }
+
+        using (var first = await PostGuestRsvpAsync(
+                   scenario.Token,
+                   "attempt-historical-000001",
+                   CreateSubmissionBody(
+                       scenario.GuestId,
+                       0,
+                       "Primera versión")))
+        {
+            Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        }
+
+        const string secondQuestions = """
+            [
+              {"id":"q2","questionType":"ShortText","scope":"InvitationGroup","category":"General","label":"Pregunta nueva","isRequired":true,"isActive":true,"sortOrder":0,"options":[]}
+            ]
+            """;
+        var secondVersionId =
+            await CreateAndPublishNewFormVersionAsync(
+                scenario.Session,
+                scenario.EventId,
+                secondQuestions);
+        Assert.NotEqual(firstVersionId, secondVersionId);
+
+        using var stateResponse = await factory.CreateClient().GetAsync(
+            $"/api/guest/rsvp/{scenario.Token}/state");
+        stateResponse.EnsureSuccessStatusCode();
+        var state = await stateResponse.Content
+            .ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(
+            firstVersionId,
+            state.GetProperty("activeForm")
+                .GetProperty("id")
+                .GetGuid());
+
+        using (var edit = await PostGuestRsvpAsync(
+                   scenario.Token,
+                   "attempt-historical-000002",
+                   CreateQuestionSubmissionBody(
+                       scenario.GuestId,
+                       1,
+                       [
+                           QuestionAnswer(
+                               "q1",
+                               "\"Respuesta histórica\"")
+                       ],
+                       firstVersionId)))
+        {
+            Assert.Equal(HttpStatusCode.OK, edit.StatusCode);
+        }
+
+        using var foreignQuestion = await PostGuestRsvpAsync(
+            scenario.Token,
+            "attempt-historical-000003",
+            CreateQuestionSubmissionBody(
+                scenario.GuestId,
+                2,
+                [
+                    QuestionAnswer(
+                        "q2",
+                        "\"No pertenece a la versión\"")
+                ],
+                firstVersionId));
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            foreignQuestion.StatusCode);
+        var problem = await foreignQuestion.Content
+            .ReadFromJsonAsync<JsonElement>();
+        Assert.Contains(
+            problem.GetProperty("errors").EnumerateArray(),
+            error => error.GetProperty("code").GetString()
+                     == "unknown_question");
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider
+            .GetRequiredService<PlannytDbContext>();
+        var submissions = await dbContext.RsvpSubmissions
+            .Where(entity =>
+                entity.OrganizationId
+                == scenario.Session.OrganizationId
+                && entity.EventId == scenario.EventId
+                && entity.InvitationGroupId == scenario.GroupId)
+            .OrderBy(entity => entity.RevisionNumber)
+            .ToListAsync();
+        Assert.Equal(2, submissions.Count);
+        Assert.All(
+            submissions,
+            submission => Assert.Equal(
+                firstVersionId,
+                submission.RsvpFormVersionId));
+        var historicalAnswer =
+            await dbContext.RsvpSubmissionAnswers.SingleAsync(answer =>
+                answer.RsvpSubmissionId == submissions[1].Id
+                && answer.QuestionId == "q1");
+        Assert.Equal(
+            "Nombre",
+            historicalAnswer.QuestionLabelSnapshot);
+    }
+
+    [Fact]
+    public async Task RSVP_Question_Scope_Rejects_Guest_From_Another_Group()
+    {
+        var scenario = await CreateOpenScenarioAsync(
+            "rsvp-question-guest-scope");
+        var otherGroupId = await CreateGroupAsync(
+            scenario.Session,
+            scenario.EventId,
+            "Grupo ajeno",
+            1);
+        var otherGuestId = await CreateGuestAsync(
+            scenario.Session,
+            scenario.EventId,
+            otherGroupId,
+            "Invitado",
+            "Ajeno",
+            true);
+        const string questionsJson = """
+            [
+              {"id":"individual","questionType":"ShortText","scope":"IndividualGuest","category":"General","label":"Por invitado","isRequired":true,"isActive":true,"sortOrder":0,"options":[]}
+            ]
+            """;
+        await CreateAndPublishNewFormVersionAsync(
+            scenario.Session,
+            scenario.EventId,
+            questionsJson);
+
+        using var response = await PostGuestRsvpAsync(
+            scenario.Token,
+            "attempt-foreign-guest-000001",
+            CreateQuestionSubmissionBody(
+                otherGuestId,
+                0,
+                [
+                    QuestionAnswer(
+                        "individual",
+                        "\"Ajeno\"",
+                        otherGuestId)
+                ]));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content
+            .ReadFromJsonAsync<JsonElement>();
+        Assert.Contains(
+            problem.GetProperty("errors").EnumerateArray(),
+            error => error.GetProperty("code").GetString()
+                     == "guest_not_in_group");
+    }
+
+    [Fact]
+    public async Task RSVP_Idempotency_Uses_Normalized_Question_Answers()
+    {
+        var scenario = await CreateOpenScenarioAsync(
+            "rsvp-question-idempotency");
+        const string questionsJson = """
+            [
+              {"id":"multiple","questionType":"MultipleChoice","scope":"InvitationGroup","category":"General","label":"Opciones","isRequired":true,"isActive":true,"sortOrder":0,"options":[{"key":"a","label":"A","isActive":true,"sortOrder":0},{"key":"b","label":"B","isActive":true,"sortOrder":1},{"key":"c","label":"C","isActive":true,"sortOrder":2}]}
+            ]
+            """;
+        await CreateAndPublishNewFormVersionAsync(
+            scenario.Session,
+            scenario.EventId,
+            questionsJson);
+        const string key = "attempt-normalized-answers-000001";
+
+        Guid firstId;
+        using (var first = await PostGuestRsvpAsync(
+                   scenario.Token,
+                   key,
+                   CreateQuestionSubmissionBody(
+                       scenario.GuestId,
+                       0,
+                       [
+                           QuestionAnswer(
+                               "multiple",
+                               "[\"b\",\"a\"]")
+                       ])))
+        {
+            Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+            firstId = (await first.Content
+                    .ReadFromJsonAsync<JsonElement>())
+                .GetProperty("id")
+                .GetGuid();
+        }
+
+        using (var equivalent = await PostGuestRsvpAsync(
+                   scenario.Token,
+                   key,
+                   CreateQuestionSubmissionBody(
+                       scenario.GuestId,
+                       0,
+                       [
+                           QuestionAnswer(
+                               "multiple",
+                               "[\"a\",\"b\"]")
+                       ])))
+        {
+            Assert.Equal(
+                HttpStatusCode.OK,
+                equivalent.StatusCode);
+            Assert.Equal(
+                firstId,
+                (await equivalent.Content
+                        .ReadFromJsonAsync<JsonElement>())
+                    .GetProperty("id")
+                    .GetGuid());
+        }
+
+        using var different = await PostGuestRsvpAsync(
+            scenario.Token,
+            key,
+            CreateQuestionSubmissionBody(
+                scenario.GuestId,
+                0,
+                [
+                    QuestionAnswer(
+                        "multiple",
+                        "[\"a\",\"c\"]")
+                ]));
+        Assert.Equal(HttpStatusCode.Conflict, different.StatusCode);
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider
+            .GetRequiredService<PlannytDbContext>();
+        Assert.Equal(
+            1,
+            await dbContext.RsvpSubmissions.CountAsync(entity =>
+                entity.OrganizationId
+                == scenario.Session.OrganizationId
+                && entity.EventId == scenario.EventId
+                && entity.InvitationGroupId == scenario.GroupId));
+    }
+
+    [Fact]
+    public async Task RSVP_Publish_Revalidates_Stored_Question_Snapshot()
+    {
+        var scenario = await CreateOpenScenarioAsync(
+            "rsvp-publish-validation");
+        await CreateNewFormDraftAsync(
+            scenario.Session,
+            scenario.EventId);
+        var version = await CreateFormVersionAsync(
+            scenario.Session,
+            scenario.EventId,
+            """
+            [
+              {"id":"valid","questionType":"ShortText","scope":"InvitationGroup","category":"General","label":"Válida","isRequired":false,"isActive":true,"sortOrder":0,"options":[]}
+            ]
+            """);
+        var versionId = version.GetProperty("id").GetGuid();
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var dbContext = scope.ServiceProvider
+                .GetRequiredService<PlannytDbContext>();
+            await dbContext.RsvpFormVersions
+                .Where(entity =>
+                    entity.OrganizationId
+                    == scenario.Session.OrganizationId
+                    && entity.Id == versionId)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(
+                    entity => entity.QuestionsSnapshot,
+                    """[{"id":"invalid","questionType":"Unknown"}]"""));
+        }
+
+        await SubmitFormForReviewAsync(
+            scenario.Session,
+            scenario.EventId);
+        await ApproveFormVersionAsync(
+            scenario.Session,
+            scenario.EventId,
+            versionId);
+        using var publishRequest =
+            TestSessionFactory.CreateAuthorizedRequest(
+                HttpMethod.Post,
+                $"/api/organizations/{scenario.Session.OrganizationId}/events/{scenario.EventId}/rsvp/form/versions/{versionId}/publish",
+                scenario.Session.AccessToken);
+        using var publishResponse = await factory.CreateClient()
+            .SendAsync(publishRequest);
+
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            publishResponse.StatusCode);
+        await using var verificationScope =
+            factory.Services.CreateAsyncScope();
+        var verificationDb = verificationScope.ServiceProvider
+            .GetRequiredService<PlannytDbContext>();
+        var storedVersion =
+            await verificationDb.RsvpFormVersions.SingleAsync(
+                entity =>
+                    entity.OrganizationId
+                    == scenario.Session.OrganizationId
+                    && entity.Id == versionId);
+        Assert.Null(storedVersion.PublishedAt);
+        Assert.NotEqual(
+            versionId,
+            (await verificationDb.RsvpForms.SingleAsync(form =>
+                form.OrganizationId
+                == scenario.Session.OrganizationId
+                && form.EventId == scenario.EventId))
+            .ActivePublishedVersionId);
     }
 
     [Fact]
@@ -1776,11 +2315,12 @@ public sealed class RsvpIntegrationTests(ApiFactory factory)
         string idempotencyKey,
         object body)
     {
+        var normalizedBody = await WithPresentedVersionAsync(token, body);
         using var request = new HttpRequestMessage(
             HttpMethod.Post,
             $"/api/guest/rsvp/{token}/submit")
         {
-            Content = JsonContent.Create(body)
+            Content = JsonContent.Create(normalizedBody)
         };
         request.Headers.Add("Idempotency-Key", idempotencyKey);
         return await factory.CreateClient().SendAsync(request);
@@ -1793,6 +2333,9 @@ public sealed class RsvpIntegrationTests(ApiFactory factory)
         string reason,
         object submission)
     {
+        var normalizedSubmission = await WithPresentedVersionAsync(
+            scenario.Token,
+            submission);
         using var request = TestSessionFactory.CreateAuthorizedRequest(
             HttpMethod.Post,
             $"/api/organizations/{scenario.Session.OrganizationId}/events/{scenario.EventId}/rsvp/groups/{scenario.GroupId}/manual-capture",
@@ -1801,7 +2344,7 @@ public sealed class RsvpIntegrationTests(ApiFactory factory)
             {
                 source,
                 reason,
-                submission
+                submission = normalizedSubmission
             }));
         request.Headers.Add("Idempotency-Key", idempotencyKey);
         return await factory.CreateClient().SendAsync(request);
@@ -1815,6 +2358,9 @@ public sealed class RsvpIntegrationTests(ApiFactory factory)
         string reason,
         object submission)
     {
+        var normalizedSubmission = await WithPresentedVersionAsync(
+            scenario.Token,
+            submission);
         using var request = TestSessionFactory.CreateAuthorizedRequest(
             HttpMethod.Post,
             $"/api/client-portal/events/{scenario.EventId}/rsvp/groups/{scenario.GroupId}/manual-capture",
@@ -1823,10 +2369,43 @@ public sealed class RsvpIntegrationTests(ApiFactory factory)
             {
                 source,
                 reason,
-                submission
+                submission = normalizedSubmission
             }));
         request.Headers.Add("Idempotency-Key", idempotencyKey);
         return await factory.CreateClient().SendAsync(request);
+    }
+
+    private async Task<JsonObject> WithPresentedVersionAsync(
+        string token,
+        object submission)
+    {
+        var normalized = JsonSerializer.SerializeToNode(submission)
+                             ?.AsObject()
+                         ?? throw new InvalidOperationException(
+                             "No se pudo serializar la entrega RSVP.");
+        if (normalized.ContainsKey("rsvpFormVersionId"))
+        {
+            return normalized;
+        }
+
+        var tokenHash = Convert.ToHexString(
+            SHA256.HashData(Encoding.UTF8.GetBytes(token)));
+        await using var scope = factory.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider
+            .GetRequiredService<PlannytDbContext>();
+        var link = await dbContext.GuestAccessLinks
+            .AsNoTracking()
+            .SingleAsync(entity => entity.TokenHash == tokenHash);
+        normalized["rsvpFormVersionId"] = await dbContext.RsvpForms
+            .AsNoTracking()
+            .Where(form =>
+                form.OrganizationId == link.OrganizationId
+                && form.EventId == link.EventId)
+            .Select(form => form.ActivePublishedVersionId)
+            .SingleAsync()
+            ?? throw new InvalidOperationException(
+                "El escenario no tiene una versión RSVP publicada.");
+        return normalized;
     }
 
     private async Task<PortalRsvpSession> CreatePortalSessionAsync(
@@ -1962,19 +2541,28 @@ public sealed class RsvpIntegrationTests(ApiFactory factory)
                 new
                 {
                     questionId = "q1",
-                    guestId = (Guid?)guestId,
+                    guestId = (Guid?)null,
                     answerValue = "\"Uno\"",
                     displayValue = "Uno"
                 },
                 new
                 {
                     questionId = "q1",
-                    guestId = (Guid?)guestId,
+                    guestId = (Guid?)null,
                     answerValue = "\"Dos\"",
                     displayValue = "Dos"
                 }
             ]
-            : [];
+            :
+            [
+                new
+                {
+                    questionId = "q1",
+                    guestId = (Guid?)null,
+                    answerValue = "\"Respuesta válida\"",
+                    displayValue = "Respuesta válida"
+                }
+            ];
         return new
         {
             expectedRevision,
@@ -2007,6 +2595,80 @@ public sealed class RsvpIntegrationTests(ApiFactory factory)
             consentSnapshot = """{"accepted":true}"""
         };
     }
+
+    private static JsonObject CreateQuestionSubmissionBody(
+        Guid guestId,
+        int expectedRevision,
+        object[] answers,
+        Guid? formVersionId = null,
+        Guid? transportOptionId = null,
+        string dietaryJson = "{}",
+        string? consentSnapshot = null)
+    {
+        var body = JsonSerializer.SerializeToNode(new
+        {
+            expectedRevision,
+            overallStatus = "Confirmed",
+            contactName = "Contacto RSVP",
+            contactEmail = "contacto@example.invalid",
+            contactPhone = "+528991234567",
+            guests = new[]
+            {
+                new
+                {
+                    eventGuestId = (Guid?)guestId,
+                    displayName = "Contacto RSVP",
+                    ageCategory = "Adult",
+                    attendanceStatus = "Attending",
+                    menuSelectionsJson = "{}",
+                    transportSelectionJson =
+                        transportOptionId.HasValue
+                            ? JsonSerializer.Serialize(new
+                            {
+                                transportOptionId
+                            })
+                            : "{}",
+                    accommodationSelectionJson = "{}",
+                    dietaryJson,
+                    isUnnamedCompanion = false
+                }
+            },
+            answers,
+            consentSnapshot
+        })?.AsObject()
+        ?? throw new InvalidOperationException(
+            "No se pudo construir la entrega RSVP de prueba.");
+        if (formVersionId.HasValue)
+        {
+            body["rsvpFormVersionId"] = formVersionId.Value;
+        }
+
+        return body;
+    }
+
+    private static object QuestionAnswer(
+        string questionId,
+        string answerValue,
+        Guid? guestId = null,
+        string? displayValue = null) =>
+        new
+        {
+            questionId,
+            guestId,
+            answerValue,
+            displayValue
+        };
+
+    private static object[] CreateRequiredQuestionAnswers() =>
+    [
+        new
+        {
+            questionId = "q1",
+            guestId = (Guid?)null,
+            answerValue = "\"Respuesta válida\"",
+            displayValue = "Respuesta válida"
+        }
+    ];
 
     private async Task<Guid> CreateConfirmedEventAsync(TestSession session)
     {
@@ -2285,7 +2947,9 @@ public sealed class RsvpIntegrationTests(ApiFactory factory)
     }
 
     private async Task<JsonElement> CreateFormVersionAsync(
-        TestSession session, Guid eventId)
+        TestSession session,
+        Guid eventId,
+        string? questionsJson = null)
     {
         using var request = TestSessionFactory.CreateAuthorizedRequest(
             HttpMethod.Post,
@@ -2293,7 +2957,8 @@ public sealed class RsvpIntegrationTests(ApiFactory factory)
             session.AccessToken,
             JsonContent.Create(new
             {
-                questionsJson = "[{\"id\":\"q1\",\"label\":\"Nombre\",\"questionType\":\"ShortText\",\"scope\":\"InvitationGroup\",\"category\":\"General\",\"isRequired\":true,\"isActive\":true,\"sortOrder\":1,\"options\":[]}]",
+                questionsJson = questionsJson
+                    ?? "[{\"id\":\"q1\",\"label\":\"Nombre\",\"questionType\":\"ShortText\",\"scope\":\"InvitationGroup\",\"category\":\"General\",\"isRequired\":true,\"isActive\":true,\"sortOrder\":1,\"options\":[]}]",
                 menuJson = "[]",
                 transportJson = "[]",
                 accommodationJson = "[]"
@@ -2301,6 +2966,18 @@ public sealed class RsvpIntegrationTests(ApiFactory factory)
         using var response = await factory.CreateClient().SendAsync(request);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<JsonElement>();
+    }
+
+    private async Task CreateNewFormDraftAsync(
+        TestSession session,
+        Guid eventId)
+    {
+        using var request = TestSessionFactory.CreateAuthorizedRequest(
+            HttpMethod.Post,
+            $"/api/organizations/{session.OrganizationId}/events/{eventId}/rsvp/form/new-draft",
+            session.AccessToken);
+        using var response = await factory.CreateClient().SendAsync(request);
+        response.EnsureSuccessStatusCode();
     }
 
     private async Task<JsonElement> SubmitFormForReviewAsync(
@@ -2348,6 +3025,23 @@ public sealed class RsvpIntegrationTests(ApiFactory factory)
         await SubmitFormForReviewAsync(session, eventId);
         await ApproveFormVersionAsync(session, eventId, versionId);
         await PublishFormVersionAsync(session, eventId, versionId);
+    }
+
+    private async Task<Guid> CreateAndPublishNewFormVersionAsync(
+        TestSession session,
+        Guid eventId,
+        string questionsJson)
+    {
+        await CreateNewFormDraftAsync(session, eventId);
+        var version = await CreateFormVersionAsync(
+            session,
+            eventId,
+            questionsJson);
+        var versionId = version.GetProperty("id").GetGuid();
+        await SubmitFormForReviewAsync(session, eventId);
+        await ApproveFormVersionAsync(session, eventId, versionId);
+        await PublishFormVersionAsync(session, eventId, versionId);
+        return versionId;
     }
 
     private sealed record OpenRsvpScenario(

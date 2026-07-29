@@ -203,9 +203,27 @@ public sealed class RsvpExportService(
             .AsNoTracking()
             .Where(d => d.OrganizationId == organizationId && d.EventId == eventId)
             .ToListAsync(ct);
+        var latestSubmissionIds = dbContext.RsvpSubmissions
+            .AsNoTracking()
+            .Where(submission =>
+                submission.OrganizationId == organizationId
+                && submission.EventId == eventId)
+            .GroupBy(submission => submission.InvitationGroupId)
+            .Select(group => group
+                .OrderByDescending(submission =>
+                    submission.RevisionNumber)
+                .Select(submission => submission.Id)
+                .First());
+        var questionAnswers = await dbContext.RsvpSubmissionAnswers
+            .AsNoTracking()
+            .Where(answer =>
+                latestSubmissionIds.Contains(answer.RsvpSubmissionId)
+                && answer.IsSensitive)
+            .OrderBy(answer => answer.QuestionId)
+            .ToListAsync(ct);
 
         var sb = new StringBuilder();
-        sb.AppendLine("\uFEFFGuestDisplayName,Allergies,DietaryRestrictions,AccessibilityRequirements,AdditionalNotes,ConsentGrantedAt,LastUpdatedAt");
+        sb.AppendLine("\uFEFFRecordType,GuestDisplayName,QuestionId,QuestionLabel,Answer,Allergies,DietaryRestrictions,AccessibilityRequirements,AdditionalNotes,ConsentGrantedAt,LastUpdatedAt");
 
         foreach (var d in data)
         {
@@ -213,7 +231,13 @@ public sealed class RsvpExportService(
                 .AsNoTracking()
                 .FirstOrDefaultAsync(r => r.EventGuestId == d.EventGuestId, ct);
             var displayName = SanitizeCsv(guest?.CurrentDisplayName ?? "");
-            sb.AppendLine($"{displayName},{SanitizeCsv(d.Allergies ?? "")},{SanitizeCsv(d.DietaryRestrictions ?? "")},{SanitizeCsv(d.AccessibilityRequirements ?? "")},{SanitizeCsv(d.AdditionalNotes ?? "")},{d.ConsentGrantedAt?.ToString("s") ?? ""},{d.UpdatedAt:s}");
+            sb.AppendLine($"dietary,{displayName},,,,{SanitizeCsv(d.Allergies ?? "")},{SanitizeCsv(d.DietaryRestrictions ?? "")},{SanitizeCsv(d.AccessibilityRequirements ?? "")},{SanitizeCsv(d.AdditionalNotes ?? "")},{d.ConsentGrantedAt?.ToString("s") ?? ""},{d.UpdatedAt:s}");
+        }
+
+        foreach (var answer in questionAnswers)
+        {
+            sb.AppendLine(
+                $"question,{SanitizeCsv(answer.GuestDisplayNameSnapshot ?? "")},{SanitizeCsv(answer.QuestionId)},{SanitizeCsv(answer.QuestionLabelSnapshot)},{SanitizeCsv(answer.DisplayValueSnapshot ?? ReadJsonValue(answer.AnswerValue))},,,,,,");
         }
 
         auditService.Add(
@@ -225,11 +249,27 @@ public sealed class RsvpExportService(
             eventId,
             new Dictionary<string, object?>
             {
-                ["recordCount"] = data.Count,
+                ["recordCount"] = data.Count + questionAnswers.Count,
                 ["operationType"] = "csv-export"
             });
         await dbContext.SaveChangesAsync(ct);
         return Encoding.UTF8.GetBytes(sb.ToString());
+    }
+
+    private static string ReadJsonValue(string value)
+    {
+        try
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(value);
+            return document.RootElement.ValueKind
+                   == System.Text.Json.JsonValueKind.String
+                ? document.RootElement.GetString() ?? string.Empty
+                : document.RootElement.GetRawText();
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return value;
+        }
     }
 
     private static string SanitizeCsv(string value)

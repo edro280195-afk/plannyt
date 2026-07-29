@@ -1263,6 +1263,18 @@ export type RsvpOverallStatus = 'Confirmed' | 'Declined' | 'Mixed' | 'Tentative'
 export type RsvpQuestionType = 'ShortText' | 'LongText' | 'YesNo' | 'SingleChoice' | 'MultipleChoice' | 'Number' | 'Date' | 'InformationalConsent';
 export type RsvpQuestionScope = 'InvitationGroup' | 'IndividualGuest' | 'PrimaryContact';
 export type RsvpQuestionCategory = 'General' | 'Dietary' | 'Transportation' | 'Accommodation' | 'Accessibility' | 'Consent' | 'Other';
+export type RsvpVisibilityConditionType =
+  | 'Always'
+  | 'AttendanceStatusEquals'
+  | 'GuestAgeCategoryEquals'
+  | 'GuestTypeEquals'
+  | 'GroupHasTag'
+  | 'PreviousAnswerEquals'
+  | 'PreviousAnswerContains'
+  | 'IsUnnamedCompanion'
+  | 'IsPrimaryContact'
+  | 'All'
+  | 'Any';
 export type MenuCategory = 'AdultMeal' | 'ChildMeal' | 'TeenMeal' | 'Beverage' | 'Dessert' | 'LateSnack' | 'Other';
 export type TransportDirection = 'ToCeremony' | 'ToReception' | 'Return' | 'RoundTrip' | 'Other';
 export type TransportSelectionStatus = 'Requested' | 'Confirmed' | 'Waitlisted' | 'NotNeeded' | 'Cancelled';
@@ -1343,14 +1355,59 @@ export interface RsvpQuestion {
   label: string;
   helpText: string | null;
   isRequired: boolean;
+  isSensitive: boolean;
   isActive: boolean;
   sortOrder: number;
-  options: string[];
-  visibilityRule: { dependsOnQuestionId: string; expectedValue: string } | null;
-  validationRules: { minLength?: number; maxLength?: number; minimum?: number; maximum?: number; required?: boolean; allowedOptions?: string[] } | null;
+  options: RsvpQuestionOption[];
+  visibilityRule: RsvpVisibilityRule;
+  validationRules: RsvpValidationRules;
+}
+
+export interface RsvpQuestionOption {
+  key: string;
+  label: string;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+export interface RsvpVisibilityRule {
+  conditionType: RsvpVisibilityConditionType;
+  referenceQuestionId: string | null;
+  expectedValue: string | null;
+  conditions: RsvpVisibilityRule[];
+}
+
+export interface RsvpValidationRules {
+  required?: boolean | null;
+  minLength?: number | null;
+  maxLength?: number | null;
+  minimumSelections?: number | null;
+  maximumSelections?: number | null;
+  minimum?: number | null;
+  maximum?: number | null;
+  integerOnly?: boolean | null;
+  minimumDate?: string | null;
+  maximumDate?: string | null;
+}
+
+export interface RsvpQuestionCatalog {
+  questionTypes: RsvpQuestionType[];
+  questionScopes: RsvpQuestionScope[];
+  questionCategories: RsvpQuestionCategory[];
+  visibilityConditionTypes: RsvpVisibilityConditionType[];
+  compatibleRules: Record<RsvpQuestionType, string[]>;
+  maximumQuestions: number;
+  maximumQuestionLabelLength: number;
+  maximumHelpTextLength: number;
+  maximumOptionLabelLength: number;
+  maximumShortTextLength: number;
+  maximumLongTextLength: number;
+  maximumVisibilityDepth: number;
+  maximumVisibilityConditions: number;
 }
 
 export interface RsvpSubmissionRequest {
+  rsvpFormVersionId: string;
   expectedRevision: number;
   overallStatus: RsvpOverallStatus;
   contactName: string | null;
@@ -1362,6 +1419,7 @@ export interface RsvpSubmissionRequest {
 }
 
 export interface RsvpSubmissionGuestRequest {
+  responseGuestId: string;
   eventGuestId: string | null;
   displayName: string;
   ageCategory: string;
@@ -1396,6 +1454,7 @@ export interface RsvpSubmissionResponse {
 }
 
 export interface RsvpSubmissionGuestResponse {
+  responseGuestId: string;
   eventGuestId: string | null;
   displayName: string;
   ageCategory: string;
@@ -1412,6 +1471,9 @@ export interface RsvpSubmissionAnswerResponse {
   guestId: string | null;
   answerValue: string;
   displayValue: string | null;
+  questionLabelSnapshot: string;
+  questionTypeSnapshot: RsvpQuestionType;
+  optionLabelsSnapshot: string;
 }
 
 export interface GuestRsvpStateResponse {
@@ -1428,12 +1490,15 @@ export interface GuestRsvpStateResponse {
   currentResponse: RsvpSubmissionResponse | null;
   revisionVersion: number;
   guests: GuestRsvpInviteeResponse[];
+  groupTags: string[];
 }
 
 export interface GuestRsvpInviteeResponse {
   eventGuestId: string;
   displayName: string;
   ageCategory: string;
+  guestType: string;
+  isPrimaryContact: boolean;
 }
 
 export interface SensitiveGuestDataResponse {
@@ -1445,6 +1510,20 @@ export interface SensitiveGuestDataResponse {
   additionalNotes: string | null;
   consentGrantedAt: string | null;
   updatedAt: string;
+}
+
+export interface SensitiveQuestionAnswerResponse {
+  submissionId: string;
+  revisionNumber: number;
+  questionId: string;
+  guestId: string | null;
+  guestDisplayName: string | null;
+  questionLabel: string;
+  questionType: RsvpQuestionType;
+  answerValue: string;
+  displayValue: string | null;
+  optionLabelsSnapshot: string;
+  submittedAt: string;
 }
 
 export interface RsvpDashboardResponse {

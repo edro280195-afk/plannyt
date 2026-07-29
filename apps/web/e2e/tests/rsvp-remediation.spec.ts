@@ -236,6 +236,14 @@ test.describe('Sprint 2B.2 · remediación RSVP', () => {
     api.useProfile('portal');
     const captures: RecordedSubmission[] = [];
     await page.route(
+      'https://localhost:7139/api/client-portal/events/event-1/rsvp/form',
+      async (route) => {
+        await json(route, {
+          id: 'version-1',
+        });
+      },
+    );
+    await page.route(
       'https://localhost:7139/api/client-portal/events/event-1/rsvp/groups/group-1/manual-capture',
       async (route) => {
         captures.push(recordSubmission(route));
@@ -474,11 +482,14 @@ function rsvpState(revision: number, transport = false): object {
     },
     currentResponse: revision > 0 ? submissionResponse(revision) : null,
     revisionVersion: revision,
+    groupTags: [],
     guests: [
       {
         eventGuestId: 'guest-1',
         displayName: 'Elena Luna',
         ageCategory: 'Adult',
+        guestType: 'Adult',
+        isPrimaryContact: true,
       },
     ],
   };
@@ -501,6 +512,7 @@ function submissionResponse(
     confirmationCode: `RSVP-${revision}`,
     guests: [
       {
+        responseGuestId: 'guest-1',
         eventGuestId: 'guest-1',
         displayName: 'Elena Luna',
         ageCategory: 'Adult',
@@ -621,6 +633,12 @@ async function installProfessionalRsvpDashboardMock(
       },
     ]);
   });
+  await page.route(
+    `${eventUrl}/rsvp/sensitive-question-answers`,
+    async (route) => {
+      await json(route, []);
+    },
+  );
   await page.route(`${eventUrl}/rsvp/exports/sensitive`, async (route) => {
     onSensitiveExport();
     await route.fulfill({

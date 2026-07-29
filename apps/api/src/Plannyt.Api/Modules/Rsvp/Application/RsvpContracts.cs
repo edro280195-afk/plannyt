@@ -72,11 +72,12 @@ public sealed record RsvpQuestionRequest(
     string Label,
     string? HelpText,
     bool IsRequired,
+    bool IsSensitive,
     bool IsActive,
     int SortOrder,
-    List<string> Options,
-    VisibilityRule? VisibilityRule,
-    ValidationRules? ValidationRules);
+    List<RsvpQuestionOption> Options,
+    VisibilityRule VisibilityRule,
+    ValidationRules ValidationRules);
 
 public sealed record RsvpSubmissionRequest(
     int ExpectedRevision,
@@ -86,7 +87,8 @@ public sealed record RsvpSubmissionRequest(
     string? ContactPhone,
     List<RsvpSubmissionGuestRequest> Guests,
     List<RsvpSubmissionAnswerRequest> Answers,
-    string? ConsentSnapshot);
+    string? ConsentSnapshot,
+    Guid RsvpFormVersionId = default);
 
 public sealed record RsvpSubmissionGuestRequest(
     Guid? EventGuestId,
@@ -97,7 +99,8 @@ public sealed record RsvpSubmissionGuestRequest(
     string TransportSelectionJson,
     string AccommodationSelectionJson,
     string DietaryJson,
-    bool IsUnnamedCompanion);
+    bool IsUnnamedCompanion,
+    Guid ResponseGuestId = default);
 
 public sealed record RsvpSubmissionAnswerRequest(
     string QuestionId,
@@ -120,6 +123,7 @@ public sealed record RsvpSubmissionResponse(
     List<RsvpSubmissionAnswerResponse> Answers);
 
 public sealed record RsvpSubmissionGuestResponse(
+    Guid ResponseGuestId,
     Guid? EventGuestId,
     string DisplayName,
     string AgeCategory,
@@ -134,7 +138,38 @@ public sealed record RsvpSubmissionAnswerResponse(
     string QuestionId,
     Guid? GuestId,
     string AnswerValue,
-    string? DisplayValue);
+    string? DisplayValue,
+    string QuestionLabelSnapshot,
+    RsvpQuestionType QuestionTypeSnapshot,
+    string OptionLabelsSnapshot);
+
+public sealed record RsvpQuestionCatalogResponse(
+    IReadOnlyList<string> QuestionTypes,
+    IReadOnlyList<string> QuestionScopes,
+    IReadOnlyList<string> QuestionCategories,
+    IReadOnlyList<string> VisibilityConditionTypes,
+    IReadOnlyDictionary<string, IReadOnlyList<string>> CompatibleRules,
+    int MaximumQuestions,
+    int MaximumQuestionLabelLength,
+    int MaximumHelpTextLength,
+    int MaximumOptionLabelLength,
+    int MaximumShortTextLength,
+    int MaximumLongTextLength,
+    int MaximumVisibilityDepth,
+    int MaximumVisibilityConditions);
+
+public sealed record SensitiveQuestionAnswerResponse(
+    Guid SubmissionId,
+    int RevisionNumber,
+    string QuestionId,
+    Guid? GuestId,
+    string? GuestDisplayName,
+    string QuestionLabel,
+    RsvpQuestionType QuestionType,
+    string AnswerValue,
+    string? DisplayValue,
+    string OptionLabelsSnapshot,
+    DateTimeOffset SubmittedAt);
 
 public sealed record RsvpDashboardResponse(
     int TotalGroups,
@@ -207,12 +242,15 @@ public sealed record GuestRsvpStateResponse(
     RsvpFormVersionResponse? ActiveForm,
     RsvpSubmissionResponse? CurrentResponse,
     int RevisionVersion,
-    List<GuestRsvpInviteeResponse> Guests);
+    List<GuestRsvpInviteeResponse> Guests,
+    List<string> GroupTags);
 
 public sealed record GuestRsvpInviteeResponse(
     Guid EventGuestId,
     string DisplayName,
-    string AgeCategory);
+    string AgeCategory,
+    string GuestType,
+    bool IsPrimaryContact);
 
 public sealed record EventMenuRequest(
     string Name,

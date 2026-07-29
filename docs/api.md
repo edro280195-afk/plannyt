@@ -375,15 +375,27 @@ grupo se administran mediante sus rutas específicas.
 | Método | Ruta |
 |---|---|
 | GET, POST | `/rsvp/form` |
+| GET | `/rsvp/form/question-catalog` |
+| GET | `/rsvp/form/draft-version` |
+| GET | `/rsvp/form/versions/{versionId}` |
 | POST | `/rsvp/form/version` |
+| POST | `/rsvp/form/new-draft` |
 | POST | `/rsvp/form/submit-review` |
 | POST | `/rsvp/form/versions/{versionId}/approve` |
 | POST | `/rsvp/form/versions/{versionId}/publish` |
 
 Cada `POST /rsvp/form/version` crea un snapshot nuevo e inmutable. El flujo
 publica una versión aprobada y PostgreSQL exige JSON válido en las columnas
-`jsonb`; esta remediación no incorpora todavía un motor completo de reglas para
-tipos, longitudes u opciones de preguntas.
+`jsonb`. Crear y publicar deserializan el snapshot con catálogos cerrados,
+rechazan propiedades o enums desconocidos y validan tipos, opciones, reglas,
+HTML, longitudes, referencias anteriores, ciclos y límites del árbol de
+visibilidad. `question-catalog` es la fuente que consume Angular para no
+mantener un segundo catálogo incompatible.
+
+`new-draft` abre la siguiente versión sin retirar
+`ActivePublishedVersionId`: los invitados que aún no respondieron reciben la
+publicada vigente y una edición iniciada conserva la versión de su entrega
+anterior.
 
 ### Dashboard y respuestas
 
@@ -391,6 +403,7 @@ tipos, longitudes u opciones de preguntas.
 |---|---|
 | GET | `/rsvp/dashboard` |
 | GET | `/rsvp/sensitive-data` |
+| GET | `/rsvp/sensitive-question-answers` |
 | POST | `/rsvp/groups/{groupId}/manual-capture` |
 | POST | `/rsvp/groups/{groupId}/exception` |
 | POST | `/rsvp/groups/{groupId}/exception/close` |
@@ -403,7 +416,9 @@ requiere `Idempotency-Key`, motivo y `submission.expectedRevision`.
 `SupportCorrection` exige además `rsvp-responses.correct`. Si contiene datos
 sensibles también exige `guest-sensitive-data.manage`.
 
-La lectura sensible exige `guest-sensitive-data.view`; diagnóstico usa
+Las dos lecturas sensibles exigen `guest-sensitive-data.view`; la segunda
+devuelve exclusivamente respuestas de preguntas sensibles de la revisión
+vigente, con snapshots históricos. Diagnóstico usa
 `rsvp-responses.view` y reparación transaccional
 `rsvp-responses.correct`.
 
@@ -412,6 +427,7 @@ La lectura sensible exige `guest-sensitive-data.view`; diagnóstico usa
 | Método | Ruta |
 |---|---|
 | GET | `/api/client-portal/events/{eventId}/rsvp/dashboard` |
+| GET | `/api/client-portal/events/{eventId}/rsvp/form` |
 | POST | `/api/client-portal/events/{eventId}/rsvp/groups/{groupId}/manual-capture` |
 
 El portal resuelve organización y evento desde `EventAccess`, no desde un
@@ -466,7 +482,39 @@ Las rutas están bajo
 
 `GET` devuelve el estado RSVP y la respuesta previa del invitado si existe.
 `POST` recibe `Idempotency-Key` en encabezado y
-`expectedRevision` en el cuerpo. Misma llave y fingerprint devuelve la entrega
+`rsvpFormVersionId` y `expectedRevision` en el cuerpo. La versión debe ser
+exactamente la publicada presentada al grupo; si ya existe una revisión, solo
+se permite editar contra su versión histórica. Misma llave y fingerprint devuelve la entrega
 existente; misma llave con contenido distinto o una revisión obsoleta devuelve
 `409 Conflict`. Las rutas son anónimas, limitadas por origen y usan un DTO que
 redacta snapshots sensibles.
+
+La API valida las preguntas antes de agregar o guardar cualquier fila:
+calcula destinatarios por alcance, visibilidad, obligatoriedad, tipo, opciones
+y límites; normaliza los valores y solo entonces calcula el fingerprint. Una
+entrega inválida responde `400` con
+`type = https://plannyt.com/problems/rsvp-validation` y una lista:
+
+```json
+{
+  "type": "https://plannyt.com/problems/rsvp-validation",
+  "title": "La respuesta RSVP contiene errores",
+  "status": 400,
+  "errors": [
+    {
+      "questionId": "meal-preference",
+      "guestId": null,
+      "code": "invalid_option",
+      "message": "La opción seleccionada no está disponible."
+    }
+  ]
+}
+```
+
+Los códigos públicos iniciales son `unknown_question`, `duplicate_answer`,
+`invalid_scope`, `guest_not_in_group`, `hidden_question_answered`,
+`required_answer_missing`, `invalid_value_type`, `value_too_short`,
+`value_too_long`, `value_below_minimum`, `value_above_maximum`,
+`invalid_option`, `too_few_selections`, `too_many_selections`,
+`invalid_date` y `consent_required`. No revelan definiciones ni invitados
+ajenos.

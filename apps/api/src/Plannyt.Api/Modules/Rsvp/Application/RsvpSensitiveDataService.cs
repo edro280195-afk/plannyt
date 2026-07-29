@@ -64,6 +64,76 @@ public sealed class RsvpSensitiveDataService(
         return result;
     }
 
+    public async Task<IReadOnlyList<SensitiveQuestionAnswerResponse>>
+        GetQuestionAnswersAsync(
+            Guid organizationId,
+            Guid eventId,
+            CancellationToken cancellationToken)
+    {
+        var access = await RequireEventAsync(
+            organizationId,
+            eventId,
+            Permissions.GuestSensitiveDataView,
+            cancellationToken);
+        var latestSubmissionIds = dbContext.RsvpSubmissions
+            .AsNoTracking()
+            .Where(submission =>
+                submission.OrganizationId == organizationId
+                && submission.EventId == eventId)
+            .GroupBy(submission => submission.InvitationGroupId)
+            .Select(group => group
+                .OrderByDescending(submission =>
+                    submission.RevisionNumber)
+                .Select(submission => submission.Id)
+                .First());
+        var rows = await (
+                from answer in dbContext.RsvpSubmissionAnswers.AsNoTracking()
+                join submission in dbContext.RsvpSubmissions.AsNoTracking()
+                    on answer.RsvpSubmissionId equals submission.Id
+                where latestSubmissionIds.Contains(answer.RsvpSubmissionId)
+                      && answer.IsSensitive
+                orderby submission.SubmittedAt, answer.QuestionId
+                select new
+                {
+                    SubmissionId = submission.Id,
+                    submission.RevisionNumber,
+                    answer.QuestionId,
+                    answer.GuestId,
+                    answer.GuestDisplayNameSnapshot,
+                    answer.QuestionLabelSnapshot,
+                    answer.QuestionTypeSnapshot,
+                    answer.AnswerValue,
+                    answer.DisplayValueSnapshot,
+                    answer.OptionLabelsSnapshot,
+                    submission.SubmittedAt
+                })
+            .ToListAsync(cancellationToken);
+        var result = rows
+            .Select(row => new SensitiveQuestionAnswerResponse(
+                row.SubmissionId,
+                row.RevisionNumber,
+                row.QuestionId,
+                row.GuestId,
+                row.GuestDisplayNameSnapshot,
+                row.QuestionLabelSnapshot,
+                row.QuestionTypeSnapshot,
+                ReadJsonValue(row.AnswerValue),
+                row.DisplayValueSnapshot,
+                row.OptionLabelsSnapshot,
+                row.SubmittedAt))
+            .ToList();
+        auditService.Add(
+            organizationId,
+            eventId,
+            access.UserAccountId,
+            AuditActions.GuestSensitiveDataViewed,
+            nameof(RsvpSubmissionAnswer),
+            eventId,
+            Metadata(result.Count, "question-answer-view"));
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return result;
+    }
+
     private async Task<TenantAccess> RequireEventAsync(
         Guid organizationId,
         Guid eventId,
@@ -95,4 +165,20 @@ public sealed class RsvpSensitiveDataService(
             ["recordCount"] = recordCount,
             ["operationType"] = operationType
         };
+
+    private static string ReadJsonValue(string value)
+    {
+        try
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(value);
+            return document.RootElement.ValueKind
+                   == System.Text.Json.JsonValueKind.String
+                ? document.RootElement.GetString() ?? string.Empty
+                : document.RootElement.GetRawText();
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return value;
+        }
+    }
 }

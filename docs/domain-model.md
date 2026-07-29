@@ -344,13 +344,12 @@ erDiagram
 
     EVENT ||--o{ RSVP_FORM : publica
     RSVP_FORM ||--o{ RSVP_FORM_VERSION : versiona
-    RSVP_FORM_VERSION ||--o{ RSVP_FORM_QUESTION : contiene
 
     INVITATION_GROUP ||--o{ RSVP_SUBMISSION : entrega
     RSVP_FORM_VERSION ||--o{ RSVP_SUBMISSION : congela
     RSVP_SUBMISSION ||--o{ RSVP_SUBMISSION_GUEST : snapshot
     RSVP_SUBMISSION_GUEST ||--o{ RSVP_SUBMISSION_ANSWER : captura
-    RSVP_FORM_QUESTION ||--o{ RSVP_SUBMISSION_ANSWER : responde
+    RSVP_FORM_VERSION ||--o{ RSVP_SUBMISSION_ANSWER : interpreta
     INVITATION_GROUP ||--|| CURRENT_GUEST_RSVP : refleja
 
     EVENT ||--o{ EVENT_MENU : ofrece
@@ -384,6 +383,15 @@ ser `InvitationGroup`, `IndividualGuest` o `PrimaryContact`. Las categorías
 incluyen `General`, `Dietary`, `Transportation`, `Accommodation`,
 `Accessibility`, `Consent` y `Other`.
 
+Cada definición contiene ID y orden estables, etiqueta, ayuda opcional,
+obligatoriedad, sensibilidad, opciones tipadas, reglas compatibles con el tipo
+y un árbol de visibilidad controlado. Sus condiciones son `Always`, estado de
+asistencia, edad, tipo de invitado, etiqueta de grupo, respuesta previa,
+acompañante sin nombre y contacto principal; `All` y `Any` permiten componerlas
+con profundidad y cantidad limitadas. No existe una entidad
+`RsvpFormQuestion` ni un lenguaje de expresiones: el catálogo vive en el
+snapshot validado de la versión.
+
 ### Entregas y proyección vigente
 
 `RsvpSubmission` es una entrega inmutable append-only. `RsvpSubmissionGuest` y
@@ -391,6 +399,19 @@ incluyen `General`, `Dietary`, `Transportation`, `Accommodation`,
 la `RsvpFormVersion` exacta presentada. La llave de cliente `IdempotencyKey` y
 el `RequestFingerprint` distinguen reintentos de conflictos. `RevisionNumber`
 es incremental por grupo y `PreviousSubmissionId` enlaza la revisión anterior.
+
+`RsvpSubmissionGuest.ResponseGuestId` identifica de forma estable tanto al
+invitado nombrado como al acompañante contextual. Las respuestas individuales
+usan la FK compuesta `(RsvpSubmissionId, GuestId)` hacia ese identificador. Una
+respuesta conserva `QuestionLabelSnapshot`, `QuestionTypeSnapshot`,
+`OptionLabelsSnapshot`, nombre del destinatario y el indicador `IsSensitive`.
+Así, una nueva publicación nunca reinterpreta una entrega histórica.
+
+Antes de insertar filas, `RsvpQuestionEngine` evalúa el árbol para el grupo,
+el contacto y cada invitado incluido, valida alcance y obligatoriedad, y
+normaliza texto Unicode, booleanos, números invariantes, fechas ISO y opciones.
+Una pregunta oculta no es obligatoria y cualquier respuesta enviada para ella
+se rechaza. El fingerprint se calcula después de esta normalización.
 
 `CurrentGuestRsvp` es una proyección vigente actualizada atómicamente en la
 misma transacción. Existe un registro por invitado nombrado o slot estable de
@@ -430,6 +451,11 @@ tarjetas.
 accesibilidad con acceso restringido por permisos `guest-sensitive-data.*`.
 El backend exige `consentGranted` cuando el payload contiene alergias,
 restricciones, necesidades o notas sensibles.
+
+Las respuestas de preguntas marcadas `IsSensitive` siguen la misma frontera:
+se omiten de DTO generales y exportaciones comunes, se consultan mediante una
+ruta separada con `guest-sensitive-data.view` y solo se persisten con
+consentimiento explícito. El snapshot de auditoría no copia su valor.
 
 ### Recordatorios
 

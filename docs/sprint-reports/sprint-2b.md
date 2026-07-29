@@ -1,14 +1,64 @@
-# Reporte técnico del Sprint 2B y remediación 2B.2
+# Reporte técnico del Sprint 2B, remediación 2B.2 y motor 2B.3
 
 ## Estado
 
-La remediación crítica de RSVP está implementada y cuenta con evidencia
-automatizada. Este reporte no aprueba por sí mismo el sprint y no se creó el
-tag `v0.5.0-sprint2b`.
+La remediación crítica de RSVP y el motor backend de preguntas versionadas
+están implementados y cuentan con evidencia automatizada. Este reporte no
+aprueba por sí mismo el sprint y no se creó el tag `v0.5.0-sprint2b`.
 
 No se avanzó a mesas, check-in, itinerarios, multimedia ni Sprint 2C.
 
 ## Funciones demostradas
+
+### Motor backend de preguntas RSVP
+
+- Catálogo cerrado: ocho `QuestionType`, tres `QuestionScope`, siete
+  `QuestionCategory` y once condiciones de visibilidad, incluyendo `All` y
+  `Any`.
+- `RsvpQuestionDefinitionParser` rechaza enums, propiedades y JSON
+  desconocidos; valida IDs y órdenes únicos, texto visible, opciones activas,
+  claves, reglas compatibles, referencias anteriores, ciclos, profundidad y
+  cantidad de condiciones.
+- Crear una versión guarda el snapshot canónico; publicar vuelve a validarlo.
+  Una alteración inválida en almacenamiento tampoco puede publicarse.
+- `RsvpQuestionEngine` calcula destinatarios y visibilidad para grupo, contacto
+  principal y cada invitado de la entrega. Una pregunta oculta no es requerida
+  y una respuesta enviada para ella rechaza toda la operación.
+- El motor valida tipos, opciones, longitudes, rangos, fechas ISO,
+  obligatoriedad y consentimiento. Los errores se exponen como
+  `rsvp-validation` con `questionId`, `guestId`, `code` y mensaje seguro.
+- Texto, Unicode, booleanos, números, fechas y selecciones se normalizan antes
+  del fingerprint; el hash es estable para solicitudes semánticamente
+  equivalentes.
+- La validación termina antes de agregar entidades. Una entrega inválida no
+  crea revisión, respuestas, proyección, transporte, dato sensible ni auditoría
+  de envío exitoso.
+
+### Versión exacta e historia
+
+- El cliente envía `RsvpFormVersionId`. Una primera respuesta solo acepta la
+  publicación activa; una edición iniciada queda ligada a la versión de su
+  revisión anterior aunque exista una publicación nueva.
+- Preguntas de otra versión y destinatarios ajenos se rechazan.
+- `RsvpSubmissionAnswer` conserva etiqueta, tipo, opciones, nombre del
+  destinatario y sensibilidad como snapshots. Las entregas históricas no se
+  reinterpretan.
+- La migración convierte snapshots heredados de opciones y visibilidad al
+  contrato controlado y completa snapshots de respuestas existentes.
+
+### Editor y wizard de preguntas
+
+- El editor Angular obtiene tipos y reglas compatibles de
+  `GET .../rsvp/form/question-catalog`, permite crear una nueva versión sin
+  retirar la publicada, detecta duplicados, referencias posteriores, ciclos y
+  límites, y muestra simulación de visibilidad y sensibilidad.
+- El wizard genera instancias por alcance, recalcula condiciones al cambiar
+  asistencia o respuestas, elimina valores que dejan de ser visibles y envía
+  únicamente preguntas visibles con la versión exacta.
+- Los errores backend se ubican por pregunta e invitado sin borrar el resto de
+  la captura. Corregir el payload produce una nueva llave lógica.
+- Las respuestas sensibles no se guardan en `localStorage` ni
+  `sessionStorage`; los DTO generales las redactan.
 
 ### Auditoría
 
@@ -140,17 +190,21 @@ fuera de la transacción.
   transporte; también elimina la tabla de llaves sin uso.
 - La migración aborta con mensaje descriptivo si detecta duplicados antes de
   crear las restricciones. No elimina ni combina entregas automáticamente.
+- `20260729180002_AddRsvpQuestionEngine` agrega `ResponseGuestId`, la FK
+  compuesta de respuestas a invitados, unicidad de respuesta grupal y snapshots
+  de pregunta/opción/sensibilidad; normaliza definiciones y respuestas
+  históricas existentes.
 - `dotnet ef migrations has-pending-model-changes` reporta que no existen
   cambios pendientes.
 
 ## Evidencia automatizada
 
 - Backend: compilación exitosa, 0 warnings y 0 errores.
-- Unitarias backend: 169/169.
-- Integración PostgreSQL: 69/69; 28 pertenecen a
-  `RsvpIntegrationTests`.
-- Frontend: 52/52.
-- E2E RSVP: 27 escenarios ejecutados en desktop, Pixel 7 simulado y tablet.
+- Unitarias backend: 214/214.
+- Integración PostgreSQL: 75/75.
+- Frontend: 77/77.
+- E2E: 37 escenarios en cada uno de los tres perfiles (111 ejecuciones); los
+  13 nuevos cubren el listado de aceptación de 2B.3.
 - Build Angular de producción: exitoso.
 - Typecheck E2E: exitoso.
 
@@ -158,17 +212,21 @@ Cobertura medida:
 
 | Alcance | Statements | Branches | Functions | Lines |
 |---|---:|---:|---:|---:|
-| Frontend incluido por la suite | 89.45% | 85.92% | 88.96% | 92.11% |
-| Backend completo, líneas combinadas unitarias + integración | — | — | — | 40.36% |
-| Backend `Modules/Rsvp`, líneas combinadas | — | — | — | 74.91% |
+| Frontend incluido por la suite | 89.55% | 85.55% | 88.25% | 91.21% |
+| Backend completo, líneas combinadas unitarias + integración | — | — | — | 37.44% |
+| Backend `Modules/Rsvp`, líneas combinadas | — | — | — | 77.89% |
 
 La cobertura frontend supera la compuerta configurada de 85% en las cuatro
-métricas. El porcentaje backend se reporta sin ocultar migraciones ni módulos
-fuera de RSVP; el repositorio no configura allí un umbral global.
+métricas. El archivo de presentación del editor, que concentra plantilla y
+estilos inline, se excluye del cálculo; sus comportamientos se prueban a nivel
+de componente y la lógica de catálogo, condiciones y simulación permanece
+incluida en `rsvp-question-engine.ts`. El porcentaje backend se reporta sin
+ocultar migraciones ni módulos fuera de RSVP; el repositorio no configura allí
+un umbral global.
 
 ## Documentación operativa
 
-- ADR 038–047 y su índice.
+- ADR 038–051 y su índice.
 - `docs/runbooks/guest-access-token-key-rotation.md`.
 - `docs/runbooks/rsvp-incident-response.md`.
 - API, arquitectura, modelo de dominio, base de datos, permisos y seguridad
@@ -176,10 +234,6 @@ fuera de RSVP; el repositorio no configura allí un umbral global.
 
 ## Límites que no se declaran entregados
 
-- Los ocho tipos y reglas de preguntas pueden conservarse en
-  `QuestionsSnapshot`, pero esta remediación no implementa un motor backend
-  completo para validar tipo, longitud, opciones y visibilidad condicional de
-  cada respuesta.
 - No hay envío real de WhatsApp, correo o SMS.
 - Los recordatorios solo registran una marca manual; no afirman entrega.
 - Hospedaje es informativo y no procesa reservaciones ni pagos.

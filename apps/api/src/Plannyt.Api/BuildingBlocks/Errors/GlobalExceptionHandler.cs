@@ -54,6 +54,14 @@ public sealed class GlobalExceptionHandler(
             Instance = httpContext.Request.Path
         };
 
+        if (exception is RsvpValidationException rsvpValidationException)
+        {
+            problemDetails.Type =
+                "https://plannyt.com/problems/rsvp-validation";
+            problemDetails.Extensions["errors"] =
+                rsvpValidationException.Errors;
+        }
+
         if (exception is RequestValidationException validationException)
         {
             problemDetails.Extensions["errors"] = validationException.Errors;

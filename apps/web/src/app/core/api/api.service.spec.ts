@@ -1056,6 +1056,7 @@ describe('ApiService', () => {
 
   it('maps RSVP idempotency, exceptions and sensitive operations', () => {
     const submission: RsvpSubmissionRequest = {
+      rsvpFormVersionId: 'version-1',
       expectedRevision: 4,
       overallStatus: 'Confirmed',
       contactName: 'Familia Luna',

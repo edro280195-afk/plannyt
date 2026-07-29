@@ -56,6 +56,31 @@ public static class RsvpEndpoints
             Guid organizationId, Guid eventId, RsvpService service, CancellationToken ct) =>
             Results.Ok(await service.CreateFormAsync(organizationId, eventId, ct)));
 
+        group.MapGet("/form/question-catalog", async (
+            Guid organizationId, Guid eventId,
+            RsvpService service, CancellationToken ct) =>
+            Results.Ok(await service.GetQuestionCatalogAsync(
+                organizationId,
+                eventId,
+                ct)));
+
+        group.MapGet("/form/versions/{versionId:guid}", async (
+            Guid organizationId, Guid eventId, Guid versionId,
+            RsvpService service, CancellationToken ct) =>
+            Results.Ok(await service.GetFormVersionAsync(
+                organizationId,
+                eventId,
+                versionId,
+                ct)));
+
+        group.MapGet("/form/draft-version", async (
+            Guid organizationId, Guid eventId,
+            RsvpService service, CancellationToken ct) =>
+            Results.Ok(await service.GetDraftFormVersionAsync(
+                organizationId,
+                eventId,
+                ct)));
+
         group.MapPost("/form/version", async (
             Guid organizationId, Guid eventId, CreateVersionRequest request,
             RsvpService service, CancellationToken ct) =>
@@ -68,6 +93,14 @@ public static class RsvpEndpoints
                 $"/api/organizations/{organizationId}/events/{eventId}/rsvp/form/versions/{result.Id}",
                 result);
         });
+
+        group.MapPost("/form/new-draft", async (
+            Guid organizationId, Guid eventId,
+            RsvpService service, CancellationToken ct) =>
+            Results.Ok(await service.CreateNewDraftAsync(
+                organizationId,
+                eventId,
+                ct)));
 
         group.MapPost("/form/submit-review", async (
             Guid organizationId, Guid eventId, RsvpService service, CancellationToken ct) =>
@@ -95,6 +128,15 @@ public static class RsvpEndpoints
             RsvpSensitiveDataService sensitiveDataService,
             CancellationToken ct) =>
             Results.Ok(await sensitiveDataService.GetAsync(
+                organizationId,
+                eventId,
+                ct)));
+
+        group.MapGet("/sensitive-question-answers", async (
+            Guid organizationId, Guid eventId,
+            RsvpSensitiveDataService sensitiveDataService,
+            CancellationToken ct) =>
+            Results.Ok(await sensitiveDataService.GetQuestionAnswersAsync(
                 organizationId,
                 eventId,
                 ct)));
@@ -294,6 +336,15 @@ public static class RsvpEndpoints
             Results.Ok(await service.GetPortalDashboardAsync(
                 eventId,
                 ct)));
+
+        group.MapGet("/form", async (
+            Guid eventId,
+            RsvpService service,
+            CancellationToken ct) =>
+            Results.Ok(await service
+                .GetPortalPublishedFormVersionAsync(
+                    eventId,
+                    ct)));
 
         group.MapPost("/groups/{groupId:guid}/manual-capture", async (
             Guid eventId,

@@ -35,6 +35,8 @@ public static class AuditActions
         AuditAction.Define("rsvp_form.created");
     public static readonly AuditAction RsvpFormVersionCreated =
         AuditAction.Define("rsvp_form.version_created");
+    public static readonly AuditAction RsvpFormDraftCreated =
+        AuditAction.Define("rsvp_form.draft_created");
     public static readonly AuditAction RsvpFormSubmittedReview =
         AuditAction.Define("rsvp_form.submitted_review");
     public static readonly AuditAction RsvpFormApproved =

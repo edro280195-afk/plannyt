@@ -221,6 +221,11 @@ internal sealed class RsvpSubmissionGuestConfiguration
     {
         builder.ToTable("rsvp_submission_guests");
         builder.HasKey(entity => entity.Id);
+        builder.HasAlternateKey(entity => new
+        {
+            entity.RsvpSubmissionId,
+            entity.ResponseGuestId
+        });
         builder.Property(entity => entity.DisplayName).HasMaxLength(200).IsRequired();
         builder.Property(entity => entity.AgeCategory).HasMaxLength(24);
         builder.Property(entity => entity.AttendanceStatus).HasConversion<string>().HasMaxLength(32);
@@ -259,6 +264,17 @@ internal sealed class RsvpSubmissionAnswerConfiguration
         builder.Property(entity => entity.QuestionId).HasMaxLength(64).IsRequired();
         builder.Property(entity => entity.AnswerValue).HasColumnType("jsonb").IsRequired();
         builder.Property(entity => entity.DisplayValueSnapshot).HasMaxLength(1000);
+        builder.Property(entity => entity.QuestionLabelSnapshot)
+            .HasMaxLength(200)
+            .IsRequired();
+        builder.Property(entity => entity.QuestionTypeSnapshot)
+            .HasConversion<string>()
+            .HasMaxLength(32);
+        builder.Property(entity => entity.OptionLabelsSnapshot)
+            .HasColumnType("jsonb")
+            .IsRequired();
+        builder.Property(entity => entity.GuestDisplayNameSnapshot)
+            .HasMaxLength(200);
         builder.HasIndex(entity => new
         {
             entity.RsvpSubmissionId,
@@ -267,10 +283,30 @@ internal sealed class RsvpSubmissionAnswerConfiguration
         })
             .IsUnique()
             .HasFilter("guest_id IS NOT NULL");
+        builder.HasIndex(entity => new
+        {
+            entity.RsvpSubmissionId,
+            entity.QuestionId
+        })
+            .IsUnique()
+            .HasFilter("guest_id IS NULL");
         builder.HasOne<RsvpSubmission>()
             .WithMany()
             .HasForeignKey(entity => entity.RsvpSubmissionId)
             .OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<RsvpSubmissionGuest>()
+            .WithMany()
+            .HasForeignKey(entity => new
+            {
+                entity.RsvpSubmissionId,
+                ResponseGuestId = entity.GuestId
+            })
+            .HasPrincipalKey(entity => new
+            {
+                entity.RsvpSubmissionId,
+                entity.ResponseGuestId
+            })
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
 

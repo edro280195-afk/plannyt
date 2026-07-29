@@ -89,7 +89,6 @@ public sealed class RsvpForm : ITenantEntity
 
         Status = RsvpFormStatus.Draft;
         CurrentDraftVersion++;
-        ActivePublishedVersionId = null;
         UpdatedAt = now;
     }
 

@@ -59,6 +59,21 @@ public enum RsvpQuestionCategory
     Other
 }
 
+public enum RsvpVisibilityConditionType
+{
+    Always,
+    AttendanceStatusEquals,
+    GuestAgeCategoryEquals,
+    GuestTypeEquals,
+    GroupHasTag,
+    PreviousAnswerEquals,
+    PreviousAnswerContains,
+    IsUnnamedCompanion,
+    IsPrimaryContact,
+    All,
+    Any
+}
+
 public enum RsvpSubmissionSource
 {
     GuestPrivateLink,

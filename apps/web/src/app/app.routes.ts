@@ -258,6 +258,16 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'events/:id/rsvp/form',
+        title: 'Editor del formulario RSVP · Plannyt',
+        canActivate: [permissionGuard],
+        data: { permission: 'rsvp-forms.view' },
+        loadComponent: () =>
+          import('./features/rsvp/rsvp-form-editor.page').then(
+            (module) => module.RsvpFormEditorPage,
+          ),
+      },
+      {
         path: 'events/:id',
         title: 'Evento · Plannyt',
         canActivate: [permissionGuard],

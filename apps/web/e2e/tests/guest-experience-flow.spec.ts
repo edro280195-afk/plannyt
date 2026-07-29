@@ -86,8 +86,9 @@ test.describe('Sprint 2A · invitados y experiencia digital', () => {
     await page.goto('/i/test-token');
     await expect(page.getByRole('heading', { name: 'Noche de verano' })).toBeVisible();
     await expect(page.getByText('Elena Luna')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Confirmar asistencia' })).toBeDisabled();
-    await expect(page.getByText(/Demostración/)).toBeVisible();
+    await expect(
+      page.getByRole('link', { name: 'Confirmar asistencia' }),
+    ).toHaveAttribute('href', '/rsvp/test-token');
 
     // 13. Confirmar que datos privados no aparecen.
     await expect(page.getByText('elena@example.com')).toHaveCount(0);

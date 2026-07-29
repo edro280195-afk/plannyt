@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-Todos los ADR de esta carpeta están aceptados para los Sprint 0, 1A, 1B y 2A.
+Todos los ADR de esta carpeta están aceptados hasta el Sprint 2B.3.
 
 1. [Monolito modular](0001-monolito-modular.md)
 2. [PostgreSQL](0002-postgresql.md)
@@ -49,3 +49,7 @@ Todos los ADR de esta carpeta están aceptados para los Sprint 0, 1A, 1B y 2A.
 45. [Hospedaje informativo sin reservación](0045-hospedaje-informativo-sin-reservacion.md)
 46. [Recordatorios manuales sin afirmación de entrega](0046-recordatorios-manuales-sin-entrega.md)
 47. [Cierre y reapertura de RSVP](0047-cierre-reapertura-rsvp.md)
+48. [Motor controlado de preguntas RSVP](0048-motor-controlado-preguntas-rsvp.md)
+49. [Evaluación backend de visibilidad RSVP](0049-evaluacion-backend-visibilidad-rsvp.md)
+50. [Normalización de respuestas y fingerprint RSVP](0050-normalizacion-respuestas-fingerprint-rsvp.md)
+51. [Validación de alcance por grupo, contacto e invitado](0051-validacion-alcance-preguntas-rsvp.md)

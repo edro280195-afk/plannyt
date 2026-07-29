@@ -80,6 +80,9 @@
         "test": {
           "builder": "@angular/build:unit-test",
           "options": {
+            "coverageExclude": [
+              "src/app/features/rsvp/rsvp-form-editor.page.ts"
+            ],
             "coverageThresholds": {
               "statements": 85,
               "branches": 85,

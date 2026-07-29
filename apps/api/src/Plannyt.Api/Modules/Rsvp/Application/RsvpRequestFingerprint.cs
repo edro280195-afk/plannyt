@@ -35,10 +35,11 @@ public static partial class RsvpRequestFingerprint
         string operationScope)
     {
         var normalizedGuests = request.Guests
-            .Select((guest, index) => new
+            .Select(guest => new
             {
                 SortKey = guest.EventGuestId?.ToString("N")
-                          ?? $"companion:{index:D4}",
+                          ?? guest.ResponseGuestId.ToString("N"),
+                guest.ResponseGuestId,
                 EventGuestId = guest.EventGuestId,
                 DisplayName = Normalize(guest.DisplayName),
                 AgeCategory = Normalize(guest.AgeCategory),
@@ -66,6 +67,7 @@ public static partial class RsvpRequestFingerprint
         var normalized = new
         {
             OperationScope = operationScope,
+            request.RsvpFormVersionId,
             request.ExpectedRevision,
             OverallStatus = request.OverallStatus.ToString(),
             ContactName = Normalize(request.ContactName),

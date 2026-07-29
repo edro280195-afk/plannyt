@@ -244,6 +244,12 @@ cambio comercial de plan continúan fuera de este sprint.
   recibe durante esta remediación y necesita una concesión explícita.
 - Consentimiento explícito requerido en la respuesta RSVP para recolectar
   datos dietéticos y de accesibilidad.
+- Las preguntas `Dietary` o `Accessibility` de texto libre y
+  `InformationalConsent` deben marcarse sensibles al publicar. Sus respuestas
+  se omiten de DTO generales y exportaciones comunes.
+- `GET .../rsvp/sensitive-question-answers` comparte el permiso
+  `guest-sensitive-data.view`, registra la consulta sin copiar el valor y
+  conserva los snapshots necesarios para interpretar la revisión original.
 - DTO administrativos, públicos y de portal son contratos separados; el portal
   nunca expone datos sensibles de otros invitados.
 - Las opciones "ninguna" y "prefiero no responder" están siempre disponibles y
@@ -267,9 +273,21 @@ cambio comercial de plan continúan fuera de este sprint.
 - La capacidad de transporte se decide bajo bloqueo de fila en PostgreSQL.
 - Los payloads operativos y respuestas deben ser JSON válido y se aplican
   límites explícitos a nombres, llaves y motivos.
-- El motor completo de reglas para tipos, longitudes, opciones y visibilidad
-  condicional de preguntas no forma parte de esta remediación; no se afirma
-  esa validación como entregada.
+- El snapshot de preguntas usa ocho tipos, tres alcances, siete categorías y
+  condiciones cerradas. El deserializador rechaza miembros o enums
+  desconocidos; etiquetas y ayudas rechazan HTML, scripts y manejadores.
+- No existe evaluación de código ni lenguaje de expresiones. La visibilidad es
+  un árbol de condiciones `All`/`Any` con profundidad, cantidad y referencias
+  anteriores limitadas. La API vuelve a evaluarlo para el grupo, contacto e
+  invitados y rechaza respuestas ocultas.
+- El coordinador obtiene la versión exacta presentada y valida pregunta,
+  alcance, pertenencia, duplicados, tipo, opción, longitud, rango,
+  obligatoriedad y consentimiento antes de agregar filas. Si falla no cambia
+  revisión, transporte, proyección, datos sensibles ni auditoría de éxito.
+- Los valores se normalizan antes del SHA-256: texto con trim y Unicode,
+  números invariantes, fechas `YYYY-MM-DD`, booleanos reales y opciones por
+  clave estable. Solicitudes semánticamente equivalentes comparten
+  fingerprint.
 
 ### Rate limiting y exposición pública
 
@@ -277,6 +295,8 @@ cambio comercial de plan continúan fuera de este sprint.
 - Estado RSVP y formulario público proyectan solo el grupo del token. Incluyen
   los identificadores opacos de invitados necesarios para responder, pero no
   exponen correos, teléfonos, tenant, finanzas ni auditoría.
+- Las respuestas sensibles de una revisión previa se redactan del estado
+  público. Angular no las escribe en `localStorage` ni `sessionStorage`.
 - Respuestas `Cache-Control: no-store, private`, `Pragma: no-cache` y
   `Referrer-Policy: no-referrer`.
 - `RsvpSubmissionSource` expone si la respuesta fue capturada manualmente por
@@ -299,6 +319,8 @@ Se auditan como mínimo:
 
 - Actualización, publicación, apertura y cierre de configuración.
 - Creación, revisión, aprobación y publicación de formulario.
+- Creación de una nueva versión de borrador y rechazo de una definición
+  inválida antes de publicar.
 - Captura manual con fuente y motivo, especialmente `SupportCorrection`.
 - Correcciones y apertura/cierre de excepciones por grupo.
 - Exportaciones de datos sensibles.

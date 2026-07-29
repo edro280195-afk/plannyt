@@ -7,6 +7,7 @@ import {
   RsvpDashboardResponse,
   RsvpSettingsResponse,
   SensitiveGuestDataResponse,
+  SensitiveQuestionAnswerResponse,
 } from '../../core/models/api.models';
 import { ToastService } from '../../core/ui/toast.service';
 import { RsvpDashboardPage } from './rsvp-dashboard.page';
@@ -73,10 +74,27 @@ describe('RsvpDashboardPage', () => {
       updatedAt: '2026-07-29T12:00:00Z',
     },
   ];
+  const sensitiveQuestionAnswers: SensitiveQuestionAnswerResponse[] = [
+    {
+      submissionId: 'submission-1',
+      revisionNumber: 1,
+      questionId: 'allergy',
+      guestId: 'guest-1',
+      guestDisplayName: 'Elena Luna',
+      questionLabel: 'Alergias adicionales',
+      questionType: 'LongText',
+      answerValue: 'Nuez',
+      displayValue: 'Nuez',
+      optionLabelsSnapshot: '[]',
+      submittedAt: '2026-07-29T12:00:00Z',
+    },
+  ];
   const api = {
     getRsvpDashboard: vi.fn(() => of(dashboard)),
     getRsvpSettings: vi.fn(() => of(settings)),
     getRsvpSensitiveData: vi.fn(() => of(sensitiveRecords)),
+    getRsvpSensitiveQuestionAnswers: vi.fn(() =>
+      of(sensitiveQuestionAnswers)),
     exportRsvpSensitiveData: vi.fn(() => of(new Blob(['csv']))),
     publishRsvpSettings: vi.fn(() => of(settings)),
     openRsvp: vi.fn(() => of(settings)),
@@ -146,10 +164,75 @@ describe('RsvpDashboardPage', () => {
       'org-1',
       'event-1',
     );
+    expect(api.getRsvpSensitiveQuestionAnswers)
+      .toHaveBeenCalledWith('org-1', 'event-1');
     const content = fixture.nativeElement.textContent as string;
     expect(content).toContain('Elena Luna');
     expect(content).toContain('Nuez');
+    expect(content).toContain('Alergias adicionales');
     expect(content).not.toContain('Exportar datos sensibles');
+  });
+
+  it('muestra estados vacíos para ambos orígenes sensibles', () => {
+    permissions.push('guest-sensitive-data.view');
+    api.getRsvpSensitiveData.mockReturnValueOnce(of([]));
+    api.getRsvpSensitiveQuestionAnswers.mockReturnValueOnce(of([]));
+    fixture = TestBed.createComponent(RsvpDashboardPage);
+    fixture.detectChanges();
+
+    clickButton(fixture, 'Ver datos sensibles');
+
+    const content = fixture.nativeElement.textContent as string;
+    expect(content).toContain('No hay datos sensibles registrados.');
+    expect(content).toContain(
+      'No hay respuestas sensibles en la revisión vigente.',
+    );
+  });
+
+  it('usa textos seguros cuando un dato sensible no tiene valor visible', () => {
+    permissions.push('guest-sensitive-data.view');
+    api.getRsvpSensitiveData.mockReturnValueOnce(of([
+      {
+        ...sensitiveRecords[0]!,
+        allergies: null,
+        dietaryRestrictions: null,
+        accessibilityRequirements: null,
+        additionalNotes: null,
+        consentGrantedAt: null,
+      },
+    ]));
+    api.getRsvpSensitiveQuestionAnswers.mockReturnValueOnce(of([
+      {
+        ...sensitiveQuestionAnswers[0]!,
+        guestDisplayName: null,
+        answerValue: '"Nuez cruda"',
+        displayValue: null,
+      },
+    ]));
+    fixture = TestBed.createComponent(RsvpDashboardPage);
+    fixture.detectChanges();
+
+    clickButton(fixture, 'Ver datos sensibles');
+
+    const content = fixture.nativeElement.textContent as string;
+    expect(content).toContain('Grupo');
+    expect(content).toContain('"Nuez cruda"');
+    expect(content).toContain('No otorgado');
+  });
+
+  it('no ejecuta operaciones sensibles al invocar sus guardas sin permiso', () => {
+    fixture = TestBed.createComponent(RsvpDashboardPage);
+    fixture.detectChanges();
+    const actions = fixture.componentInstance as unknown as {
+      loadSensitiveData(): void;
+      exportSensitiveData(): void;
+    };
+
+    actions.loadSensitiveData();
+    actions.exportSensitiveData();
+
+    expect(api.getRsvpSensitiveData).not.toHaveBeenCalled();
+    expect(api.exportRsvpSensitiveData).not.toHaveBeenCalled();
   });
 
   it('muestra exportación únicamente con el permiso específico', () => {
@@ -231,3 +314,19 @@ describe('RsvpDashboardPage', () => {
     expect(revokeObjectUrl).toHaveBeenCalledWith('blob:prueba');
   });
 });
+
+function clickButton(
+  fixture: ComponentFixture<RsvpDashboardPage>,
+  label: string,
+): void {
+  const buttons = Array.from(
+    fixture.nativeElement.querySelectorAll(
+      'button',
+    ) as NodeListOf<HTMLButtonElement>,
+  );
+  const button = buttons.find((candidate) =>
+    candidate.textContent?.includes(label));
+  expect(button).toBeDefined();
+  button?.click();
+  fixture.detectChanges();
+}
