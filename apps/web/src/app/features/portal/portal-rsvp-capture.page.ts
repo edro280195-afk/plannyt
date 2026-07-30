@@ -17,7 +17,17 @@ import type { ManualRsvpRequest, RsvpSubmissionResponse } from '../../core/model
     <div class="portal-page">
       <a class="back-link" [routerLink]="['/portal/events', eventId, 'rsvp']">← Volver al RSVP</a>
       <h1>Registrar respuesta RSVP</h1>
-      <p class="help-text">Use esta función para registrar respuestas recibidas por teléfono, WhatsApp u otro medio.</p>
+      <p class="help-text">
+        Use esta función para registrar respuestas recibidas por teléfono, WhatsApp u otro medio.
+      </p>
+      @if (formLoading()) {
+        <p class="load-state" role="status">Cargando formulario RSVP…</p>
+      } @else if (formLoadError(); as message) {
+        <div class="load-error" role="alert">
+          <span>{{ message }}</span>
+          <button type="button" class="retry-button" (click)="loadFormVersion()">Reintentar</button>
+        </div>
+      }
       <form [formGroup]="form" (ngSubmit)="submit()" class="capture-form">
         <div class="form-group">
           <label for="rsvp-group-id">Grupo</label>
@@ -38,7 +48,12 @@ import type { ManualRsvpRequest, RsvpSubmissionResponse } from '../../core/model
         </div>
         <div class="form-group">
           <label for="rsvp-expected-revision">Revisión observada</label>
-          <input id="rsvp-expected-revision" type="number" min="0" formControlName="expectedRevision" />
+          <input
+            id="rsvp-expected-revision"
+            type="number"
+            min="0"
+            formControlName="expectedRevision"
+          />
           <small>Usa 0 para la primera captura.</small>
         </div>
         <div class="form-group">
@@ -53,7 +68,12 @@ import type { ManualRsvpRequest, RsvpSubmissionResponse } from '../../core/model
           <label for="rsvp-reason">Motivo / nota</label>
           <textarea id="rsvp-reason" formControlName="reason" rows="3"></textarea>
         </div>
-        <button type="submit" [disabled]="form.invalid || submitting()">Registrar respuesta</button>
+        <button
+          type="submit"
+          [disabled]="form.invalid || submitting() || formLoading() || !formVersionId()"
+        >
+          Registrar respuesta
+        </button>
       </form>
       @if (result(); as r) {
         <div class="result">
@@ -63,18 +83,82 @@ import type { ManualRsvpRequest, RsvpSubmissionResponse } from '../../core/model
       }
     </div>
   `,
-  styles: [`
-    :host { display: block; padding: 24px; max-width: 600px; margin: 0 auto; }
-    .back-link { display: inline-block; margin-bottom: 16px; color: #1a73e8; text-decoration: none; font-size: 14px; }
-    .help-text { color: #666; margin-bottom: 24px; }
-    .capture-form { display: flex; flex-direction: column; gap: 16px; }
-    .form-group { display: flex; flex-direction: column; }
-    .form-group label { margin-bottom: 4px; font-weight: 600; }
-    .form-group input, .form-group select, .form-group textarea { padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
-    button { padding: 12px 24px; background: #1a73e8; color: white; border: none; border-radius: 6px; cursor: pointer; }
-    button:disabled { background: #a0c4f1; }
-    .result { margin-top: 24px; padding: 16px; background: #e8f5e9; border-radius: 8px; }
-  `]
+  styles: [
+    `
+      :host {
+        display: block;
+        padding: 24px;
+        max-width: 600px;
+        margin: 0 auto;
+      }
+      .back-link {
+        display: inline-block;
+        margin-bottom: 16px;
+        color: #1a73e8;
+        text-decoration: none;
+        font-size: 14px;
+      }
+      .help-text {
+        color: #666;
+        margin-bottom: 24px;
+      }
+      .capture-form {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .form-group {
+        display: flex;
+        flex-direction: column;
+      }
+      .form-group label {
+        margin-bottom: 4px;
+        font-weight: 600;
+      }
+      .form-group input,
+      .form-group select,
+      .form-group textarea {
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+      }
+      button {
+        padding: 12px 24px;
+        background: #1a73e8;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      button:disabled {
+        background: #a0c4f1;
+      }
+      .load-state {
+        color: #475569;
+      }
+      .load-error {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px;
+        border: 1px solid #b91c1c;
+        border-radius: 6px;
+        color: #7f1d1d;
+        background: #fef2f2;
+      }
+      .retry-button {
+        flex: none;
+        padding: 8px 12px;
+      }
+      .result {
+        margin-top: 24px;
+        padding: 16px;
+        background: #e8f5e9;
+        border-radius: 8px;
+      }
+    `,
+  ],
 })
 export class PortalRsvpCapturePage {
   private readonly api = inject(ApiService);
@@ -90,31 +174,49 @@ export class PortalRsvpCapturePage {
 
   protected readonly form = new FormGroup({
     groupId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
-    overallStatus: new FormControl<'Confirmed' | 'Declined' | 'Tentative' | 'Mixed'>('Confirmed', { nonNullable: true }),
+    overallStatus: new FormControl<'Confirmed' | 'Declined' | 'Tentative' | 'Mixed'>('Confirmed', {
+      nonNullable: true,
+    }),
     contactName: new FormControl('', { nonNullable: true }),
     expectedRevision: new FormControl(0, {
       nonNullable: true,
       validators: [Validators.required, Validators.min(0)],
     }),
-    source: new FormControl<'PlannerManual' | 'Imported' | 'SupportCorrection'>(
-      'PlannerManual',
-      { nonNullable: true },
-    ),
+    source: new FormControl<'PlannerManual' | 'Imported' | 'SupportCorrection'>('PlannerManual', {
+      nonNullable: true,
+    }),
     reason: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
   });
 
   protected readonly result = signal<RsvpSubmissionResponse | null>(null);
   protected readonly submitting = signal(false);
-  private readonly formVersionId = signal<string | null>(null);
+  protected readonly formLoading = signal(true);
+  protected readonly formLoadError = signal<string | null>(null);
+  protected readonly formVersionId = signal<string | null>(null);
   private readonly idempotencyAttempt = new IdempotencyAttempt();
 
   constructor() {
-    this.api.getPortalRsvpForm(this.eventId)
+    this.loadFormVersion();
+  }
+
+  protected loadFormVersion(): void {
+    this.formLoading.set(true);
+    this.formLoadError.set(null);
+    this.api
+      .getPortalRsvpForm(this.eventId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (form) => this.formVersionId.set(form.id),
-        error: (error) =>
-          this.toast.error(getApiErrorMessage(error)),
+        next: (form) => {
+          this.formVersionId.set(form.id);
+          this.formLoading.set(false);
+        },
+        error: (error) => {
+          const message = getApiErrorMessage(error);
+          this.formVersionId.set(null);
+          this.formLoading.set(false);
+          this.formLoadError.set(message);
+          this.toast.error(message);
+        },
       });
   }
 
@@ -144,12 +246,7 @@ export class PortalRsvpCapturePage {
     const payload = JSON.stringify(request);
     const idempotencyKey = this.idempotencyAttempt.keyFor(payload);
     this.api
-      .manualPortalRsvpCapture(
-        eventId,
-        f.groupId,
-        request,
-        idempotencyKey,
-      )
+      .manualPortalRsvpCapture(eventId, f.groupId, request, idempotencyKey)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (r) => {
@@ -158,7 +255,10 @@ export class PortalRsvpCapturePage {
           this.submitting.set(false);
           this.toast.success('Respuesta registrada.');
         },
-        error: (err) => { this.toast.error(getApiErrorMessage(err)); this.submitting.set(false); },
+        error: (err) => {
+          this.toast.error(getApiErrorMessage(err));
+          this.submitting.set(false);
+        },
       });
   }
 }

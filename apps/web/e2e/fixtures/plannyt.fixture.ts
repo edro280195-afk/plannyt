@@ -204,7 +204,7 @@ const clientDetail = {
 
 export const test = base.extend<PlannytFixtures>({
   api: [
-    async ({ page }, use) => {
+    async ({ context }, use) => {
       let profile: ProfileKind = 'anonymous';
       const requests: RecordedRequest[] = [];
       const commercial: CommercialState = {
@@ -244,7 +244,7 @@ export const test = base.extend<PlannytFixtures>({
         },
       };
 
-      await page.route('**/api/**', async (route) => {
+      await context.route('**/api/**', async (route) => {
         const request = route.request();
         const url = new URL(request.url());
         if (url.pathname === '/api/auth/login' || url.pathname === '/api/auth/register-planner') {

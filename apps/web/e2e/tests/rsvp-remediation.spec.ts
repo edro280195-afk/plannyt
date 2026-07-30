@@ -59,16 +59,12 @@ test.describe('Sprint 2B.2 · remediación RSVP', () => {
     await expect(page.getByText('El servidor tardó demasiado.')).toBeVisible();
     await page.getByRole('button', { name: 'Enviar respuesta' }).click();
     await expect(page.getByRole('heading', { name: '¡Respuesta registrada!' })).toBeVisible();
-    expect(submissions[0]?.idempotencyKey).toBe(
-      submissions[1]?.idempotencyKey,
-    );
+    expect(submissions[0]?.idempotencyKey).toBe(submissions[1]?.idempotencyKey);
 
     await page.getByRole('button', { name: 'Modificar respuesta' }).click();
     await advanceToReview(page);
     await page.getByRole('button', { name: 'Enviar respuesta' }).click();
-    await expect(
-      page.getByText(/Recargamos los datos más recientes/),
-    ).toBeVisible();
+    await expect(page.getByText(/Recargamos los datos más recientes/)).toBeVisible();
     await expect.poll(() => stateRevision).toBe(1);
   });
 
@@ -102,27 +98,21 @@ test.describe('Sprint 2B.2 · remediación RSVP', () => {
     const original = submissions[0];
     expect(original).toBeDefined();
 
-    const status = await page.evaluate(
-      async ({ idempotencyKey, body }) => {
-        const changed = {
-          ...body,
-          contactName: 'Contenido deliberadamente distinto',
-        };
-        const response = await fetch(
-          '/api/guest/rsvp/fingerprint-conflict-token/submit',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Idempotency-Key': idempotencyKey,
-            },
-            body: JSON.stringify(changed),
-          },
-        );
-        return response.status;
-      },
-      original!,
-    );
+    const status = await page.evaluate(async ({ idempotencyKey, body }) => {
+      const changed = {
+        ...body,
+        contactName: 'Contenido deliberadamente distinto',
+      };
+      const response = await fetch('/api/guest/rsvp/fingerprint-conflict-token/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+        },
+        body: JSON.stringify(changed),
+      });
+      return response.status;
+    }, original!);
 
     expect(status).toBe(409);
     expect(submissions).toHaveLength(1);
@@ -136,12 +126,7 @@ test.describe('Sprint 2B.2 · remediación RSVP', () => {
     const submit = async (route: Route): Promise<void> => {
       const body = route.request().postDataJSON() as SubmissionBody;
       if (body.expectedRevision !== currentRevision) {
-        await problem(
-          route,
-          409,
-          'La respuesta cambió en otro navegador.',
-          true,
-        );
+        await problem(route, 409, 'La respuesta cambió en otro navegador.', true);
         return;
       }
       currentRevision += 1;
@@ -163,9 +148,7 @@ test.describe('Sprint 2B.2 · remediación RSVP', () => {
     await expect(page.getByRole('heading', { name: '¡Respuesta registrada!' })).toBeVisible();
     await secondPage.getByRole('button', { name: 'Enviar respuesta' }).click();
 
-    await expect(
-      secondPage.getByText(/Recargamos los datos más recientes/),
-    ).toBeVisible();
+    await expect(secondPage.getByText(/Recargamos los datos más recientes/)).toBeVisible();
     expect(currentRevision).toBe(1);
     await secondPage.close();
   });
@@ -235,14 +218,16 @@ test.describe('Sprint 2B.2 · remediación RSVP', () => {
   }) => {
     api.useProfile('portal');
     const captures: RecordedSubmission[] = [];
-    await page.route(
-      '**/api/client-portal/events/event-1/rsvp/form',
-      async (route) => {
-        await json(route, {
-          id: 'version-1',
-        });
-      },
-    );
+    let releaseFormRequest!: () => void;
+    const formRequestGate = new Promise<void>((resolve) => {
+      releaseFormRequest = resolve;
+    });
+    await page.route('**/api/client-portal/events/event-1/rsvp/form', async (route) => {
+      await formRequestGate;
+      await json(route, {
+        id: 'version-1',
+      });
+    });
     await page.route(
       '**/api/client-portal/events/event-1/rsvp/groups/group-1/manual-capture',
       async (route) => {
@@ -254,7 +239,11 @@ test.describe('Sprint 2B.2 · remediación RSVP', () => {
     await page.getByLabel('Grupo').fill('group-1');
     await page.getByLabel('Nombre del contacto').fill('Familia Luna');
     await page.getByLabel('Motivo / nota').fill('Captura telefónica');
-    await page.getByRole('button', { name: 'Registrar respuesta' }).click();
+    const submitButton = page.getByRole('button', { name: 'Registrar respuesta' });
+    await expect(submitButton).toBeDisabled();
+    releaseFormRequest();
+    await expect(submitButton).toBeEnabled();
+    await submitButton.click();
     await expect(page.getByText(/Respuesta registrada:/)).toBeVisible();
 
     await page.getByLabel('Revisión observada').fill('1');
@@ -264,9 +253,7 @@ test.describe('Sprint 2B.2 · remediación RSVP', () => {
     await expect(page.getByText(/Respuesta registrada: RSVP-2/)).toBeVisible();
 
     expect(captures).toHaveLength(2);
-    expect(captures[0]?.idempotencyKey).not.toBe(
-      captures[1]?.idempotencyKey,
-    );
+    expect(captures[0]?.idempotencyKey).not.toBe(captures[1]?.idempotencyKey);
     expect(captures[0]?.body.submission?.expectedRevision).toBe(0);
     expect(captures[1]?.body.submission?.expectedRevision).toBe(1);
     expect(captures[1]?.body.source).toBe('SupportCorrection');
@@ -283,19 +270,11 @@ test.describe('Sprint 2B.2 · remediación RSVP', () => {
         attempts += 1;
         keys.push(route.request().headers()['idempotency-key'] ?? '');
         if (attempts === 1) {
-          await problem(
-            route,
-            409,
-            'No quedan lugares y la lista de espera está deshabilitada.',
-          );
+          await problem(route, 409, 'No quedan lugares y la lista de espera está deshabilitada.');
           return;
         }
         if (attempts === 2) {
-          await problem(
-            route,
-            500,
-            'La entrega falló y fue revertida por completo.',
-          );
+          await problem(route, 500, 'La entrega falló y fue revertida por completo.');
           return;
         }
         await json(route, submissionResponse(1, 'Waitlisted'));
@@ -313,10 +292,7 @@ test.describe('Sprint 2B.2 · remediación RSVP', () => {
     expect(keys[1]).toBe(keys[2]);
   });
 
-  test('usuario sin permiso sensible no ve controles ni indicadores', async ({
-    page,
-    api,
-  }) => {
+  test('usuario sin permiso sensible no ve controles ni indicadores', async ({ page, api }) => {
     api.useProfile('limited');
     await installProfessionalRsvpDashboardMock(page);
 
@@ -365,10 +341,7 @@ interface PublicMockOptions {
   transport?: boolean;
 }
 
-async function installPublicRsvpMock(
-  page: Page,
-  options: PublicMockOptions,
-): Promise<void> {
+async function installPublicRsvpMock(page: Page, options: PublicMockOptions): Promise<void> {
   await page.route('**/api/guest/rsvp/**', async (route) => {
     const request = route.request();
     if (request.method() === 'GET') {
@@ -410,8 +383,7 @@ async function advanceToReview(page: Page): Promise<void> {
 
 function recordSubmission(route: Route): RecordedSubmission {
   return {
-    idempotencyKey:
-      route.request().headers()['idempotency-key'] ?? '',
+    idempotencyKey: route.request().headers()['idempotency-key'] ?? '',
     body: route.request().postDataJSON() as SubmissionBody,
   };
 }
@@ -495,10 +467,7 @@ function rsvpState(revision: number, transport = false): object {
   };
 }
 
-function submissionResponse(
-  revision: number,
-  transportStatus = 'Confirmed',
-): object {
+function submissionResponse(revision: number, transportStatus = 'Confirmed'): object {
   return {
     id: `submission-${revision}`,
     invitationGroupId: 'group-1',
@@ -531,11 +500,7 @@ function submissionResponse(
   };
 }
 
-async function json(
-  route: Route,
-  value: object,
-  status = 200,
-): Promise<void> {
+async function json(route: Route, value: object, status = 200): Promise<void> {
   await route.fulfill({
     status,
     contentType: 'application/json',
@@ -565,8 +530,7 @@ async function installProfessionalRsvpDashboardMock(
   page: Page,
   onSensitiveExport: () => void = () => undefined,
 ): Promise<void> {
-  const eventUrl =
-    '**/api/organizations/org-1/events/event-1';
+  const eventUrl = '**/api/organizations/org-1/events/event-1';
   await page.route(`${eventUrl}/rsvp/dashboard`, async (route) => {
     await json(route, {
       totalGroups: 1,
@@ -633,12 +597,9 @@ async function installProfessionalRsvpDashboardMock(
       },
     ]);
   });
-  await page.route(
-    `${eventUrl}/rsvp/sensitive-question-answers`,
-    async (route) => {
-      await json(route, []);
-    },
-  );
+  await page.route(`${eventUrl}/rsvp/sensitive-question-answers`, async (route) => {
+    await json(route, []);
+  });
   await page.route(`${eventUrl}/rsvp/exports/sensitive`, async (route) => {
     onSensitiveExport();
     await route.fulfill({
