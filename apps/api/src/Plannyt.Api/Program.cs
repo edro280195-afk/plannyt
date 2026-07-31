@@ -179,6 +179,7 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<OrganizationSlugGenerator>();
 builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<CookieRequestGuard>();
+builder.Services.AddScoped<FrontendPublicUrlResolver>();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 builder.Services.AddScoped<RefreshCookieService>();
 builder.Services.AddSingleton<TokenService>();

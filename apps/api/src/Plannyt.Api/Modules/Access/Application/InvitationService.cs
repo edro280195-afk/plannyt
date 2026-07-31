@@ -1,7 +1,6 @@
 using System.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Plannyt.Api.BuildingBlocks.Configuration;
 using Plannyt.Api.BuildingBlocks.Errors;
 using Plannyt.Api.Infrastructure.Persistence;
@@ -24,7 +23,7 @@ public sealed class InvitationService(
     IPasswordHasher<UserAccount> passwordHasher,
     TokenService tokenService,
     AuditService auditService,
-    IOptions<FrontendOptions> frontendOptions,
+    FrontendPublicUrlResolver frontendPublicUrlResolver,
     TimeProvider timeProvider)
 {
     private static readonly TimeSpan DefaultLifetime = TimeSpan.FromDays(7);
@@ -642,7 +641,7 @@ public sealed class InvitationService(
         AccessInvitation invitation,
         string rawToken)
     {
-        var publicUrl = frontendOptions.Value.PublicUrl.TrimEnd('/');
+        var publicUrl = frontendPublicUrlResolver.Resolve();
         return new InvitationCreatedResponse(
             invitation.Id,
             invitation.InvitationType,

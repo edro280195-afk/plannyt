@@ -1,6 +1,5 @@
 using System.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Plannyt.Api.BuildingBlocks.Configuration;
 using Plannyt.Api.BuildingBlocks.Errors;
 using Plannyt.Api.BuildingBlocks.Http;
@@ -27,7 +26,7 @@ public sealed class ProposalService(
     IProposalPdfGenerator pdfGenerator,
     AuditService auditService,
     ProspectStatusTransitionService prospectTransitionService,
-    IOptions<FrontendOptions> frontendOptions,
+    FrontendPublicUrlResolver frontendPublicUrlResolver,
     TimeProvider timeProvider)
 {
     public async Task<PagedResponse<ProposalListItemResponse>> GetPageAsync(
@@ -426,7 +425,7 @@ public sealed class ProposalService(
             link.Id,
             version.Id,
             expiresAt,
-            $"{frontendOptions.Value.PublicUrl.TrimEnd('/')}/proposal/{token.Value}");
+            $"{frontendPublicUrlResolver.Resolve()}/proposal/{token.Value}");
     }
 
     public async Task CancelAsync(

@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Plannyt.Api.BuildingBlocks.Configuration;
 using Plannyt.Api.BuildingBlocks.Errors;
 using Plannyt.Api.Infrastructure.Persistence;
@@ -19,7 +18,7 @@ public sealed class PortalGuestCollaborationService(
     PortalAccessService portalAccessService,
     GuestPlanLimitService planLimitService,
     GuestAccessTokenService tokenService,
-    IOptions<FrontendOptions> frontendOptions,
+    FrontendPublicUrlResolver frontendPublicUrlResolver,
     AuditService auditService,
     TimeProvider timeProvider)
 {
@@ -498,7 +497,7 @@ public sealed class PortalGuestCollaborationService(
     {
         var publicUrl = link.Status == GuestAccessLinkStatus.Active
                         && !link.IsExpired(timeProvider.GetUtcNow())
-            ? $"{frontendOptions.Value.PublicUrl.TrimEnd('/')}/i/"
+            ? $"{frontendPublicUrlResolver.Resolve()}/i/"
               + Uri.EscapeDataString(tokenService.Reveal(link.Id, link.DerivationKeyId))
             : null;
         return new GuestAccessLinkResponse(

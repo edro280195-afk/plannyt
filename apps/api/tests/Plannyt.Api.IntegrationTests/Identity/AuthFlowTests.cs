@@ -105,6 +105,33 @@ public sealed class AuthFlowTests(ApiFactory factory)
     }
 
     [Fact]
+    public async Task Refresh_WithAlternateLocalhostPortInDevelopment_Succeeds()
+    {
+        // Regresión QA-016: en este entorno de desarrollo, Angular puede correr
+        // en un puerto distinto al configurado en Cors:AllowedOrigin
+        // (documentado en docs/qa/next-session-prompt.md por un conflicto de
+        // puerto local real). La API se ejecuta en Development durante las
+        // pruebas de integración (ApiFactory.UseEnvironment("Development")),
+        // así que cualquier origen loopback debe seguir siendo aceptado.
+        using var client = factory.CreateClient();
+        using var registration = await client.PostAsJsonAsync(
+            "/api/auth/register-planner",
+            CreateRegistration($"alt-port-{Guid.NewGuid():N}@example.invalid"));
+        registration.EnsureSuccessStatusCode();
+        var cookie = ExtractRefreshCookie(registration);
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            "/api/auth/refresh");
+        request.Headers.Add("Cookie", cookie);
+        request.Headers.Add("Origin", "http://localhost:4210");
+        request.Headers.Add("X-Plannyt-Client", "web");
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Refresh_DoesNotShareTheCredentialRateLimit()
     {
         using var limitedFactory = factory.WithWebHostBuilder(builder =>

@@ -1,7 +1,6 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Plannyt.Api.BuildingBlocks.Configuration;
 using Plannyt.Api.BuildingBlocks.Errors;
 using Plannyt.Api.Infrastructure.Persistence;
@@ -25,7 +24,7 @@ public sealed class SignatureService(
     SignatureTokenService tokenService,
     IContractPdfGenerator pdfGenerator,
     IFileStorage fileStorage,
-    IOptions<FrontendOptions> frontendOptions,
+    FrontendPublicUrlResolver frontendPublicUrlResolver,
     AuditService auditService,
     ContractingReadinessService readinessService,
     TimeProvider timeProvider,
@@ -112,7 +111,7 @@ public sealed class SignatureService(
             version.Id,
             signer.Id,
             expiresAt,
-            $"{frontendOptions.Value.PublicUrl.TrimEnd('/')}/sign/{token.Value}");
+            $"{frontendPublicUrlResolver.Resolve()}/sign/{token.Value}");
     }
 
     public async Task RevokeRequestAsync(

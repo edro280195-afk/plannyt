@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Plannyt.Api.BuildingBlocks.Configuration;
 using Plannyt.Api.BuildingBlocks.Errors;
 using Plannyt.Api.Infrastructure.Persistence;
@@ -16,7 +15,7 @@ public sealed class GuestLinkService(
     PlannytDbContext dbContext,
     TenantAccessService tenantAccessService,
     GuestAccessTokenService tokenService,
-    IOptions<FrontendOptions> frontendOptions,
+    FrontendPublicUrlResolver frontendPublicUrlResolver,
     AuditService auditService,
     TimeProvider timeProvider)
 {
@@ -318,7 +317,7 @@ public sealed class GuestLinkService(
         }
 
         var token = tokenService.Reveal(link.Id, link.DerivationKeyId);
-        return $"{frontendOptions.Value.PublicUrl.TrimEnd('/')}/i/"
+        return $"{frontendPublicUrlResolver.Resolve()}/i/"
             + Uri.EscapeDataString(token);
     }
 }
