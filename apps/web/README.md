@@ -16,9 +16,10 @@ npm.cmd run e2e
 ```
 
 En macOS usa `npm` y `npx`. El umbral global de cobertura es 85%. Playwright
-ejecuta los flujos críticos en escritorio y móvil y conserva trazas, capturas y
-video únicamente al fallar.
+ejecuta los flujos críticos en escritorio, Pixel 7 simulado y tableta, y
+conserva trazas, capturas y video únicamente al fallar.
 
-La configuración de desarrollo apunta a `https://localhost:7139/api`; consulta
-el [README principal](../../README.md) para levantar PostgreSQL, migraciones y
-API.
+La aplicación consume `/api` en el mismo origen. En desarrollo,
+`proxy.conf.json` lo dirige a `https://localhost:7139`; en producción se requiere
+el reverse proxy equivalente. Consulta el [README principal](../../README.md)
+para levantar PostgreSQL, migraciones y API.

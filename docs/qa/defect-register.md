@@ -8,7 +8,7 @@ Actualizado: 2026-07-29
 |---|---:|---:|---:|
 | Crítica | 0 | 1 | 0 |
 | Alta | 0 | 2 | 0 |
-| Media | 1 | 7 | 1 |
+| Media | 0 | 8 | 1 |
 | Baja | 0 | 2 | 0 |
 
 ## QA-001 — El seed demo no inicia con la cuenta cliente preexistente
@@ -39,25 +39,33 @@ Actualizado: 2026-07-29
 - **Commit:** `f52998b`.
 - **Estado:** Corregido.
 
-## QA-002 — El escenario E2E de corrección RSVP es inestable en la suite completa
+## QA-002 — Captura RSVP descarta el envío si la versión aún está cargando
 
 - **Severidad:** Media.
 - **Módulo:** Frontend / Playwright / RSVP.
 - **Ruta:** `/app/events/:id/rsvp`.
 - **Rol:** Owner.
-- **Precondición:** Suite completa con siete workers y tres perfiles.
-- **Pasos:** Ejecutar `npm run e2e`.
-- **Resultado actual:** 110/111; Chromium escritorio no encuentra
-  `Respuesta registrada:` después de la primera captura.
-- **Resultado esperado:** Resultado determinista.
-- **Evidencia:** Baseline y línea 258 de
-  `e2e/tests/rsvp-remediation.spec.ts`.
-- **Causa:** Pendiente de análisis. Diez repeticiones aisladas pasaron.
-- **Solución prevista:** Eliminar la condición de carrera o ajustar la espera a
-  un resultado observable real, sin `waitForTimeout`.
-- **Prueba de regresión:** Suite completa y repetición aislada.
-- **Commit:** `f52998b`.
-- **Estado:** Abierto.
+- **Precondición:** Abrir la captura y completar los campos antes de que
+  `GET .../rsvp/form` termine.
+- **Pasos:** Retrasar la respuesta del formulario, completar los campos y
+  pulsar `Registrar respuesta`.
+- **Resultado anterior:** El botón parecía habilitado, pero `submit()` retornaba
+  silenciosamente porque `formVersionId` todavía era nulo. Bajo carga, la suite
+  no encontraba `Respuesta registrada:`.
+- **Resultado esperado:** El envío permanece deshabilitado mientras se carga la
+  versión y el error de carga se puede reintentar.
+- **Evidencia:** Se reprodujo en dos ejecuciones completas, primero en Chromium
+  escritorio y después en el perfil móvil; la captura mostraba el formulario
+  válido y el botón habilitado sin resultado.
+- **Causa:** El estado `disabled` sólo consideraba validación y envío, pero no la
+  dependencia asíncrona `formVersionId`.
+- **Solución aplicada:** Estado explícito de carga/error, reintento visible y
+  botón bloqueado hasta contar con la versión. La E2E retiene deliberadamente la
+  respuesta, comprueba el bloqueo y luego libera la solicitud.
+- **Prueba de regresión:** 30/30 repeticiones en escritorio, Pixel 7 y tableta;
+  después, suite completa 127 aprobadas y 2 omitidas intencionalmente.
+- **Commit:** `2534d5b`.
+- **Estado:** Corregido.
 
 ## QA-003 — El documento OpenAPI de ASP.NET devuelve 500
 
@@ -305,7 +313,7 @@ Actualizado: 2026-07-29
   `/api/access-invitations` agregan `no-referrer` y `X-Robots-Tag`.
 - **Prueba de regresión:** Cuatro casos nuevos en `HealthAndHeadersTests`,
   incluyendo 401 y tres familias de enlace.
-- **Commit:** Pendiente.
+- **Commit:** `6206da1`.
 - **Estado:** Corregido.
 
 ## QA-014 — ClientViewer y roles especializados reciben mutaciones ajenas
@@ -330,5 +338,5 @@ Actualizado: 2026-07-29
   Payer/Approver 14 y Viewer 13.
 - **Prueba de regresión:** 14 casos unitarios sobre los siete roles y prueba
   HTTP real donde `ClientViewer` conserva lectura pero recibe 403 al crear grupo.
-- **Commit:** Pendiente.
+- **Commit:** `6206da1`.
 - **Estado:** Corregido.

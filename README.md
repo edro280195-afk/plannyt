@@ -1,10 +1,10 @@
 # Plannyt
 
 Plataforma multi-tenant para planners, agencias y clientes de eventos. El
-Sprint 0 incluye identidad y sesiones, organización y permisos, CRM básico,
-eventos, invitaciones, portal del cliente, documentos locales y auditoría. El
-Sprint 1A agrega pipeline de prospectos, catálogo, propuestas versionadas, vista
-compartida, PDF, conversión a cliente y eventos preliminares.
+El corte implementado abarca desde Sprint 0 hasta Sprint 2B: identidad,
+organizaciones, CRM, propuestas, contratación, pagos, invitados, invitaciones
+digitales y RSVP versionado. Sprint 2C y sus módulos futuros no forman parte de
+este repositorio todavía.
 
 ## Versiones requeridas
 
@@ -111,10 +111,11 @@ $env:DemoSeed__PlannerPassword = "elige-una-clave-local-de-12-o-mas"
 $env:DemoSeed__ClientEmail = "ana.demo@example.invalid"
 ```
 
-El seed es idempotente por correo de planner, sólo funciona en `Development` y
-usa esa misma contraseña local para `ana.demo@example.invalid`. No guardes una
-contraseña real en `.env`. Habilitar el seed fuera de Development hace fallar el
-arranque.
+El seed es idempotente por ambos correos: reutiliza una cuenta cliente global
+preexistente y crea sólo el acceso que falte. Sólo funciona en `Development` y
+usa esa misma contraseña local al crear `ana.demo@example.invalid`; no reemplaza
+la contraseña de una cuenta ya existente. No guardes una contraseña real en
+`.env`. Habilitar el seed fuera de Development hace fallar el arranque.
 
 ## Compilar y probar
 
@@ -129,8 +130,12 @@ npm.cmd run e2e
 ```
 
 Las pruebas de integración levantan su propio PostgreSQL 18.4 con Testcontainers.
-Las E2E interceptan la API, son independientes y corren en Chromium de escritorio
-y móvil. La cobertura frontend exige al menos 85% global.
+Las E2E interceptan la API en todo el contexto del navegador, son independientes
+y corren en Chromium de escritorio, Pixel 7 simulado y tableta. La cobertura
+frontend exige al menos 85% global. Consulta el
+[reporte final de regresión](docs/qa/final-regression-report.md) para distinguir
+las pruebas con API simulada de los recorridos y pruebas contra API/PostgreSQL
+reales.
 
 ## Seguridad y configuración
 
@@ -156,7 +161,9 @@ y móvil. La cobertura frontend exige al menos 85% global.
 - [Seguridad](docs/security.md)
 - [Plan técnico](docs/implementation-plan.md)
 - [Decisiones arquitectónicas](docs/decisions/README.md)
-- [Reporte del Sprint 1A](docs/sprint-reports/sprint-1a.md)
+- [Auditoría funcional 2B.4](docs/qa/final-regression-report.md)
+- [Checklist manual reutilizable](docs/qa/manual-smoke-checklist.md)
+- [Reporte del Sprint 2B.4](docs/sprint-reports/sprint-2b4.md)
 
 Las entregas se organizan en commits lógicos locales. El push se realiza solo
 cuando el responsable del repositorio lo solicita.

@@ -117,11 +117,12 @@ Leyenda:
 1. No existe una prueba matricial automática que recorra los 139 permisos para
    los siete roles organizacionales; los siete roles del portal ya cuentan con
    regresión de su matriz base.
-2. El frontend solo aplica guard al permiso de entrada de la ruta. Los controles
-   internos dependen de condiciones por pantalla; falta terminar la revisión de
-   los 202 botones.
+2. Los 202 botones quedaron inventariados estáticamente por pantalla, pero sólo
+   los recorridos críticos y controles sensibles tienen interacción automática
+   o manual individual; no se afirma una ejecución manual de cada control.
 3. Aún no se ha demostrado con navegador real el pegado de cada URL prohibida.
 4. No hay UI general para administrar grants `Allow`/`Deny`; las pruebas actuales
    validan el resolver y operaciones seleccionadas.
 
-Estos huecos no se consideran aprobados y se actualizarán durante la regresión.
+Estos huecos no se consideran aprobados; permanecen como limitaciones del corte
+2B.4 y están priorizados en `known-limitations.md`.
