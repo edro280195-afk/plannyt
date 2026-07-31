@@ -1,6 +1,6 @@
 # Reporte del Sprint 2B.4 — Auditoría funcional integral, estabilización y regresión
 
-Actualizado: 2026-07-31 (incluye la continuación post-tag; ver sección 11)
+Actualizado: 2026-07-31 (incluye la continuación post-tag; ver secciones 11 y 12)
 
 ## 1. Resumen ejecutivo
 
@@ -25,8 +25,15 @@ la suite E2E para que no vuelva a pasar inadvertido.
 **Continuación post-tag (recorrido manual módulo por módulo, ver sección
 11):** 4 defectos adicionales encontrados y corregidos (QA-016 a QA-019),
 todos mediante recorrido real en navegador contra API/PostgreSQL reales,
-ninguno detectable por la suite automatizada existente. Total acumulado:
-**19 defectos identificados, 18 corregidos, 1 diferido, 0 abiertos.**
+ninguno detectable por la suite automatizada existente. Total acumulado
+en ese punto: 19 defectos identificados, 18 corregidos, 1 diferido, 0
+abiertos.
+
+**Segunda sesión de continuación (Contratación completa, ver sección 12):**
+6 defectos adicionales encontrados y corregidos (QA-020 a QA-025) al cerrar
+`CON-001`, `CON-003` y `CON-004` con el mismo método de recorrido real.
+Total acumulado: **25 defectos identificados, 24 corregidos con evidencia y
+prueba de regresión, 1 diferido, 0 abiertos.**
 
 No se avanzó a Sprint 2C ni a ninguno de sus módulos en ningún momento de
 este sprint ni de su continuación.
@@ -243,3 +250,66 @@ sobre la compuerta de 85%.
 (`de3b365`, `02952f3`, `08b7060`), **no publicados ni etiquetados** —
 pendiente de instrucción explícita del usuario en una sesión futura, según
 el mandato invariable de `docs/qa/next-session-prompt.md`.
+
+## 12. Segunda sesión de continuación: Contratación completa (CON-001, CON-003, CON-004)
+
+Sesión posterior a la de la sección 11 (que ya estaba publicada en `main`
+como commit `62a2183`, con `origin/main` también actualizado a ese punto).
+Mandato sin cambios: recorrido manual módulo por módulo en navegador real
+contra API/PostgreSQL reales, según `docs/qa/next-session-prompt.md`.
+Bloque cubierto: el resto de `CON-001` (plan de pagos, anticipo, readiness,
+confirmación del evento), el resto de `CON-003` (firma de organización,
+revocar, cancelar, rechazar como firmante público, evidencia) y el resto de
+`CON-004` (eliminar plantilla). `CON-001` no arrojó ningún defecto propio:
+el flujo completo de plan de pagos → anticipo → readiness → confirmación
+funcionó correctamente de punta a punta contra el contrato ya firmado
+`C-20260731-169AB4`.
+
+### Defectos encontrados en este bloque
+
+Seis defectos, cinco de ellos (QA-021 a QA-025) de la misma familia que
+QA-018: un endpoint de backend completo, y en la mayoría de los casos ya
+probado, sin ningún control de interfaz que lo invocara. El sexto (QA-020)
+es un defecto de redacción que una prueba E2E existente había fijado como
+"correcto" en vez de detectarlo.
+
+- **QA-020 (Media):** el aviso "Aún faltan requisitos" mostraba frases que
+  afirman el estado contrario ("Contrato completado", "Anticipo cubierto"),
+  contradiciendo en la misma pantalla la lista de etapas que mostraba el
+  mismo requisito como "Pendiente".
+- **QA-021 (Alta):** no existía ningún botón para cancelar un contrato,
+  aunque `POST /contracts/{id}/cancel` con su regla de dominio ya estaba
+  completo.
+- **QA-022 (Alta):** no existía ningún botón para revocar un enlace de
+  firma ya generado; el DTO de lectura del contrato ni siquiera exponía si
+  un firmante tenía una solicitud activa. Se descubrió y corrigió, dentro
+  de la misma sesión, un defecto propio de esta corrección (el cálculo
+  devolvía `Guid.Empty` en vez de `null`) antes de que llegara a quedar
+  expuesto.
+- **QA-023 (Media):** la evidencia de firma (método, firmante, fecha,
+  SHA-256) nunca se mostraba en la interfaz, aunque el endpoint ya la
+  devolvía completa y probada.
+- **QA-024 (Media):** los botones de firma seguían visibles en contratos
+  rechazados, vencidos o cancelados, donde el backend siempre los rechaza.
+- **QA-025 (Media):** no existía ningún botón para eliminar (archivar) una
+  plantilla de contrato.
+
+Detalle completo, causa raíz, solución y prueba de regresión de cada uno en
+`docs/qa/defect-register.md`.
+
+### Totales acumulados tras este bloque
+
+| Suite | Resultado | Contra |
+|---|---:|---|
+| Backend unitarias | 240/240 (sin cambio respecto al bloque anterior) | En memoria |
+| Backend integración | 92/92 (+3 respecto al bloque anterior) | PostgreSQL real (Testcontainers) |
+| Frontend unitarias | 89/89 (sin cambio; casos nuevos dentro de bloques existentes) | Angular TestBed |
+| E2E con mocks | 133 aprobadas / 2 omitidas / 0 fallidas (135 total), modo estricto | API interceptada, sin regresión |
+
+### Estado de Git de este bloque
+
+2 commits locales nuevos sobre `62a2183`
+(`b59ae7f` código y pruebas, `2b7d630` documentación), **no publicados ni
+etiquetados** — pendiente de instrucción explícita del usuario en una
+sesión futura, según el mandato invariable de
+`docs/qa/next-session-prompt.md`.

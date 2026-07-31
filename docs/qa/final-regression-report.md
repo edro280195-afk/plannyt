@@ -1,9 +1,11 @@
 # Reporte final de regresión — Sprint 2B.4
 
-Actualizado: 2026-07-31 (incluye la continuación post-tag; ver sección 2ter)
-Commit del tag de cierre `v0.5.1-sprint2b4`: `e6d2049` (ver
-`docs/sprint-reports/sprint-2b4.md`). Estado actual: 3 commits locales
-adicionales sobre ese tag, no publicados ni etiquetados — ver sección 6.
+Actualizado: 2026-07-31 (incluye la continuación post-tag; ver secciones
+2ter y 2quater)
+Commit del tag de cierre `v0.5.2-sprint2b4`: `62a2183` (ver
+`docs/sprint-reports/sprint-2b4.md`, secciones 11 y 12). Estado actual: 2
+commits locales adicionales sobre ese tag, no publicados ni etiquetados —
+ver sección 6.
 Rama: `main`
 
 ## Cómo leer este reporte
@@ -142,6 +144,36 @@ Cobertura frontend: 90.10% statements, 86.20% branches, 88.39% functions,
 91.82% lines — las cuatro por encima de la compuerta de 85% y en línea con
 el tag.
 
+## 2quater. Segunda sesión de continuación: Contratación completa
+
+Sesión posterior a la de la sección 2ter (ya publicada como tag
+`v0.5.2-sprint2b4`, commit `62a2183`). Mismo mandato: recorrido manual
+módulo por módulo en navegador real contra API/PostgreSQL reales
+(`docs/qa/next-session-prompt.md`). Bloque cubierto: el resto de `CON-001`
+(plan de pagos, anticipo, readiness, confirmación del evento — sin
+defectos propios), el resto de `CON-003` (firma de organización, revocar,
+cancelar, rechazar como firmante público, evidencia) y el resto de
+`CON-004` (eliminar plantilla). Encontrados y corregidos 6 defectos nuevos
+(QA-020 a QA-025, detalle completo en `docs/qa/defect-register.md` y en
+`docs/sprint-reports/sprint-2b4.md` sección 12); cinco de ellos repiten el
+patrón de QA-018 (endpoint de backend completo sin ningún control de
+interfaz que lo invocara), y el sexto (QA-020) es una redacción
+contradictoria que una prueba E2E existente había fijado como "correcta"
+en vez de detectarla.
+
+Totales tras este bloque:
+
+| Suite | Resultado | Contra | Nivel |
+|---|---:|---|---|
+| Backend unitarias | 240/240 | En memoria/mocks | Automatizado |
+| Backend integración | 92/92 | PostgreSQL real vía Testcontainers | **Automatizado, real** |
+| Frontend unitarias | 89/89 | Angular TestBed/mocks | Automatizado |
+| E2E con mocks | 133 aprobadas, 2 omitidas, 0 fallidas de 135, modo estricto | `/api/**` interceptado | Automatizado, sin regresión |
+
+Cobertura frontend: 90.13% statements, 86.20% branches, 88.49% functions,
+91.85% lines — las cuatro por encima de la compuerta de 85% y en línea con
+el bloque anterior.
+
 ## 3. Dependencias y seguridad
 
 | Verificación | Resultado |
@@ -153,17 +185,17 @@ el tag.
 
 ## 4. Defectos
 
-Ver `docs/qa/defect-register.md` para el detalle completo de los 19
-defectos (QA-001 a QA-019; QA-001 a QA-015 al cierre del tag, QA-016 a
-QA-019 en la continuación post-tag).
+Ver `docs/qa/defect-register.md` para el detalle completo de los 25
+defectos (QA-001 a QA-025; QA-001 a QA-015 al cierre del tag, QA-016 a
+QA-019 en la primera continuación post-tag, QA-020 a QA-025 en la segunda).
 
 | Severidad | Corregidos | Diferidos | Abiertos |
 |---|---:|---:|---:|
 | Crítica | 3 | 0 | 0 |
-| Alta | 4 | 0 | 0 |
-| Media | 9 | 1 | 0 |
+| Alta | 6 | 0 | 0 |
+| Media | 13 | 1 | 0 |
 | Baja | 2 | 0 | 0 |
-| **Total** | **18** | **1** | **0** |
+| **Total** | **24** | **1** | **0** |
 
 El único defecto diferido (QA-004, dependencia npm moderada de desarrollo)
 tiene justificación documentada y no representa exposición en el bundle
@@ -186,15 +218,16 @@ prioridades. Resumen:
 
 ## 6. Estado de Git
 
-Al tag `v0.5.1-sprint2b4` (commit `e6d2049`): ver
-`docs/sprint-reports/sprint-2b4.md`, sección "Estado de Git", para el
-commit exacto, el resultado del push y el tag de cierre de ese punto.
+Al tag `v0.5.2-sprint2b4` (commit `62a2183`): ver
+`docs/sprint-reports/sprint-2b4.md`, secciones 11 y 12, para el detalle de
+cada bloque de continuación.
 
-Estado actual (después de la continuación post-tag): rama `main`, árbol de
-trabajo limpio, 3 commits locales adicionales sobre el tag (`de3b365`,
-`02952f3`, `08b7060`), **no publicados a `origin/main` ni etiquetados**,
-según el mandato invariable de no hacer `git push` ni crear/mover tags sin
-pedirlo explícitamente en la misma sesión (`docs/qa/next-session-prompt.md`).
+Estado actual (después de la segunda continuación post-tag): rama `main`,
+árbol de trabajo limpio, 2 commits locales adicionales sobre el tag
+(`b59ae7f` código y pruebas, `2b7d630` documentación), **no publicados a
+`origin/main` ni etiquetados**, según el mandato invariable de no hacer
+`git push` ni crear/mover tags sin pedirlo explícitamente en la misma
+sesión (`docs/qa/next-session-prompt.md`).
 
 ## 7. Conclusión honesta
 
@@ -230,3 +263,18 @@ recorrido manual módulo por módulo apenas cubre dos de los muchos módulos
 pendientes (`docs/qa/functional-inventory.md` lista el resto marcado
 `Parcial`); es intencionalmente un proceso de varias sesiones. Ninguna de
 las dos se presenta como completa.
+
+La segunda sesión de continuación (Contratación completa) cerró
+`CON-001`, `CON-003` y `CON-004` con el mismo método y encontró seis
+defectos más (QA-020 a QA-025), cinco de ellos con el mismo patrón que
+QA-018: capacidades de backend completas —y en su mayoría ya probadas—
+que ningún control de interfaz invocaba nunca (cancelar contrato, revocar
+un enlace de firma, ver la evidencia de firma, eliminar una plantilla).
+Uno de ellos (QA-020) es distinto: una redacción contradictoria que una
+prueba E2E existente había fijado como comportamiento esperado en vez de
+detectarla como confusa. El total acumulado es de 25 defectos, 24
+corregidos con evidencia y prueba de regresión, 1 diferido con
+justificación documentada, 0 abiertos. `CON-001` no aportó ningún defecto
+propio: su flujo completo (plan de pagos, anticipo, readiness,
+confirmación) funcionó correctamente de punta a punta contra datos reales
+en el primer recorrido.
