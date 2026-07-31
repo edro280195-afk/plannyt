@@ -162,8 +162,10 @@ reales.
 - [Plan técnico](docs/implementation-plan.md)
 - [Decisiones arquitectónicas](docs/decisions/README.md)
 - [Auditoría funcional 2B.4](docs/qa/final-regression-report.md)
+- [Limitaciones conocidas](docs/qa/known-limitations.md)
 - [Checklist manual reutilizable](docs/qa/manual-smoke-checklist.md)
 - [Reporte del Sprint 2B.4](docs/sprint-reports/sprint-2b4.md)
+- [Brief para continuar la auditoría manual](docs/qa/next-session-prompt.md)
 
 Las entregas se organizan en commits lógicos locales. El push se realiza solo
 cuando el responsable del repositorio lo solicita.
