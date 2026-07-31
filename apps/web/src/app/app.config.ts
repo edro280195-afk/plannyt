@@ -10,7 +10,6 @@ import {
   provideRouter,
   withComponentInputBinding,
   withPreloading,
-  withViewTransitions,
 } from '@angular/router';
 import { provideServiceWorker } from '@angular/service-worker';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
@@ -23,12 +22,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideHttpClient(withInterceptors([authInterceptor])),
-    provideRouter(
-      routes,
-      withComponentInputBinding(),
-      withViewTransitions(),
-      withPreloading(PreloadAllModules),
-    ),
+    provideRouter(routes, withComponentInputBinding(), withPreloading(PreloadAllModules)),
     provideAppInitializer(() => firstValueFrom(inject(AuthService).restore())),
     provideServiceWorker('ngsw-worker.js', {
       enabled: !isDevMode(),

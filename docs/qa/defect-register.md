@@ -1,6 +1,6 @@
 # Registro de defectos
 
-Actualizado: 2026-07-29
+Actualizado: 2026-07-31
 
 ## Resumen actual
 
@@ -8,7 +8,7 @@ Actualizado: 2026-07-29
 |---|---:|---:|---:|
 | Crítica | 0 | 1 | 0 |
 | Alta | 0 | 2 | 0 |
-| Media | 0 | 8 | 1 |
+| Media | 0 | 9 | 1 |
 | Baja | 0 | 2 | 0 |
 
 ## QA-001 — El seed demo no inicia con la cuenta cliente preexistente
@@ -339,4 +339,46 @@ Actualizado: 2026-07-29
 - **Prueba de regresión:** 14 casos unitarios sobre los siete roles y prueba
   HTTP real donde `ClientViewer` conserva lectura pero recibe 403 al crear grupo.
 - **Commit:** `6206da1`.
+- **Estado:** Corregido.
+
+## QA-015 — Toda navegación produce un error de consola no controlado (View Transitions)
+
+- **Severidad:** Media.
+- **Módulo:** Frontend / enrutador / experiencia general.
+- **Ruta:** Cualquier ruta de la aplicación.
+- **Rol:** Cualquier usuario.
+- **Precondición:** Ninguna; ocurre en el 100% de las navegaciones.
+- **Pasos:** Abrir la aplicación en un navegador real y observar la consola
+  durante el arranque, el login, el registro y cualquier navegación interna
+  por enlace.
+- **Resultado anterior:** Cada navegación disparaba
+  `InvalidStateError: Transition was aborted because of invalid state`
+  (más un `[object DOMException]` acompañante) capturado por
+  `provideBrowserGlobalErrorListeners()`. La suite E2E existente (127
+  escenarios) nunca lo detectó porque ningún fixture vigilaba la consola.
+- **Resultado esperado:** Sin errores inesperados de consola en ninguna
+  navegación (criterio de aceptación de la encomienda, sección 21).
+- **Evidencia:** Recorrido manual real con el navegador de Claude Code
+  contra la API y PostgreSQL reales (arranque, login, registro, alta de
+  cliente con acentos): error reproducido en el 100% de las navegaciones
+  antes de la corrección; cero errores después, incluyendo un alta de
+  cliente completa (`María José Peña`) verificada extremo a extremo.
+- **Causa:** `withViewTransitions()` en `app.config.ts` envuelve cada
+  navegación del Router en `document.startViewTransition()`. En el entorno
+  de prueba, esa llamada del navegador falla de forma consistente y la
+  excepción no controlada llega a consola a través del manejador global de
+  errores de Angular.
+- **Solución aplicada:** Se retiró `withViewTransitions()` de la
+  configuración del Router. Sin ella, Angular usa su comportamiento base
+  (sin animación de transición entre rutas), idéntico al de cualquier
+  navegador sin soporte para la API, sin afectar ninguna otra función.
+- **Prueba de regresión:** Se agregó vigilancia de consola
+  (`failOnUnexpectedConsoleErrors` en `plannyt.fixture.ts`, automática para
+  las 129 ejecuciones de la suite E2E existente) que hace fallar cualquier
+  prueba ante un error de consola o excepción de página no controlada, con
+  una allowlist mínima y documentada únicamente para el registro rutinario
+  de Chrome de respuestas HTTP no exitosas que varias pruebas provocan a
+  propósito (400/401/403/404/409/500/504). Suite completa reejecutada en
+  modo estricto: 127 aprobadas, 2 omitidas, 0 fallidas, sin regresión.
+- **Commit:** Pendiente.
 - **Estado:** Corregido.

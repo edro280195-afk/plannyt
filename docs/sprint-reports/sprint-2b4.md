@@ -1,7 +1,6 @@
 # Reporte del Sprint 2B.4 — Auditoría funcional integral, estabilización y regresión
 
 Actualizado: 2026-07-31
-Commit al cierre de este reporte: `dae79ed6ac4a7de431b5906ebf10065ec57ec306`
 
 ## 1. Resumen ejecutivo
 
@@ -11,13 +10,17 @@ invitaciones digitales y RSVP versionado). El objetivo no fue agregar
 funciones nuevas, sino inventariar lo existente, probarlo, corregir
 defectos reales y dejar evidencia verificable.
 
-Resultado: **14 defectos identificados, 13 corregidos con evidencia y
+Resultado: **15 defectos identificados, 14 corregidos con evidencia y
 prueba de regresión, 1 diferido con justificación documentada, 0
 abiertos.** Se construyó una segunda suite E2E para probar contra API y
 PostgreSQL reales (no solo interceptados), se implementó su primer flujo
 completo, y se documentó honestamente una limitación de infraestructura no
-resuelta en vez de ocultarla. No se avanzó a Sprint 2C ni a ninguno de sus
-módulos.
+resuelta en vez de ocultarla. Se levantó la aplicación real en un
+navegador real (no solo pruebas automatizadas) y ese recorrido encontró un
+defecto que ninguna prueba existente detectaba (QA-015: error de consola
+en el 100% de las navegaciones); se corrigió y se agregó vigilancia
+permanente de consola a la suite E2E para que no vuelva a pasar
+inadvertido. No se avanzó a Sprint 2C ni a ninguno de sus módulos.
 
 ## 2. Alcance cubierto
 
@@ -27,10 +30,16 @@ módulos.
 - Auditoría de permisos: 139 permisos, 13 roles (7 organizacionales + 7 de
   portal + plataforma sin funciones accesibles), matriz por dominio y por
   acción crítica (`docs/qa/permission-audit.md`).
-- Registro de 14 defectos con severidad, causa, solución y prueba de
+- Registro de 15 defectos con severidad, causa, solución y prueba de
   regresión (`docs/qa/defect-register.md`).
 - Segunda suite E2E contra API/PostgreSQL reales, sin mocks
   (`apps/web/e2e-real/`), con el Flujo A (alta inicial) implementado.
+- Verificación manual real en navegador (registro, login, alta de cliente
+  con acentos, navegación del shell profesional) contra la API y
+  PostgreSQL reales, que encontró y permitió corregir QA-015.
+- Vigilancia de consola agregada a la suite E2E con mocks
+  (`failOnUnexpectedConsoleErrors`), aplicada automáticamente a los 129
+  escenarios existentes, con allowlist mínima y documentada.
 - Documento de limitaciones conocidas, con evidencia detallada de las
   investigaciones que no llegaron a una causa raíz cerrable en el tiempo
   disponible (`docs/qa/known-limitations.md`).
@@ -49,6 +58,8 @@ módulos.
 | `2534d5b` | Evito envíos RSVP antes de cargar el formulario (QA-002) |
 | `98b0b95` | Documento la corrección QA-002 y el estado real de huecos de permisos |
 | `dae79ed` | Agrego infraestructura E2E contra API/PostgreSQL reales y Flujo A |
+| `0df2a63` | Agrego los documentos finales obligatorios del Sprint 2B.4 |
+| *(siguiente)* | Corrijo InvalidStateError de navegación y agrego vigilancia de consola a E2E (QA-015) |
 
 Los commits `55e1b91` y anteriores corresponden a Sprint 2B.2/2B.3
 (remediación crítica de RSVP y motor de preguntas), ya reportados en
@@ -65,7 +76,7 @@ Resumen por severidad:
 |---|---:|---:|---:|
 | Crítica | 1 | 1 | 0 |
 | Alta | 2 | 2 | 0 |
-| Media | 9 | 8 | 1 |
+| Media | 10 | 9 | 1 |
 | Baja | 2 | 2 | 0 |
 
 El defecto crítico (QA-014) corregía que los siete roles del portal del
@@ -74,6 +85,16 @@ incompatibles con `ClientViewer`, `ClientPayer` y `ClientApprover`. Se
 separaron los conjuntos por rol (13 permisos de lectura compartidos, con
 acciones adicionales según rol) y se agregó prueba HTTP real confirmando
 403 al mutar con un rol de solo consulta.
+
+QA-015, encontrado mediante verificación manual real en navegador (no por
+una prueba automatizada, que es exactamente por qué había pasado
+inadvertido): `withViewTransitions()` disparaba
+`InvalidStateError: Transition was aborted because of invalid state` en el
+100% de las navegaciones de la aplicación. Se retiró la función (Angular
+usa su comportamiento base sin ella, sin afectar ninguna otra cosa) y se
+agregó vigilancia de consola permanente a la suite E2E existente, que
+reejecutada en modo estricto sobre los 129 escenarios no mostró ninguna
+falla nueva.
 
 ## 5. Estabilización realizada
 
@@ -115,7 +136,7 @@ Esta limitación se declara explícitamente y no se presenta como resuelta.
 | Backend unitarias | 229/229 | En memoria |
 | Backend integración | 86/86 | PostgreSQL real (Testcontainers) |
 | Frontend unitarias | 88/88 | Angular TestBed |
-| E2E con mocks | 127 aprobadas / 2 omitidas / 0 fallidas (129 total) | API interceptada |
+| E2E con mocks | 127 aprobadas / 2 omitidas / 0 fallidas (129 total), modo estricto con vigilancia de consola | API interceptada |
 | E2E reales | Flujo A implementado; 5 de 6 flujos pendientes | API/PostgreSQL reales |
 
 Cobertura frontend: 90.09% statements, 86.20% branches, 88.36% functions,
@@ -148,6 +169,8 @@ estabilidad, según el alcance autorizado.
 
 ## 10. Estado de Git
 
-Rama `main`, árbol de trabajo limpio, 8 commits locales de este sprint
-adelantados sobre `origin/main`. Sin push. Sin tag creado ni movido; el tag
-de cierre se autoriza después de revisar este reporte.
+Rama `main`, árbol de trabajo limpio, 10 commits locales de este sprint.
+Publicados en `origin/main` mediante `git push` (fast-forward, sin
+reescribir historia) y etiquetados como `v0.5.1-sprint2b4`, autorizado
+explícitamente por el responsable del repositorio después de revisar este
+reporte y el registro de defectos.

@@ -1,8 +1,9 @@
 # Reporte final de regresión — Sprint 2B.4
 
 Actualizado: 2026-07-31
-Commit al momento de este reporte: `dae79ed6ac4a7de431b5906ebf10065ec57ec306`
-Rama: `main` (local, adelantada a `origin/main`; sin push)
+Commit: el mismo que apunta el tag de cierre de este sprint (ver
+`docs/sprint-reports/sprint-2b4.md`).
+Rama: `main`
 
 ## Cómo leer este reporte
 
@@ -44,13 +45,15 @@ presenta como "probado" si solo tiene revisión estática.
 Crecimiento respecto al baseline (`docs/qa/baseline-before-audit.md`,
 2026-07-29): 214→229 unitarias, 75→86 integración. El incremento corresponde
 a las pruebas de regresión agregadas por los defectos QA-001 a QA-014.
+QA-015 se encontró y corrigió después de este build, mediante verificación
+manual real en navegador (ver sección 4).
 
 ### Frontend
 
 | Suite | Resultado | Contra | Nivel |
 |---|---:|---|---|
 | Unitarias (`npm run test:coverage`) | 88/88, 13 archivos | Angular TestBed/mocks | Automatizado |
-| E2E con mocks (`npm run e2e`) | 127 aprobadas, 2 omitidas intencionalmente, 0 fallidas, de 129 | `/api/**` interceptado (`plannyt.fixture.ts`) | Automatizado, API simulada |
+| E2E con mocks (`npm run e2e`) | 127 aprobadas, 2 omitidas intencionalmente, 0 fallidas, de 129, en modo estricto con vigilancia de consola | `/api/**` interceptado (`plannyt.fixture.ts`) | Automatizado, API simulada |
 | E2E real (`npm run e2e:real`) | Flujo A implementado (12 pasos); ejecución automatizada intermitente en este equipo | API y PostgreSQL reales, sin mocks | **Implementado; ver limitación #1** |
 
 Cobertura frontend medida en esta corrida:
@@ -98,6 +101,20 @@ Resumen:
   arranque) ya está lista para que el siguiente bloque de trabajo los
   agregue.
 
+## 2bis. Verificación manual en navegador real (post-entrega)
+
+Después de la entrega inicial de este sprint, se levantó la API y Angular
+en modo desarrollo normal (no la base efímera de `e2e-real/`) y se recorrió
+la aplicación con un navegador real: arranque, registro con acentos, login,
+navegación por el shell profesional (Clientes, alta de cliente) y
+navegación pública. Se encontró y corrigió **QA-015**
+(`InvalidStateError` de `withViewTransitions()` en el 100% de las
+navegaciones, nunca detectado porque ninguna prueba automatizada vigilaba
+la consola). Se agregó vigilancia de consola permanente a la suite E2E con
+mocks (`failOnUnexpectedConsoleErrors`), reejecutada en modo estricto sobre
+los 129 escenarios sin fallas nuevas. Ver QA-015 en
+`docs/qa/defect-register.md` para el detalle completo.
+
 ## 3. Dependencias y seguridad
 
 | Verificación | Resultado |
@@ -109,16 +126,16 @@ Resumen:
 
 ## 4. Defectos
 
-Ver `docs/qa/defect-register.md` para el detalle completo de los 14
-defectos (QA-001 a QA-014).
+Ver `docs/qa/defect-register.md` para el detalle completo de los 15
+defectos (QA-001 a QA-015).
 
 | Severidad | Corregidos | Diferidos | Abiertos |
 |---|---:|---:|---:|
 | Crítica | 1 | 0 | 0 |
 | Alta | 2 | 0 | 0 |
-| Media | 8 | 1 | 0 |
+| Media | 9 | 1 | 0 |
 | Baja | 2 | 0 | 0 |
-| **Total** | **13** | **1** | **0** |
+| **Total** | **14** | **1** | **0** |
 
 El único defecto diferido (QA-004, dependencia npm moderada de desarrollo)
 tiene justificación documentada y no representa exposición en el bundle
@@ -141,27 +158,21 @@ prioridades. Resumen:
 
 ## 6. Estado de Git
 
-| Dato | Valor |
-|---|---|
-| Rama | `main` |
-| Commit | `dae79ed6ac4a7de431b5906ebf10065ec57ec306` |
-| Adelanto sobre `origin/main` | 8 commits locales, sin push |
-| Árbol de trabajo | Limpio al momento de este reporte |
-| Tag más reciente | `v0.5.0-sprint2b`, no apunta a `HEAD` |
-
-No se creó ni movió ningún tag durante este sprint. El tag de cierre de
-2B.4 se autoriza después de revisar este reporte, según lo indicado en la
-encomienda.
+Ver `docs/sprint-reports/sprint-2b4.md`, sección "Estado de Git", para el
+commit exacto, el resultado del push y el tag de cierre de este sprint.
 
 ## 7. Conclusión honesta
 
 El corte implementado (Sprint 0 a 2B) compila limpio en backend y frontend,
 con 315 pruebas backend y 88 pruebas frontend en verde contra
 comportamiento real (unitarias en memoria, integración contra PostgreSQL
-real), más 127 escenarios E2E en verde contra API simulada cubriendo los
-flujos críticos de cada módulo. Los 13 defectos corregidos durante esta
-auditoría tienen evidencia de reproducción y de corrección, con pruebas de
-regresión específicas.
+real), más 127 escenarios E2E en verde contra API simulada, ahora con
+vigilancia estricta de consola, cubriendo los flujos críticos de cada
+módulo. Los 14 defectos corregidos durante esta auditoría tienen evidencia
+de reproducción y de corrección, con pruebas de regresión específicas. El
+último (QA-015) se encontró mediante verificación manual real en
+navegador, no solo con pruebas automatizadas: un error que ninguna prueba
+existente detectaba porque ninguna vigilaba la consola.
 
 La brecha más significativa que queda documentada, no oculta, es la
 sección 17 de la encomienda (flujos íntegros contra API/PostgreSQL reales):

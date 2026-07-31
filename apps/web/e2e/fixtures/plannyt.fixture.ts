@@ -17,7 +17,20 @@ interface ApiMock {
 
 interface PlannytFixtures {
   api: ApiMock;
+  failOnUnexpectedConsoleErrors: void;
 }
+
+// Permite depurar localmente sin que la aserción de consola limpia
+// interrumpa: PLANNYT_E2E_LOG_CONSOLE_ERRORS=1 imprime en vez de fallar.
+const LOG_ONLY = Boolean(process.env['PLANNYT_E2E_LOG_CONSOLE_ERRORS']);
+
+// Allowlist mínima y documentada (encomienda §21): Chrome registra como
+// console.error cualquier respuesta HTTP no exitosa que reciba un
+// fetch/XHR, sin importar si la aplicación la maneja correctamente. Varias
+// pruebas provocan 400/401/403/404/409/500/504 a propósito para validar el
+// manejo de errores; ese registro del navegador no indica una excepción de
+// la aplicación. Cualquier otro texto sigue haciendo fallar la prueba.
+const EXPECTED_CONSOLE_NOISE = [/^Failed to load resource: the server responded with a status of \d{3}/];
 
 const ownerPermissions = [
   'organization.view',
@@ -262,6 +275,44 @@ export const test = base.extend<PlannytFixtures>({
       });
 
       await use(api);
+    },
+    { auto: true },
+  ],
+
+  // Detectada durante 2B.4: ningún E2E vigilaba la consola, y
+  // withViewTransitions() generaba InvalidStateError en el 100% de las
+  // navegaciones sin que ninguna prueba lo notara (QA-015). Vigila cada
+  // prueba y falla con un mensaje claro ante cualquier error de consola o
+  // excepción de página no controlada.
+  failOnUnexpectedConsoleErrors: [
+    async ({ page }, use, testInfo) => {
+      const errors: string[] = [];
+      page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`));
+      page.on('console', (message) => {
+        if (message.type() !== 'error') {
+          return;
+        }
+        const text = message.text();
+        if (EXPECTED_CONSOLE_NOISE.some((pattern) => pattern.test(text))) {
+          return;
+        }
+        errors.push(`console.error: ${text}`);
+      });
+
+      await use();
+
+      if (errors.length === 0) {
+        return;
+      }
+      const report = errors.map((entry) => `  - ${entry}`).join('\n');
+      if (LOG_ONLY) {
+        console.log(`[${testInfo.title}] Errores de consola detectados:\n${report}`);
+        return;
+      }
+      throw new Error(
+        `Se detectaron ${errors.length} error(es) inesperados de consola durante ` +
+          `"${testInfo.title}":\n${report}`,
+      );
     },
     { auto: true },
   ],
