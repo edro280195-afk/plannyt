@@ -1,8 +1,9 @@
 # Reporte final de regresión — Sprint 2B.4
 
-Actualizado: 2026-07-31
-Commit: el mismo que apunta el tag de cierre de este sprint (ver
-`docs/sprint-reports/sprint-2b4.md`).
+Actualizado: 2026-07-31 (incluye la continuación post-tag; ver sección 2ter)
+Commit del tag de cierre `v0.5.1-sprint2b4`: `e6d2049` (ver
+`docs/sprint-reports/sprint-2b4.md`). Estado actual: 3 commits locales
+adicionales sobre ese tag, no publicados ni etiquetados — ver sección 6.
 Rama: `main`
 
 ## Cómo leer este reporte
@@ -115,6 +116,32 @@ mocks (`failOnUnexpectedConsoleErrors`), reejecutada en modo estricto sobre
 los 129 escenarios sin fallas nuevas. Ver QA-015 en
 `docs/qa/defect-register.md` para el detalle completo.
 
+## 2ter. Continuación post-tag: Propuestas y Contratación en navegador real
+
+Sesión posterior al tag, con el mandato de recorrer la aplicación módulo
+por módulo en navegador real contra API/PostgreSQL reales
+(`docs/qa/next-session-prompt.md`). Bloque cubierto: Propuestas
+(`PRO-001`, `PRO-002`), Contratación (`CON-002`, `CON-003`, `CON-004`) y
+una revisión real de la conversión de prospecto (`CRM-002`). Encontrados y
+corregidos 4 defectos nuevos (QA-016 a QA-019, detalle completo en
+`docs/qa/defect-register.md` y en `docs/sprint-reports/sprint-2b4.md`
+sección 11), ninguno detectable por la suite automatizada existente porque
+esta intercepta `/api/**` o siembra estado directo en la base de datos,
+evitando exactamente los pasos rotos.
+
+Totales tras este bloque:
+
+| Suite | Resultado | Contra | Nivel |
+|---|---:|---|---|
+| Backend unitarias | 240/240 | En memoria/mocks | Automatizado |
+| Backend integración | 89/89 | PostgreSQL real vía Testcontainers | **Automatizado, real** |
+| Frontend unitarias | 89/89 | Angular TestBed/mocks | Automatizado |
+| E2E con mocks | 127 aprobadas, 2 omitidas, 0 fallidas de 129, modo estricto | `/api/**` interceptado | Automatizado, sin regresión |
+
+Cobertura frontend: 90.10% statements, 86.20% branches, 88.39% functions,
+91.82% lines — las cuatro por encima de la compuerta de 85% y en línea con
+el tag.
+
 ## 3. Dependencias y seguridad
 
 | Verificación | Resultado |
@@ -126,16 +153,17 @@ los 129 escenarios sin fallas nuevas. Ver QA-015 en
 
 ## 4. Defectos
 
-Ver `docs/qa/defect-register.md` para el detalle completo de los 15
-defectos (QA-001 a QA-015).
+Ver `docs/qa/defect-register.md` para el detalle completo de los 19
+defectos (QA-001 a QA-019; QA-001 a QA-015 al cierre del tag, QA-016 a
+QA-019 en la continuación post-tag).
 
 | Severidad | Corregidos | Diferidos | Abiertos |
 |---|---:|---:|---:|
-| Crítica | 1 | 0 | 0 |
-| Alta | 2 | 0 | 0 |
+| Crítica | 3 | 0 | 0 |
+| Alta | 4 | 0 | 0 |
 | Media | 9 | 1 | 0 |
 | Baja | 2 | 0 | 0 |
-| **Total** | **14** | **1** | **0** |
+| **Total** | **18** | **1** | **0** |
 
 El único defecto diferido (QA-004, dependencia npm moderada de desarrollo)
 tiene justificación documentada y no representa exposición en el bundle
@@ -158,26 +186,47 @@ prioridades. Resumen:
 
 ## 6. Estado de Git
 
-Ver `docs/sprint-reports/sprint-2b4.md`, sección "Estado de Git", para el
-commit exacto, el resultado del push y el tag de cierre de este sprint.
+Al tag `v0.5.1-sprint2b4` (commit `e6d2049`): ver
+`docs/sprint-reports/sprint-2b4.md`, sección "Estado de Git", para el
+commit exacto, el resultado del push y el tag de cierre de ese punto.
+
+Estado actual (después de la continuación post-tag): rama `main`, árbol de
+trabajo limpio, 3 commits locales adicionales sobre el tag (`de3b365`,
+`02952f3`, `08b7060`), **no publicados a `origin/main` ni etiquetados**,
+según el mandato invariable de no hacer `git push` ni crear/mover tags sin
+pedirlo explícitamente en la misma sesión (`docs/qa/next-session-prompt.md`).
 
 ## 7. Conclusión honesta
 
-El corte implementado (Sprint 0 a 2B) compila limpio en backend y frontend,
-con 315 pruebas backend y 88 pruebas frontend en verde contra
-comportamiento real (unitarias en memoria, integración contra PostgreSQL
-real), más 127 escenarios E2E en verde contra API simulada, ahora con
-vigilancia estricta de consola, cubriendo los flujos críticos de cada
-módulo. Los 14 defectos corregidos durante esta auditoría tienen evidencia
-de reproducción y de corrección, con pruebas de regresión específicas. El
-último (QA-015) se encontró mediante verificación manual real en
-navegador, no solo con pruebas automatizadas: un error que ninguna prueba
-existente detectaba porque ninguna vigilaba la consola.
+Al tag `v0.5.1-sprint2b4`, el corte implementado (Sprint 0 a 2B) compilaba
+limpio en backend y frontend, con 315 pruebas backend y 88 pruebas
+frontend en verde contra comportamiento real (unitarias en memoria,
+integración contra PostgreSQL real), más 127 escenarios E2E en verde
+contra API simulada, con vigilancia estricta de consola. Los 14 defectos
+corregidos hasta ese punto tenían evidencia de reproducción y de
+corrección, con pruebas de regresión específicas. El último de ellos
+(QA-015) se había encontrado mediante verificación manual real en
+navegador, no solo con pruebas automatizadas.
 
-La brecha más significativa que queda documentada, no oculta, es la
+La continuación post-tag (recorrido manual módulo por módulo de
+Propuestas y Contratación) confirmó exactamente el mismo patrón: cuatro
+defectos más (QA-016 a QA-019), dos de ellos críticos, que ninguna de las
+315+88 pruebas automatizadas del tag detectaba porque interceptaban
+`/api/**` o sembraban el estado directamente en la base de datos,
+evitando exactamente los pasos rotos. En particular, QA-018 y QA-019
+dejaban **inalcanzable el 100% de los intentos de generar un contrato
+desde una propuesta aceptada** — la acción central del flujo de venta de
+la aplicación — sin que ninguna prueba previa lo hubiera notado. El total
+acumulado es de 19 defectos, 18 corregidos con evidencia y prueba de
+regresión, 1 diferido con justificación documentada, 0 abiertos.
+
+La brecha más significativa que sigue documentada, no oculta, es la
 sección 17 de la encomienda (flujos íntegros contra API/PostgreSQL reales):
 un flujo de seis está implementado y su lógica verificada manualmente de
 forma exhaustiva, pero su ejecución automatizada no es reproducible en este
 equipo por una causa de infraestructura no resuelta, y los cinco flujos
-restantes no están implementados. Esto se declara explícitamente en vez de
-presentarse como completo.
+restantes no están implementados. La segunda brecha relevante es que el
+recorrido manual módulo por módulo apenas cubre dos de los muchos módulos
+pendientes (`docs/qa/functional-inventory.md` lista el resto marcado
+`Parcial`); es intencionalmente un proceso de varias sesiones. Ninguna de
+las dos se presenta como completa.

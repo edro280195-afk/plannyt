@@ -1,21 +1,27 @@
 # Brief de continuación — auditoría manual módulo por módulo
 
-Escrito: 2026-07-31, al cierre de la sesión que produjo el tag
-`v0.5.1-sprint2b4` (commit `e6d2049`). Este documento existe porque Claude
-Code no conserva memoria entre sesiones: todo lo que la siguiente sesión
-necesita saber para continuar sin repetir trabajo debe estar escrito aquí
-o en los documentos que este archivo referencia.
+Escrito: 2026-07-31, al cierre de una sesión de continuación posterior al
+tag `v0.5.1-sprint2b4` (commit `e6d2049`). Esta sesión avanzó el bloque
+Propuestas/Contratación y encontró 4 defectos nuevos (QA-016 a QA-019),
+dos de ellos críticos. Este documento existe porque Claude Code no
+conserva memoria entre sesiones: todo lo que la siguiente sesión necesita
+saber para continuar sin repetir trabajo debe estar escrito aquí o en los
+documentos que este archivo referencia.
 
 ## Mandato de esta sesión y las que sigan
 
-Continuar la auditoría funcional de Plannyt (Sprint 2B.4), pero con énfasis
-específico en **recorrido manual real, módulo por módulo, botón por botón**,
-como si un usuario real estuviera usando la aplicación — no solo ejecutar
-la suite automatizada existente. El objetivo es detectar anomalías que las
-pruebas automatizadas no capturan (así se encontró QA-015 en la sesión
-anterior: un error de consola en el 100% de las navegaciones que 129
-escenarios E2E automatizados nunca detectaron porque ninguno vigilaba la
-consola).
+Continuar la auditoría funcional de Plannyt (Sprint 2B.4 y su
+continuación), con énfasis específico en **recorrido manual real, módulo
+por módulo, botón por botón**, como si un usuario real estuviera usando la
+aplicación — no solo ejecutar la suite automatizada existente. El objetivo
+es detectar anomalías que las pruebas automatizadas no capturan. Así se
+encontraron los 4 defectos de esta sesión: la suite automatizada intercepta
+`/api/**` con datos fabricados o siembra el estado directo en la base de
+datos, evitando exactamente los pasos rotos que solo un recorrido real
+expone. El ejemplo más grave: **ninguna propuesta creada desde la interfaz
+podía originar un contrato** (QA-018 + QA-019 combinados), la acción
+central del flujo de venta de la aplicación, y ninguna de las 315+88
+pruebas automatizadas existentes lo había notado nunca.
 
 Esto es multi-sesión por diseño. No se espera terminar todo en una sola
 corrida. Cada sesión debe dejar el progreso registrado de forma que la
@@ -24,7 +30,8 @@ historial de conversación (que no estará disponible).
 
 ## Reglas invariables (no negociables, vienen de la encomienda original)
 
-Estas reglas gobernaron el Sprint 2B.4 completo y siguen aplicando:
+Estas reglas gobernaron el Sprint 2B.4 completo y su continuación, y siguen
+aplicando:
 
 - **No avanzar a Sprint 2C** ni a ninguno de sus módulos: itinerarios,
   mapas, regalos, playlist, mesas, check-in, álbum, multimedia, WhatsApp
@@ -36,6 +43,9 @@ Estas reglas gobernaron el Sprint 2B.4 completo y siguen aplicando:
 - **Los cambios se limitan a:** correcciones, consistencia, accesibilidad,
   manejo de errores, seguridad, cobertura, estabilidad, y mejoras pequeñas
   de UX necesarias para que una función existente sea comprensible.
+  (QA-018 encaja aquí: no fue un módulo nuevo, fue conectar un endpoint de
+  backend ya existente y ya diseñado para esto a un control de interfaz que
+  nunca se había construido.)
 - **No ocultar defectos** desactivando funcionalidades. No eliminar
   pruebas para hacer pasar la suite. No declarar "no reproducible" sin
   registrar entorno, evidencia e intentos.
@@ -47,88 +57,131 @@ Estas reglas gobernaron el Sprint 2B.4 completo y siguen aplicando:
 - Cada corrección de un defecto medio o superior necesita **prueba de
   regresión** (unitaria, integración, frontend o E2E según corresponda) y
   debe quedar registrada en `docs/qa/defect-register.md` con el mismo
-  formato que los 15 defectos existentes (QA-001 a QA-015).
+  formato que los defectos existentes (QA-001 a QA-019).
 
-## Estado al cierre de la sesión anterior
+## Estado al cierre de esta sesión
 
-- **Commits:** hasta `e6d2049` en `main`, publicado en `origin/main`.
-- **Tag:** `v0.5.1-sprint2b4` en `e6d2049`, publicado.
-- **Defectos:** 15 registrados (`docs/qa/defect-register.md`), 14
+- **Commits:** hasta `08b7060` en `main`. **`origin/main` sigue en
+  `e6d2049`** (el estado del tag) — hay 3 commits locales sin publicar:
+  `de3b365`, `02952f3`, `08b7060`. No se hizo push ni se movió el tag, tal
+  como exige el mandato.
+- **Defectos:** 19 registrados (`docs/qa/defect-register.md`), 18
   corregidos con evidencia y prueba de regresión, 1 diferido y justificado
-  (QA-004, dependencia npm de desarrollo sin fix compatible), 0 abiertos.
-- **Pruebas:** backend 229 unitarias + 86 integración (contra PostgreSQL
-  real vía Testcontainers), frontend 88 unitarias, E2E con mocks 127
-  aprobadas / 2 omitidas / 0 fallidas de 129, ahora con vigilancia
-  estricta de consola (`failOnUnexpectedConsoleErrors` en
-  `apps/web/e2e/fixtures/plannyt.fixture.ts`) — cualquier error de consola
-  nuevo hará fallar la prueba correspondiente automáticamente.
-- **E2E contra API/PostgreSQL reales:** infraestructura construida en
-  `apps/web/e2e-real/` (sin ningún mock). Flujo A (alta inicial) implementado
-  en `e2e-real/tests/flow-a-onboarding.spec.ts` y verificado como correcto
-  mediante pruebas manuales repetidas, pero su ejecución automatizada vía
-  Playwright es intermitente en el equipo de desarrollo por una causa de
-  arranque en frío **no resuelta tras descartar doce hipótesis con
-  evidencia directa** (ver `docs/qa/known-limitations.md`, punto 1, antes
-  de invertir tiempo reinvestigando esto — a menos que tengas una pista
-  genuinamente nueva). Flujos B-F: no implementados.
+  (QA-004), 0 abiertos. Los 4 nuevos de esta sesión:
+  - **QA-016 (Alta):** la renovación de sesión (`CookieRequestGuard`)
+    comparaba el header `Origin` contra un único valor fijo
+    (`http://localhost:4200`); con Angular en el puerto 4210 (obligatorio
+    en este equipo), toda recarga o navegación dura perdía la sesión.
+    Corregido: en `Development`, cualquier origen loopback (cualquier
+    puerto) es aceptado; producción sin cambios.
+  - **QA-017 (Alta):** el mismo patrón afectaba la construcción de los
+    enlaces públicos (propuestas, firmas, invitados, accesos): apuntaban a
+    `http://localhost:4200` en vez del origen real. Corregido con
+    `FrontendPublicUrlResolver`, mismo patrón que QA-016.
+  - **QA-018 (Crítica):** el backend ya tenía
+    `POST /proposals/{id}/preliminary-event` completo y funcional, pero
+    ningún control de Angular lo llamaba nunca — el constructor de
+    propuestas nunca recolectaba `eventId`. Corregido: nueva sección
+    "Evento preliminar" en `ProposalBuilderPage`.
+  - **QA-019 (Crítica):** convertir un prospecto a cliente nunca
+    propagaba el `clientId` a sus propuestas existentes —
+    `Proposal.LinkClient` existía sin ningún llamador. Corregido:
+    `ProspectService.ConvertAsync` ahora lo llama.
+
+  **Importante para no reinvestigar:** QA-016 y QA-017 comparten la misma
+  causa raíz (un único origen fijo `http://localhost:4200` en
+  `appsettings.Development.json`, incompatible con el puerto 4210 que este
+  entorno exige). Ya está corregida de forma genérica (loopback + cualquier
+  puerto, solo en Development). Si en una sesión futura una acción nueva
+  construye OTRO enlace público o hace OTRA llamada autenticada por cookie
+  y falla de forma parecida, primero revisa si ese punto también usa
+  `FrontendPublicUrlResolver`/`CookieRequestGuard` — es más probable que
+  sea el mismo patrón que un defecto nuevo.
+
+- **Pruebas:** backend 240 unitarias + 89 integración (contra PostgreSQL
+  real vía Testcontainers), frontend 89 unitarias (cobertura 90.10%
+  statements / 86.20% branches / 88.39% functions / 91.82% lines, las
+  cuatro sobre la compuerta de 85%), E2E con mocks 127 aprobadas / 2
+  omitidas / 0 fallidas de 129, modo estricto de consola, sin regresión.
+- **E2E contra API/PostgreSQL reales:** sin cambios respecto al tag —
+  Flujo A implementado, ejecución automatizada intermitente en este
+  equipo, ver `docs/qa/known-limitations.md` punto 1 antes de
+  reinvestigar.
+- **Bloque de esta sesión:** Propuestas (`PRO-001`, `PRO-002`, `PRP-001`) y
+  Contratación (`CON-002`, `CON-003` parcial, `CON-004` parcial), más una
+  revisión real de la conversión de prospecto (`CRM-002` parcial),
+  recorridos en navegador real de extremo a extremo, dos veces cada uno
+  (propuesta directa a cliente y propuesta vía prospecto), incluyendo
+  firma electrónica del cliente. Detalle exacto de qué quedó cubierto y
+  qué no, en la fila correspondiente de `functional-inventory.md` — léela
+  antes de repetir trabajo.
 - **Documentos vivos que hay que leer antes de tocar código**, en este
   orden:
-  1. `docs/qa/known-limitations.md` — qué falta y con qué prioridad.
+  1. `docs/qa/known-limitations.md` — qué falta y con qué prioridad (sin
+     cambios en esta sesión).
   2. `docs/qa/functional-inventory.md` — el inventario completo con una
-     columna "Estado final" por fila (`Parcial`, `Revisado automatizado`,
-     `Revisado real`, etc.). **Esta es la lista maestra de trabajo
-     pendiente.**
+     columna "Estado final" por fila. **Esta es la lista maestra de
+     trabajo pendiente.**
   3. `docs/qa/defect-register.md` — defectos ya conocidos, para no
-     duplicar hallazgos.
+     duplicar hallazgos (ahora QA-001 a QA-019).
   4. `docs/qa/permission-audit.md` — matriz de permisos y sus huecos.
   5. `docs/qa/manual-smoke-checklist.md` — qué revisar en cada tipo de
-     control (formularios, modales, responsividad, accesibilidad) cuando
-     se prueba algo manualmente.
-  6. `docs/sprint-reports/sprint-2b4.md` — resumen ejecutivo del sprint
-     completo, para contexto general.
+     control cuando se prueba algo manualmente.
+  6. `docs/sprint-reports/sprint-2b4.md` (sección 11) y
+     `docs/qa/final-regression-report.md` (sección 2ter) — resumen de esta
+     sesión con más detalle que este archivo.
 
-## Metodología para el recorrido manual
+## Qué sigue (orden sugerido, no obligatorio)
 
-1. Abre `docs/qa/functional-inventory.md` y elige la siguiente fila (o
-   bloque de filas del mismo módulo) cuyo "Estado final" sea `Parcial` o
-   equivalente a "no verificado con navegador real". El orden de las filas
-   ya sigue una secuencia razonable (autenticación → navegación →
-   comercial → eventos → invitados → RSVP → portal → transversales); no
-   hace falta inventar otro orden.
-2. Levanta el entorno real (ver sección siguiente) y abre el navegador
-   real de Claude Code contra la app real — no la suite con mocks.
-3. Para cada control de esa fila (botón, enlace, formulario, modal):
-   ejecútalo de verdad. Observa la consola y la pestaña de red en cada
-   paso (`read_console_messages`, `read_network_requests`). Compara contra
-   lo que dice `docs/qa/functional-inventory.md` y
-   `docs/qa/permission-audit.md` que debería pasar.
-4. Si encuentras una anomalía: reprodúcela de forma clara, entiende la
-   causa raíz (no le pongas un parche que oculte el síntoma), corrígela con
-   el menor cambio posible, verifica en el navegador que quedó resuelta, y
-   agrega una prueba de regresión automatizada si es razonable.
-5. Registra el defecto en `docs/qa/defect-register.md` (siguiente número
-   `QA-016` en adelante) con el mismo formato que los anteriores.
-6. Actualiza la fila correspondiente de `docs/qa/functional-inventory.md`
-   a un estado verificable ("Revisado real" o similar) — así la siguiente
-   sesión sabe que esa fila ya no necesita repetirse.
-7. Al cerrar cada bloque de módulos (no esperes a terminar todo):
-   - `dotnet build apps/api/Plannyt.Api.slnx -c Release` (0 warnings, 0
-     errores).
-   - `dotnet test apps/api/Plannyt.Api.slnx --no-build` si tocaste backend.
-   - `npm run test:coverage` si tocaste frontend (cobertura no debe bajar
-     de 85% en ninguna métrica).
-   - `npm run e2e` (suite completa, modo estricto — ya vigila consola).
-   - Commit local lógico (sin push).
-8. Al cerrar la sesión completa: actualiza
-   `docs/qa/final-regression-report.md` y `docs/sprint-reports/sprint-2b4.md`
-   con los números nuevos (defectos, pruebas, cobertura), y **reescribe
-   este mismo archivo** (`docs/qa/next-session-prompt.md`) con el estado
-   real al momento de cerrar, para que la siguiente sesión tenga el
-   relevo actualizado en vez de este texto ya desactualizado.
+`functional-inventory.md` sigue teniendo estas filas en `Parcial` o
+`Revisado mixto` con partes sin cubrir, en el orden razonable de la tabla:
 
-No se espera terminar `functional-inventory.md` en una sola sesión. Es
-correcto avanzar un bloque de módulos, dejar el resto marcado como
-pendiente, y parar.
+1. **`CON-001`** (Contratación de evento, `/app/events/:id/contracting`):
+   plan de pagos, registrar anticipo, readiness (bloquear confirmación si
+   falta el anticipo), confirmar evento. Ya hay un contrato firmado por el
+   cliente listo para usar como base (ver "Datos de prueba dejados" abajo)
+   si decides reutilizar la cuenta de esta sesión.
+2. **`CON-003`** (resto): firma del lado organización ("Firmar aquí"),
+   revocar firma, cancelar contrato, rechazar como firmante público,
+   evidencia completa.
+3. **`CON-004`** (resto): eliminar plantilla.
+4. **`GST-001`, `INV-002`** (Invitados e invitación digital): necesarios
+   antes de poder probar RSVP real, porque RSVP necesita un grupo, un
+   invitado y un enlace.
+5. **`RSV-002`, `RSV-003`, `RSV-004`** (RSVP profesional: dashboard,
+   configuración, editor de formulario) y luego **`RSV-001`** (RSVP
+   público) — probar el wizard público completo en viewport móvil,
+   acompañante, menú, transporte, tal como pide el checklist de humo
+   sección 7.
+6. **`ORG-001`, `ORG-002`** (Equipo, Organización).
+7. **`NAV-003`, `POR-002`, `POR-004`, `POR-007`** (Portal del cliente).
+8. Transversales: `NAV-004`, `DOC-001`, `CSV-001`, `AUD-001`, `REC-001`,
+   `TRA-001`, `HOS-001`, `SEN-001`.
+
+No hace falta seguir este orden exacto si algo más lógico surge durante el
+recorrido (por ejemplo, si conviene resolver Invitados junto con RSVP en
+un mismo bloque).
+
+## Datos de prueba dejados en la base `plannyt`
+
+Esta sesión registró cuentas y datos reales contra la base `plannyt` de
+desarrollo (no contra una base efímera). Quedan disponibles por si sirven
+para continuar sin rehacer el alta, aunque también puedes registrar
+cuentas nuevas libremente como siempre:
+
+- Cuenta Owner: `auditoria.2b4.propuestas@plannyt-test.invalid` /
+  `Auditoria#2026Sesion`, organización "Eventos Auditoría 2B.4".
+- Clientes: "María José Serrano" (alta directa) y "Fernanda Ibáñez"
+  (prospecto convertido).
+- Eventos: "Boda de María José y Roberto" y "XV de Fernanda" (ambos
+  preliminares, sin confirmar).
+- Propuestas aceptadas y contratos publicados para ambos, con un firmante
+  cliente ya firmado en el contrato de "XV de Fernanda"
+  (`C-20260731-169AB4`) — punto de partida útil para probar CON-001
+  (anticipo/readiness/confirmación) sin rehacer todo el flujo comercial.
+- Un servicio de catálogo ("Decoración temática con globos") y una
+  plantilla de contrato predeterminada ("Contrato estándar de
+  organización de eventos").
 
 ## Entorno de desarrollo
 
@@ -152,10 +205,26 @@ corriendo en la misma máquina. No lo toques ni lo cierres — es trabajo del
 usuario ajeno a este repo. Usa siempre `--port 4210` (o cualquier puerto
 libre) para Plannyt, y confirma con `Get-NetTCPConnection` o el título de
 la pestaña del navegador ("Plannyt · Eventos en armonía") que estás viendo
-la app correcta antes de probar nada.
+la app correcta antes de probar nada. **Con la corrección de QA-016/017,
+correr en un puerto distinto de 4200 ya no rompe la sesión ni los enlaces
+públicos** — ya no hace falta trabajar alrededor de eso.
+
+Nota sobre `netstat`: si ves algo "escuchando" en el puerto 4200, revisa si
+es `[::1]:4200` (IPv6, el otro proyecto) o `127.0.0.1:4200` (IPv4, lo que
+usa Playwright). No son el mismo socket; `npm run e2e` funciona normal
+aunque el otro proyecto esté corriendo.
 
 Node vendorizado del repo si el global no coincide con `.nvmrc`:
 `.tools/node-v24.18.0-win-x64/` (agregar al PATH antes de usar `npm`).
+
+**El proceso `dotnet run` en segundo plano puede terminar solo después de
+un rato** (se observó una vez esta sesión, causa no confirmada — no
+pareció relacionado con ningún cambio de código). Antes de asumir que la
+API sigue arriba, confirma con `curl -sk https://localhost:7139/health/live`.
+Si necesitas reconstruir (`dotnet build`) mientras la API está corriendo,
+vas a chocar con un error de archivo bloqueado (`MSB3027`); detén el
+proceso primero (`Stop-Process -Id <pid> -Force`, identificado con
+`netstat -ano | grep 7139`).
 
 Para abrir el navegador real: `mcp__Claude_Browser__preview_start` con
 `url: "http://localhost:4210"`, luego `navigate`, `read_page`,
@@ -169,28 +238,42 @@ base `plannyt` de desarrollo (correos tipo `algo@plannyt-test.invalid`
 para dejarlas identificables). También existe el seed demo opcional
 documentado en el README principal si prefieres datos ya poblados.
 
-## Perfiles y roles a cubrir (recordatorio de la encomienda original)
+### Trucos de la herramienta de navegador aprendidos esta sesión
 
-La auditoría no está completa probando solo como Owner. Cuando el módulo
-lo permita, cubre también: OrganizationAdmin, Planner, Coordinator,
-Assistant, Commercial, Finance (organización); ClientAuthority,
-ClientPrimary, ClientCollaborator, ClientGuestManager, ClientPayer,
-ClientApprover, ClientViewer (portal); y accesos públicos por token
-(prospecto, firmante, invitado, enlace revocado/reemplazado/vencido).
-`docs/qa/permission-audit.md` ya tiene la matriz base — úsala para saber
-qué debería estar oculto o denegado para cada rol antes de probarlo.
+- `read_page` con `filter: "interactive"` a veces devuelve resultados
+  incompletos o "(empty page)" de forma intermitente, incluso cuando el
+  contenido sí existe. Si algo parece faltar, repite con `filter: "all"`
+  antes de concluir que es un defecto de la app.
+- Los toasts (`.toast-stack`) se renderizan fuera de `<main>`, así que
+  `get_page_text` (que solo lee `<main>`) nunca los muestra, aunque estén
+  visibles en pantalla. Para confirmar un mensaje de éxito/error, usa
+  `read_page` con `filter: "all"` o inspecciona `.toast-stack` con
+  `javascript_tool` — y hazlo rápido, el toast se autodescarta en 4.5s.
+- Los widgets `<details>/<summary>` colapsados (por ejemplo, "Agregar
+  firmante" en el detalle de contrato) necesitan un clic en el
+  `<summary>` para expandirse antes de que sus campos internos sean
+  interactivos. `form_input` puede escribir valores aunque esté
+  colapsado, pero el clic de envío falla en silencio (sin error, sin
+  efecto) hasta expandirlo.
+- Los clics por coordenadas (`computer` con `ref` o `coordinate`) fallan
+  en silencio sobre elementos fuera del viewport visible por defecto. Si
+  hace falta interactuar con algo al final de una página larga, usa
+  `resize_window` a una altura mayor (ej. 1280×2200) antes de leer la
+  página — y vuelve a llamar `read_page` después de redimensionar, porque
+  los `ref` anteriores quedan obsoletos.
 
 ## Qué NO hacer
 
 - No reinvestigues la intermitencia de `e2e-real` sin una pista nueva real
-  (ver known-limitations.md punto 1) — ya se agotaron doce hipótesis en la
-  sesión anterior.
+  (ver known-limitations.md punto 1) — ya se agotaron doce hipótesis.
+- No reinvestigues QA-016/QA-017 (origen fijo vs. puerto real) — ya están
+  corregidos de forma genérica para cualquier puerto loopback en
+  Development.
 - No implementes los Flujos B-F de `e2e-real/` como prioridad de esta
-  sesión salvo que el usuario lo pida explícitamente; el mandato actual es
-  el recorrido manual. Si de todos modos hay tiempo y el usuario no dio
-  otra prioridad, son la siguiente pieza de mayor impacto documentada.
+  sesión salvo que el usuario lo pida explícitamente.
 - No toques `.tools/`, `.env`, ni ningún archivo con credenciales.
 - No hagas `git push`, no crees ni muevas tags, sin pedirlo explícitamente
-  en esa sesión.
+  en esa sesión — recuerda que ya hay 3 commits locales sin publicar
+  esperando esa decisión.
 - No marques una fila de `functional-inventory.md` como verificada sin
-  haberla probado tú mismo en el navegador real durante esta sesión.
+  haberla probado tú mismo en el navegador real durante esa sesión.

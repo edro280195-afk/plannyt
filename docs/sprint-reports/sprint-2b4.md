@@ -1,6 +1,6 @@
 # Reporte del Sprint 2B.4 — Auditoría funcional integral, estabilización y regresión
 
-Actualizado: 2026-07-31
+Actualizado: 2026-07-31 (incluye la continuación post-tag; ver sección 11)
 
 ## 1. Resumen ejecutivo
 
@@ -10,17 +10,26 @@ invitaciones digitales y RSVP versionado). El objetivo no fue agregar
 funciones nuevas, sino inventariar lo existente, probarlo, corregir
 defectos reales y dejar evidencia verificable.
 
-Resultado: **15 defectos identificados, 14 corregidos con evidencia y
-prueba de regresión, 1 diferido con justificación documentada, 0
-abiertos.** Se construyó una segunda suite E2E para probar contra API y
-PostgreSQL reales (no solo interceptados), se implementó su primer flujo
-completo, y se documentó honestamente una limitación de infraestructura no
-resuelta en vez de ocultarla. Se levantó la aplicación real en un
-navegador real (no solo pruebas automatizadas) y ese recorrido encontró un
-defecto que ninguna prueba existente detectaba (QA-015: error de consola
-en el 100% de las navegaciones); se corrigió y se agregó vigilancia
-permanente de consola a la suite E2E para que no vuelva a pasar
-inadvertido. No se avanzó a Sprint 2C ni a ninguno de sus módulos.
+Al momento del tag `v0.5.1-sprint2b4` (commit `e6d2049`): **15 defectos
+identificados, 14 corregidos con evidencia y prueba de regresión, 1
+diferido con justificación documentada, 0 abiertos.** Se construyó una
+segunda suite E2E para probar contra API y PostgreSQL reales (no solo
+interceptados), se implementó su primer flujo completo, y se documentó
+honestamente una limitación de infraestructura no resuelta en vez de
+ocultarla. Se levantó la aplicación real en un navegador real (no solo
+pruebas automatizadas) y ese recorrido encontró un defecto que ninguna
+prueba existente detectaba (QA-015: error de consola en el 100% de las
+navegaciones); se corrigió y se agregó vigilancia permanente de consola a
+la suite E2E para que no vuelva a pasar inadvertido.
+
+**Continuación post-tag (recorrido manual módulo por módulo, ver sección
+11):** 4 defectos adicionales encontrados y corregidos (QA-016 a QA-019),
+todos mediante recorrido real en navegador contra API/PostgreSQL reales,
+ninguno detectable por la suite automatizada existente. Total acumulado:
+**19 defectos identificados, 18 corregidos, 1 diferido, 0 abiertos.**
+
+No se avanzó a Sprint 2C ni a ninguno de sus módulos en ningún momento de
+este sprint ni de su continuación.
 
 ## 2. Alcance cubierto
 
@@ -173,4 +182,64 @@ Rama `main`, árbol de trabajo limpio, 10 commits locales de este sprint.
 Publicados en `origin/main` mediante `git push` (fast-forward, sin
 reescribir historia) y etiquetados como `v0.5.1-sprint2b4`, autorizado
 explícitamente por el responsable del repositorio después de revisar este
-reporte y el registro de defectos.
+reporte y el registro de defectos. Este fue el estado en el commit
+`e6d2049`; ver sección 11 para el estado posterior.
+
+## 11. Continuación post-tag: recorrido manual módulo por módulo
+
+Sesión posterior a `v0.5.1-sprint2b4`, con el mandato específico de
+recorrer la aplicación módulo por módulo, botón por botón, en navegador
+real, según `docs/qa/next-session-prompt.md`. Bloque cubierto: Propuestas
+(`PRO-001`, `PRO-002`) y Contratación (`CON-002`, `CON-003`, `CON-004`),
+más una revisión real de la conversión de prospecto en `CRM-002`. RSVP
+público (`RSV-001`) y el resto de `CON-001` (planes de pago, readiness,
+confirmación del evento) quedan para la siguiente sesión.
+
+### Defectos encontrados en este bloque
+
+Los cuatro son de una misma familia: cada uno pasó inadvertido en 15
+defectos y cientos de pruebas automatizadas anteriores porque esas pruebas
+interceptan `/api/**` con datos fabricados o siembran el estado
+directamente en la base de datos, evitando exactamente el paso roto. Solo
+un recorrido real, con la API y PostgreSQL reales, sin mocks, los
+expuso.
+
+- **QA-016 (Alta):** la renovación de sesión (`CookieRequestGuard`)
+  comparaba el header `Origin` contra un único valor fijo
+  (`http://localhost:4200`); con Angular en el puerto 4210 (obligatorio en
+  este equipo por un conflicto real con otro proyecto), toda recarga o
+  navegación dura perdía la sesión.
+- **QA-017 (Alta):** el mismo patrón de origen fijo afectaba la
+  construcción de los cinco tipos de enlace público (propuestas, firmas,
+  invitados, accesos): el enlace generado apuntaba a
+  `http://localhost:4200` en vez del origen real.
+- **QA-018 (Crítica):** ninguna propuesta creada desde la interfaz podía
+  originar un contrato. El backend ya tenía el endpoint para vincular un
+  evento preliminar a la propuesta, pero ningún control de Angular lo
+  llamaba — una omisión de integración nunca cerrada.
+- **QA-019 (Crítica):** convertir un prospecto a cliente nunca propagaba
+  el `clientId` a sus propuestas existentes; el dominio ya tenía el método
+  (`Proposal.LinkClient`) pero sin ningún llamador.
+
+Detalle completo, causa raíz, solución y prueba de regresión de cada uno
+en `docs/qa/defect-register.md`.
+
+### Totales acumulados tras este bloque
+
+| Suite | Resultado | Contra |
+|---|---:|---|
+| Backend unitarias | 240/240 (+11 respecto al tag) | En memoria |
+| Backend integración | 89/89 (+3 respecto al tag) | PostgreSQL real (Testcontainers) |
+| Frontend unitarias | 89/89 (+1 respecto al tag) | Angular TestBed |
+| E2E con mocks | 127 aprobadas / 2 omitidas / 0 fallidas (129 total), modo estricto | API interceptada, sin regresión |
+
+Cobertura frontend: 90.10% statements, 86.20% branches, 88.39% functions,
+91.82% lines — igual o por encima del tag en las cuatro métricas, todas
+sobre la compuerta de 85%.
+
+### Estado de Git de este bloque
+
+3 commits locales nuevos sobre `e6d2049`
+(`de3b365`, `02952f3`, `08b7060`), **no publicados ni etiquetados** —
+pendiente de instrucción explícita del usuario en una sesión futura, según
+el mandato invariable de `docs/qa/next-session-prompt.md`.
