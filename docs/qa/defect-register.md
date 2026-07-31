@@ -6,8 +6,8 @@ Actualizado: 2026-07-31
 
 | Severidad | Abiertos | Corregidos | Diferidos |
 |---|---:|---:|---:|
-| Crítica | 0 | 1 | 0 |
-| Alta | 0 | 2 | 0 |
+| Crítica | 0 | 3 | 0 |
+| Alta | 0 | 4 | 0 |
 | Media | 0 | 9 | 1 |
 | Baja | 0 | 2 | 0 |
 
@@ -380,5 +380,234 @@ Actualizado: 2026-07-31
   de Chrome de respuestas HTTP no exitosas que varias pruebas provocan a
   propósito (400/401/403/404/409/500/504). Suite completa reejecutada en
   modo estricto: 127 aprobadas, 2 omitidas, 0 fallidas, sin regresión.
+- **Commit:** Pendiente.
+- **Estado:** Corregido.
+
+## QA-016 — La renovación de sesión rechaza el frontend cuando Angular no corre en el puerto fijo configurado
+
+- **Severidad:** Alta.
+- **Módulo:** API / identidad / seguridad.
+- **Ruta:** `POST /api/auth/refresh` (y por extensión `/logout`, `/logout-all`,
+  que comparten el mismo guard).
+- **Rol:** Cualquier usuario autenticado.
+- **Precondición:** Angular corre en un puerto distinto al único valor fijo
+  configurado en `Cors:AllowedOrigin` de `appsettings.Development.json`
+  (`http://localhost:4200`) — exactamente lo que exige este entorno de
+  desarrollo real, documentado en `next-session-prompt.md`, que manda usar el
+  puerto 4210 (o "cualquier puerto libre") por un conflicto real con otro
+  proyecto ajeno del usuario en la misma máquina.
+- **Pasos:** Iniciar sesión con Angular en el puerto 4210 contra la API real;
+  navegar con una carga completa (pegar URL o recargar) a cualquier ruta
+  profunda protegida, por ejemplo `/app/proposals` o `/app/clients`.
+- **Resultado anterior:** `POST /api/auth/refresh` devolvía 403 con el detalle
+  "La solicitud basada en cookie no proviene del frontend autorizado.", porque
+  `CookieRequestGuard` comparaba el header `Origin` (`http://localhost:4210`)
+  contra el único origen fijo configurado (`http://localhost:4200`). La sesión
+  se perdía pese a tener credenciales válidas y la app redirigía a login.
+- **Resultado esperado:** La sesión se restaura sin importar el puerto local
+  exacto, siempre que el origen siga siendo loopback (`localhost`/`127.0.0.1`)
+  y el entorno sea `Development`.
+- **Evidencia:** Reproducido en el navegador real de Claude Code contra la API
+  y PostgreSQL reales: tras un registro/login exitoso, una navegación dura a
+  `/app/proposals` regresaba a `/auth/login`, con dos `403` consecutivos
+  documentados con su `correlationId` (`ddf5669415f14964a5b750141038e87c`,
+  detalle "La solicitud basada en cookie no proviene del frontend
+  autorizado."). Después de la corrección y reinicio de la API, las mismas
+  rutas (`/app/proposals`, `/app/clients`) cargan con datos reales tras una
+  recarga dura, con `refresh` en 200 en cada intento y sin errores de consola.
+- **Causa:** `CookieRequestGuard.Validate` solo aceptaba una coincidencia
+  exacta de un único origen configurado (correcto para producción, un solo
+  dominio fijo), pero el propio entorno de desarrollo de este repositorio
+  necesita ejecutarse en un puerto distinto al 4200 por defecto de Angular, y
+  ese puerto puede variar ("cualquier puerto libre"). Nunca se había
+  detectado porque la suite E2E automatizada siempre corre Angular en el
+  puerto 4200 por defecto de Playwright, y las sesiones manuales previas del
+  Sprint 2B.4 no habían combinado "puerto no estándar" con "navegación dura a
+  ruta profunda" en la misma prueba.
+- **Solución aplicada:** En `Development`, además del origen exacto
+  configurado, `CookieRequestGuard` acepta cualquier origen loopback (http o
+  https, `localhost`/`127.0.0.1`, cualquier puerto) usando `Uri.IsLoopback`.
+  Fuera de `Development` (producción) el comportamiento no cambia: sigue
+  exigiendo la coincidencia exacta del único origen configurado, sin
+  relajación alguna. El segundo factor (`X-Plannyt-Client: web`) sigue siendo
+  obligatorio en ambos casos.
+- **Prueba de regresión:** `CookieRequestGuardTests` (6 casos): coincidencia
+  exacta sigue aceptada; puerto loopback alterno aceptado solo en
+  `Development`; el mismo puerto alterno rechazado fuera de `Development`;
+  loopback por HTTPS aceptado; origen ajeno (`evil.example.invalid`) rechazado
+  incluso en `Development`; header `X-Plannyt-Client` ausente sigue
+  rechazando aunque el origen coincida. Verificado además con navegador real
+  antes/después del fix.
+- **Commit:** Pendiente.
+- **Estado:** Corregido.
+
+## QA-017 — Los enlaces públicos generados (propuestas, firmas, invitados, accesos) apuntan a un puerto fijo obsoleto
+
+- **Severidad:** Alta.
+- **Módulo:** API / identidad / seguridad — generación de enlaces públicos.
+- **Ruta:** `POST .../proposals/{id}/send`, `.../signers/{id}/requests`,
+  `.../guest-experience/links*`, `POST /organizations/{id}/invitations*`
+  (los cinco puntos donde `FrontendOptions.PublicUrl` construye una URL
+  compartible).
+- **Rol:** Cualquier usuario que genere un enlace para compartir fuera de
+  Plannyt (prospecto, cliente, firmante, invitado).
+- **Precondición:** Igual que QA-016 — Angular corre en un puerto distinto al
+  fijo configurado (`http://localhost:4200`).
+- **Pasos:** Publicar y enviar una propuesta con Angular en el puerto 4210;
+  copiar el enlace generado.
+- **Resultado anterior:** El campo `shareUrl` de la respuesta era
+  `http://localhost:4200/proposal/{token}` — un puerto donde, en este equipo,
+  corre un proyecto ajeno del usuario (`camerasapi_web`), no Plannyt. Un
+  prospecto real que recibiera ese enlace habría aterrizado en la aplicación
+  equivocada. El mismo problema aplicaba a los enlaces de firma
+  (`/sign/{token}`), a los enlaces de invitados (`/i/{token}`) y a las
+  invitaciones de acceso (`/accept-access/{token}`).
+- **Resultado esperado:** El enlace generado refleja el origen real desde el
+  que se hizo la solicitud (loopback, Development) en vez de un valor fijo
+  desactualizado; en producción, sigue usando el dominio único configurado.
+- **Evidencia:** Reproducido y corregido en navegador real: antes del fix,
+  `POST .../proposals/{id}/send` devolvía
+  `shareUrl: "http://localhost:4200/proposal/..."`; después, con la misma
+  acción, devolvió `"http://localhost:4210/proposal/..."`. El enlace de firma
+  generado más tarde en la misma sesión (`.../signers/{id}/requests`)
+  confirmó el mismo comportamiento correcto sin cambios adicionales, ya que
+  los cinco puntos comparten `FrontendPublicUrlResolver`.
+- **Causa:** Los cinco servicios (`ProposalService`, `SignatureService`,
+  `PortalGuestCollaborationService`, `GuestLinkService`,
+  `InvitationService`) construían la URL pública concatenando
+  `IOptions<FrontendOptions>.Value.PublicUrl` — el mismo único valor fijo de
+  `appsettings.Development.json` que QA-016, sin considerar el origen real de
+  la solicitud.
+- **Solución aplicada:** Se introdujo `FrontendPublicUrlResolver`
+  (`BuildingBlocks/Configuration`), que en `Development` deriva la URL base
+  del header `Origin` de la solicitud actual cuando es loopback (reutilizando
+  `LoopbackOrigin`, el mismo helper de QA-016), y cae al valor configurado en
+  cualquier otro caso o fuera de `Development`. Los cinco servicios ahora
+  inyectan este resolver en vez de `IOptions<FrontendOptions>` directamente.
+- **Prueba de regresión:** `FrontendPublicUrlResolverTests` (5 casos):
+  producción ignora el origen de la solicitud; sin solicitud activa cae al
+  valor configurado; puerto loopback alterno en Development se refleja en el
+  resultado; origen no loopback cae al valor configurado incluso en
+  Development; se recorta la barra final del valor configurado.
+  `AuthFlowTests.Refresh_WithAlternateLocalhostPortInDevelopment_Succeeds` y
+  `CommercialProposalFlowTests.Send_WithAlternateLocalhostOrigin_BuildsShareUrlFromRequestOrigin`
+  verifican el comportamiento end-to-end vía HTTP real. Verificado además con
+  navegador real antes/después del fix, para propuestas y para firmas.
+- **Commit:** Pendiente.
+- **Estado:** Corregido.
+
+## QA-018 — Ninguna propuesta creada desde la interfaz puede originar un contrato: falta la vinculación al evento preliminar
+
+- **Severidad:** Crítica.
+- **Módulo:** Frontend / comercial — constructor de propuestas.
+- **Ruta:** `/app/proposals/:id`, seguido de `/app/contracts?proposalId=...`.
+- **Rol:** Cualquier rol con `contracts.create` (Owner, Admin, Planner,
+  Commercial).
+- **Precondición:** Una propuesta aceptada, creada por cualquier camino de la
+  interfaz (directamente para un cliente o a través de un prospecto).
+- **Pasos:** Aceptar una propuesta (enlace público → "Aceptar propuesta");
+  desde `ProposalBuilderPage`, pulsar "Generar contrato"; en el diálogo
+  "Preparar contrato", completar y enviar "Crear borrador".
+- **Resultado anterior:** `POST /contracts/from-proposal` devolvía siempre
+  409 con "La propuesta aceptada debe estar vinculada a un evento y
+  cliente.", para el 100% de las propuestas, sin ningún control en la
+  interfaz que permitiera resolverlo. El backend expone
+  `POST /proposals/{id}/preliminary-event`
+  (`ProposalService.LinkPreliminaryEventAsync`, con su propio método de
+  dominio `Proposal.LinkEvent`) exactamente para cubrir este paso, pero
+  ningún componente Angular lo invocaba en ningún punto: el constructor de
+  propuestas nunca recolectaba `eventId` (quedaba `null` fijo en el
+  formulario de alta) y el botón "Crear evento preliminar" del detalle de
+  prospecto llama a un endpoint distinto
+  (`/prospects/{id}/preliminary-event`) que vincula el evento al prospecto y
+  al cliente, pero nunca a la propuesta. El resultado: la acción "Generar
+  contrato", documentada y visible en la interfaz para toda propuesta
+  aceptada, era inalcanzable en el 100% de los casos.
+- **Resultado esperado:** Desde una propuesta aceptada sin evento, la
+  interfaz permite crear o vincular un evento preliminar directamente, y
+  "Generar contrato" queda disponible una vez vinculado.
+- **Evidencia:** Ninguna prueba (unitaria, integración o E2E) ejercitaba
+  `POST /proposals/{id}/preliminary-event` antes de esta corrección; el único
+  test de integración que llega hasta "contrato desde propuesta"
+  (`ContractingFlowTests`) evita el problema por completo porque siembra la
+  propuesta directamente en la base de datos con `eventId` ya asignado,
+  saltándose la API; la suite E2E mockeada hace lo mismo fabricando
+  `eventId: 'event-1'` en el fixture de la propuesta. Reproducido y corregido
+  en navegador real contra API/PostgreSQL reales: antes del fix, "Generar
+  contrato" llevaba a un 409 inevitable tanto para una propuesta creada
+  directo a un cliente como para una creada desde un prospecto; después,
+  "Vincular evento preliminar" crea el evento, la propuesta queda vinculada,
+  "Generar contrato" aparece y el contrato se crea (`201 Created`),
+  publicándose correctamente con las variables de la plantilla resueltas
+  (`{{proposal.grandTotal}}`, `{{event.name}}`, `{{event.date}}`).
+- **Causa:** Al construir el flujo de contratación se implementó el endpoint
+  de backend para vincular el evento preliminar a la propuesta (simétrico al
+  ya existente para el prospecto), pero nunca se conectó ningún control de la
+  interfaz a ese endpoint — una omisión de integración, no una decisión de
+  diseño.
+- **Solución aplicada:** `ProposalBuilderPage` agrega una sección "Evento
+  preliminar" (mismo patrón visual y de validación que la del detalle de
+  prospecto) visible en cualquier propuesta ya persistida sin `eventId`: un
+  botón abre un modal para crear o vincular el evento preliminar, llamando al
+  endpoint ya existente vía un nuevo método `linkProposalPreliminaryEvent` en
+  `ApiService`. El botón "Generar contrato" ahora se oculta a favor de un
+  mensaje explicativo mientras falte el evento, en vez de llevar a un 409
+  inevitable.
+- **Prueba de regresión:**
+  `CommercialProposalFlowTests.LinkPreliminaryEvent_ThenCreateContract_SucceedsFromAcceptedProposal`
+  ejercita el endpoint por HTTP real de extremo a extremo (incluyendo el 409
+  previo y el 201 posterior); `api.service.spec.ts` cubre el nuevo método del
+  cliente HTTP; `commercial-flow.spec.ts` extiende el flujo E2E existente
+  para vincular el evento preliminar de la propuesta y confirmar que
+  "Generar contrato" aparece, con el fixture actualizado
+  (`proposalEventLinked`) para modelar el estado real en vez de fabricarlo.
+  Verificado en navegador real contra API/PostgreSQL reales para ambos
+  caminos (propuesta directa a cliente y propuesta vía prospecto).
+- **Commit:** Pendiente.
+- **Estado:** Corregido.
+
+## QA-019 — Convertir un prospecto a cliente no actualiza el `clientId` de sus propuestas existentes
+
+- **Severidad:** Crítica.
+- **Módulo:** Backend / comercial — conversión de prospectos.
+- **Ruta:** `POST /prospects/{id}/convert`.
+- **Rol:** Cualquier rol con `proposals.convert-client` (Owner, Admin,
+  Planner, Commercial).
+- **Precondición:** Un prospecto en etapa "Oportunidad" con una propuesta
+  aceptada, sin conversión previa.
+- **Pasos:** Aceptar la propuesta del prospecto; convertirlo a cliente desde
+  "Revisar conversión"; intentar generar un contrato desde esa propuesta
+  (incluso después de vincularle un evento preliminar).
+- **Resultado anterior:** `contracts/from-proposal` seguía devolviendo 409
+  ("...debe estar vinculada a un evento y cliente") después de la
+  conversión, porque `ProspectService.ConvertAsync` marcaba el prospecto como
+  convertido y creaba/relacionaba el `Client`, pero nunca actualizaba el
+  `ClientId` de la propuesta que originó la venta. El dominio ya tenía el
+  método exacto para esto —`Proposal.LinkClient`, simétrico a
+  `Proposal.LinkEvent`— pero no tenía ningún llamador en todo el backend.
+- **Resultado esperado:** Al convertir un prospecto, todas sus propuestas sin
+  cliente asignado quedan vinculadas al cliente resultante.
+- **Evidencia:** Reproducido y corregido con prueba de integración real y en
+  navegador real: se creó un prospecto, se le generó y aceptó una propuesta,
+  se le vinculó un evento preliminar y aun así `contracts/from-proposal`
+  devolvía 409 hasta convertir el prospecto; tras convertir, la propuesta
+  mostró el nuevo cliente en el selector "Cliente" del constructor y el
+  contrato se creó correctamente. `Proposal.LinkClient` no tenía ninguna
+  prueba unitaria ni ningún llamador antes de esta corrección.
+- **Causa:** Al implementar la conversión de prospectos se creó el cliente y
+  se marcó el prospecto como ganado, pero no se propagó la nueva relación a
+  las propuestas ya emitidas para ese prospecto.
+- **Solución aplicada:** `ProspectService.ConvertAsync` ahora busca las
+  propuestas del prospecto sin cliente asignado (`ProspectId` coincide,
+  `ClientId` es nulo) y llama a `Proposal.LinkClient` sobre cada una, dentro
+  de la misma transacción que crea/relaciona el cliente.
+- **Prueba de regresión:**
+  `CommercialProposalFlowTests.LinkPreliminaryEvent_ThenCreateContract_SucceedsFromAcceptedProposal`
+  cubre el flujo completo por HTTP real: 409 antes de convertir, `clientId`
+  correcto tras convertir, 409 persistente si falta solo el evento, y 201 al
+  completar ambos requisitos. Verificado en navegador real contra
+  API/PostgreSQL reales, incluyendo el ajuste de etapa del pipeline
+  (`Nuevo → Contactado → Calificado → Oportunidad`) necesario para que la
+  transición a "Ganado" sea válida.
 - **Commit:** Pendiente.
 - **Estado:** Corregido.
