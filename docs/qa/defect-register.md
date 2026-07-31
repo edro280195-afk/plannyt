@@ -7,8 +7,8 @@ Actualizado: 2026-07-31
 | Severidad | Abiertos | Corregidos | Diferidos |
 |---|---:|---:|---:|
 | Crítica | 0 | 3 | 0 |
-| Alta | 0 | 4 | 0 |
-| Media | 0 | 9 | 1 |
+| Alta | 0 | 6 | 0 |
+| Media | 0 | 13 | 1 |
 | Baja | 0 | 2 | 0 |
 
 ## QA-001 — El seed demo no inicia con la cuenta cliente preexistente
@@ -609,5 +609,299 @@ Actualizado: 2026-07-31
   API/PostgreSQL reales, incluyendo el ajuste de etapa del pipeline
   (`Nuevo → Contactado → Calificado → Oportunidad`) necesario para que la
   transición a "Ganado" sea válida.
+- **Commit:** Pendiente.
+- **Estado:** Corregido.
+
+## QA-020 — "Aún faltan requisitos" mostraba frases que afirman lo contrario ("Contrato completado", "Anticipo cubierto")
+
+- **Severidad:** Media.
+- **Módulo:** Backend / Frontend — contratación, cálculo de disponibilidad
+  ("readiness").
+- **Ruta:** `/app/events/:id/contracting`; `GET
+  .../events/{eventId}/contracting-readiness`; `POST
+  .../events/{eventId}/confirm` (409).
+- **Rol:** Cualquier rol con `contracts.view` o `events.confirm`.
+- **Precondición:** Un evento con propuesta aceptada al que le falta el
+  contrato, las firmas o el anticipo.
+- **Pasos:** Abrir la contratación del evento antes de completar todos los
+  requisitos (por ejemplo, un evento sin contrato aún, o con contrato pero
+  sin anticipo cubierto).
+- **Resultado anterior:** El aviso "Aún faltan requisitos" mostraba
+  literalmente "Contrato completado", "Anticipo cubierto" o "Firmas
+  requeridas" — frases que, leídas tal cual, afirman que el requisito **ya**
+  se cumplió. En la misma pantalla, justo arriba, la lista de etapas mostraba
+  el mismo requisito como "Pendiente". Durante el recorrido real de CON-001
+  esto se observó literalmente: "4 Anticipo Pendiente" seguido, unos
+  centímetros abajo, de "Aún faltan requisitos: Anticipo cubierto" —
+  suficientemente contradictorio para detener el recorrido e investigar si
+  era un defecto antes de continuar.
+- **Resultado esperado:** Cada elemento bajo "Aún faltan requisitos" debe
+  leerse inequívocamente como algo pendiente, sin depender del contexto
+  visual para desambiguar.
+- **Evidencia:** Reproducido en navegador real en `/app/events/1d30de1f-.../contracting`
+  (evento "Boda de María José y Roberto", sin contrato aún): texto exacto
+  "Aún faltan requisitos" seguido de "Contrato completado", confirmado con
+  `document.querySelector('main').innerText` para descartar un artefacto de
+  la herramienta de navegador. La frase "Contrato completado" colisiona
+  además con el título del panel de éxito en `contract-detail.page.ts`
+  (mostrado solo cuando el contrato **sí** está completo) — el mismo texto
+  significa lo opuesto según la pantalla.
+- **Causa:** `ContractingReadinessService.CalculateAsync` construía la lista
+  `missing` con las mismas etiquetas que otras pantallas usan para el estado
+  ya alcanzado, en vez de frases que describan el requisito pendiente. La
+  prueba E2E existente (`contracting-flow.spec.ts`) afirmaba expresamente que
+  "Contrato completado" apareciera bajo "Aún faltan requisitos", fijando la
+  confusión como comportamiento esperado en vez de detectarla.
+- **Solución aplicada:** Se renombraron las cuatro etiquetas en
+  `ContractingReadinessService.CalculateAsync` para que se lean como
+  pendientes sin ambigüedad: "Propuesta aceptada" → "Propuesta por aceptar",
+  "Contrato completado" → "Contrato por completar", "Anticipo cubierto" →
+  "Anticipo por cubrir", "Firmas requeridas" → "Firmas pendientes". El
+  mensaje del 409 de `confirm` (`"Faltan requisitos: {...}"`) hereda la
+  nueva redacción automáticamente porque reutiliza la misma lista. El
+  frontend no requirió cambios de plantilla porque solo une el arreglo con
+  `' · '`. Se dejó sin tocar el "Contrato completado" del panel de éxito de
+  `contract-detail.page.ts`, que es un uso legítimo y correcto (solo se
+  muestra cuando el contrato de verdad está completo).
+- **Prueba de regresión:**
+  `ContractingReadiness_WithoutContract_DescribesRequirementAsPendingNotDone`
+  (nueva, integración HTTP real): verifica que `missingRequirements` incluye
+  "Contrato por completar" y no incluye la redacción vieja, y que el 409 de
+  `confirm` tampoco la incluye. `contracting-flow.spec.ts` actualizado (el
+  caso "mantiene el evento preliminar..." ahora exige la nueva redacción).
+  Fixture E2E (`plannyt.fixture.ts`) actualizado para no fijar la redacción
+  vieja como "correcta". Verificado en navegador real antes/después del fix.
+- **Commit:** Pendiente.
+- **Estado:** Corregido.
+
+## QA-021 — No existía forma de cancelar un contrato desde la interfaz
+
+- **Severidad:** Alta.
+- **Módulo:** Frontend / Backend — contratación.
+- **Ruta:** `/app/contracts/:id`; `POST .../contracts/{contractId}/cancel`.
+- **Rol:** Cualquier rol con `contracts.cancel` (Owner, Admin, Planner,
+  Commercial parcial según matriz).
+- **Precondición:** Un contrato en cualquier estado salvo Completado o
+  Firmado (`FullySigned`).
+- **Pasos:** Abrir un contrato que ya no va a proceder (por ejemplo, tras un
+  rechazo del cliente) e intentar cancelarlo desde la interfaz.
+- **Resultado anterior:** No existía ningún botón ni control para cancelar
+  un contrato. El backend ya tenía todo completo —
+  `ContractService.CancelAsync`, el endpoint `POST
+  /contracts/{id}/cancel`, la regla de dominio `Contract.Cancel` (bloquea
+  Completado/Firmado, exige motivo de 1 a 1000 caracteres) y la revocación
+  automática de solicitudes de firma pendientes al cancelar — pero ningún
+  componente Angular lo invocaba nunca, y ninguna prueba (unitaria,
+  integración o E2E) lo ejercitaba antes de esta corrección.
+- **Resultado esperado:** Un botón "Cancelar contrato" visible mientras el
+  estado lo permita, que pida el motivo (obligatorio, como exige el
+  backend) y refleje el resultado inmediatamente.
+- **Evidencia:** Reproducido y corregido en navegador real: el contrato
+  `C-20260731-919108` (evento "Boda de María José y Roberto"), después de
+  ser rechazado por el cliente vía enlace público, se canceló con motivo
+  "El cliente rechazó el contrato y no llegamos a un nuevo acuerdo
+  comercial."; el estado pasó a "Cancelado", el motivo quedó visible bajo
+  el encabezado, y el botón "Cancelar contrato" desapareció después
+  (`isCancellable` ya no lo permite).
+- **Causa:** Omisión de integración — mismo patrón que QA-018: el endpoint
+  de backend se construyó completo pero nunca se conectó a ningún control
+  de interfaz.
+- **Solución aplicada:** Nuevo método `cancelContract` en `ApiService`;
+  botón "Cancelar contrato" en el encabezado de `ContractDetailPage`,
+  visible según `isCancellable()` (excluye Completed/FullySigned/Cancelled,
+  igual que la regla de dominio); motivo pedido con `window.prompt` (mismo
+  patrón ya usado en el resto de la página); aviso "Motivo de cancelación:
+  ..." visible cuando el contrato está cancelado.
+- **Prueba de regresión:**
+  `RevokeRequest_Decline_AndCancel_UpdateContractAndSignerStateCorrectly`
+  (integración HTTP real) cubre cancelar un contrato ya rechazado de
+  extremo a extremo (204, estado y motivo persistidos); `api.service.spec.ts`
+  cubre el nuevo método del cliente HTTP; `contracting-flow.spec.ts` agrega
+  "permite cancelar un contrato con motivo desde el detalle" (E2E mock).
+  Verificado en navegador real.
+- **Commit:** Pendiente.
+- **Estado:** Corregido.
+
+## QA-022 — No existía forma de revocar un enlace de firma ya generado
+
+- **Severidad:** Alta.
+- **Módulo:** Frontend / Backend — contratación / firmas.
+- **Ruta:** `/app/contracts/:id`; `DELETE
+  .../contracts/{contractId}/requests/{requestId}`.
+- **Rol:** Cualquier rol con `signatures.revoke-request`.
+- **Precondición:** Un firmante con un enlace de firma activo (creado, aún
+  no usado ni vencido).
+- **Pasos:** Generar un enlace de firma para un firmante ("Crear enlace") y
+  luego intentar invalidarlo sin necesidad de generar uno nuevo.
+- **Resultado anterior:** No existía ningún control para revocar un enlace
+  de firma ya generado, ni forma de que la interfaz supiera si un firmante
+  tenía una solicitud activa pendiente. `SignatureService.RevokeRequestAsync`
+  y el endpoint `DELETE /contracts/{id}/requests/{requestId}` estaban
+  completos, pero `ContractSignerResponse` ni siquiera exponía el
+  identificador de la solicitud activa — sin ese dato, ningún control de
+  interfaz podría haberse construido. Sin esta corrección, un enlace
+  compartido por error solo dejaba de funcionar si alguien generaba un
+  enlace nuevo para el mismo firmante (lo que sí revoca el anterior
+  automáticamente) o si expiraba por sí solo (hasta 30 días).
+- **Resultado esperado:** Un botón "Revocar enlace" visible cuando el
+  firmante tiene una solicitud activa, que la invalide de inmediato — el
+  enlace público debe devolver 410 después.
+- **Evidencia:** Reproducido y corregido en navegador real: se generó un
+  enlace de firma para María José Serrano, se guardó el token, se pulsó
+  "Revocar enlace", y una solicitud directa a
+  `GET /api/public/signatures/{token}` devolvió `410 Gone`; después se
+  generó un enlace nuevo con éxito para el mismo firmante.
+- **Causa:** Omisión de integración — mismo patrón que QA-018/QA-021; el
+  DTO de lectura del contrato tampoco se había extendido nunca para
+  soportar el control.
+- **Solución aplicada:** Se agregó `ActiveSignatureRequestId` (`Guid?`,
+  nulo si no hay solicitud vigente) a `ContractSignerResponse`, calculado
+  en `ContractService.BuildResponseAsync` y en
+  `SignatureService.BuildContractResponseAsync` a partir de las solicitudes
+  de firma sin firmar, sin revocar y sin vencer de cada firmante; nuevo
+  método `revokeSignatureRequest` en `ApiService`; botón "Revocar enlace"
+  junto a "Crear enlace"/"Firmar aquí" en `ContractDetailPage`, visible
+  solo cuando `activeSignatureRequestId` no es nulo.
+- **Prueba de regresión:**
+  `RevokeRequest_Decline_AndCancel_UpdateContractAndSignerStateCorrectly`
+  (integración HTTP real): confirma que `activeSignatureRequestId` es nulo
+  antes de crear la solicitud, coincide con el id real después de crearla,
+  vuelve a nulo tras revocarla, y que el token viejo responde 410. Nota de
+  proceso: la primera versión de este cálculo devolvía
+  `00000000-0000-0000-0000-000000000000` en vez de `null` para firmantes
+  sin solicitud activa (`Dictionary<Guid, Guid>.GetValueOrDefault` en vez de
+  `Dictionary<Guid, Guid?>`), lo que hacía aparecer "Revocar enlace" para
+  cualquier firmante; se detectó en el mismo recorrido real (antes de
+  publicarse) inspeccionando la respuesta JSON real con las herramientas de
+  red del navegador, y quedó cubierto por la aserción explícita de "nulo
+  antes de crear la solicitud" en la prueba de regresión. `api.service.spec.ts`
+  cubre el nuevo método; `contracting-flow.spec.ts` agrega "permite revocar
+  un enlace de firma antes de que se use" (E2E mock). Verificado en
+  navegador real.
+- **Commit:** Pendiente.
+- **Estado:** Corregido.
+
+## QA-023 — La evidencia de firma nunca se mostraba en la interfaz
+
+- **Severidad:** Media.
+- **Módulo:** Frontend — contratación / auditoría de firma.
+- **Ruta:** `/app/contracts/:id`; `GET .../contracts/{contractId}/evidence`.
+- **Rol:** Cualquier rol con `signatures.view-evidence`.
+- **Precondición:** Un contrato con al menos una firma registrada.
+- **Pasos:** Abrir el detalle de un contrato firmado y buscar la evidencia
+  de la firma (método usado, fecha, hash del documento efectivamente
+  firmado).
+- **Resultado anterior:** No existía ningún control en la interfaz que
+  mostrara la evidencia de firma. El endpoint `GET
+  /contracts/{id}/evidence` (`SignatureService.GetEvidenceAsync`) ya
+  devolvía, por cada firma, el método, el nombre y correo declarados del
+  firmante, la fecha y el SHA-256 del documento firmado — datos ya
+  probados por integración en `ContractingFlowTests` desde antes de esta
+  sesión — pero ningún componente Angular lo consultaba nunca. El único
+  rastro visible en la interfaz era la frase genérica "El documento
+  original y el PDF final con anexo de evidencia se conservan por
+  separado.", sin mostrar ese anexo en ningún lado.
+- **Resultado esperado:** Una sección "Evidencia" visible en el detalle del
+  contrato, con una entrada por firma registrada.
+- **Evidencia:** Verificado en navegador real contra el contrato ya
+  completado `C-20260731-169AB4` (evento "XV de Fernanda"): la sección
+  "Evidencia" mostró "Fernanda Ibáñez · Firma escrita · 31 jul 2026, 4:39:40
+  p.m." con el mismo SHA-256 (`EB9B2D51...`) que el documento publicado
+  mostrado arriba en la misma pantalla.
+- **Causa:** Omisión de integración — mismo patrón que QA-018/021/022.
+- **Solución aplicada:** Nuevo método `getContractEvidence` en
+  `ApiService`; nueva sección "Evidencia" en `ContractDetailPage` (visible
+  con permiso `signatures.view-evidence`), cargada junto con el contrato en
+  `load()`; estado vacío explícito ("Aún no hay firmas registradas para
+  esta versión.") cuando no hay evidencia todavía.
+- **Prueba de regresión:** `api.service.spec.ts` cubre el nuevo método;
+  `contracting-flow.spec.ts` extiende el flujo principal para verificar las
+  dos entradas de evidencia (cliente y organización) con el hash correcto
+  una vez que ambas firmas se completan. Verificado en navegador real
+  contra datos reales de una sesión anterior.
+- **Commit:** Pendiente.
+- **Estado:** Corregido.
+
+## QA-024 — Los botones de firma seguían visibles en contratos que ya no admiten firmas (rechazado, cancelado, vencido)
+
+- **Severidad:** Media.
+- **Módulo:** Frontend — contratación.
+- **Ruta:** `/app/contracts/:id`.
+- **Rol:** Cualquier rol con `signatures.create-request` o
+  `signatures.countersign`.
+- **Precondición:** Un contrato en estado Rechazado, Cancelado o Vencido
+  con firmantes que todavía no firmaron.
+- **Pasos:** Abrir el detalle de un contrato que ya no acepta firmas (por
+  rechazo de un firmante, cancelación o vencimiento) y observar los
+  controles junto a un firmante sin firmar.
+- **Resultado anterior:** Los botones "Crear enlace" y "Firmar aquí"
+  seguían visibles para cualquier firmante sin firmar, aunque el backend
+  (`Contract.EnsureSignable`) rechaza cualquier firma cuando el contrato
+  está en Borrador, Completado, Rechazado, Vencido **o** Cancelado — la
+  condición del frontend solo excluía Borrador y Completado. Al pulsar
+  "Firmar aquí" en un contrato rechazado, la acción fallaba con "El
+  contrato no admite firmas en su estado actual." — un error evitable si
+  el botón nunca se hubiera mostrado.
+- **Resultado esperado:** Los controles de firma solo aparecen cuando el
+  backend realmente puede aceptarlos.
+- **Evidencia:** Reproducido y corregido en navegador real: tras rechazar
+  el contrato `C-20260731-919108` vía enlace público, "Firmar aquí" seguía
+  visible para el firmante de la organización y, al pulsarlo, devolvió el
+  error esperado (sin romper la página, pero sin necesidad de mostrarlo);
+  después de la corrección, ningún botón de firma aparece ya en ese
+  contrato ni en el mismo contrato una vez cancelado.
+- **Causa:** La condición de visibilidad se escribió cuando solo existían
+  Borrador y Completado como estados excluyentes, y nunca se actualizó al
+  agregar Rechazado, Vencido y Cancelado como estados terminales en
+  `Contract.EnsureSignable`.
+- **Solución aplicada:** Nuevo método `isSignable()` en
+  `ContractDetailPage` que replica exactamente la lista de exclusión de
+  `Contract.EnsureSignable` (Draft, Completed, Declined, Expired,
+  Cancelled), usado junto con `signer.status !== 'Signed'` para decidir si
+  mostrar "Crear enlace"/"Firmar aquí"/"Revocar enlace".
+- **Prueba de regresión:** Cubierto por `contracting-flow.spec.ts` "permite
+  cancelar un contrato con motivo desde el detalle" (verifica que "Firmar
+  aquí" desaparece tras cancelar). Verificado en navegador real
+  antes/después para el caso Rechazado y para el caso Cancelado.
+- **Commit:** Pendiente.
+- **Estado:** Corregido.
+
+## QA-025 — No existía forma de eliminar (archivar) una plantilla de contrato desde la interfaz
+
+- **Severidad:** Media.
+- **Módulo:** Frontend / Backend — plantillas de contrato.
+- **Ruta:** `/app/contract-templates`; `DELETE
+  .../contract-templates/{templateId}`.
+- **Rol:** Cualquier rol con `contract-templates.manage`.
+- **Precondición:** Una plantilla existente cargada en el editor.
+- **Pasos:** Seleccionar una plantilla de la biblioteca y buscar la forma de
+  eliminarla.
+- **Resultado anterior:** No existía ningún botón "Eliminar" en el editor,
+  aunque `functional-inventory.md` ya lo documentaba como control esperado.
+  El backend ya tenía completo `ContractTemplateService.ArchiveAsync` (un
+  archivado suave: excluye la plantilla de `GetAllAsync` sin borrar
+  contratos que ya la usaron) y el endpoint `DELETE
+  /contract-templates/{templateId}`, pero ni `ApiService` tenía un método
+  para llamarlo ni `ContractTemplatesPage` tenía ningún control, y ninguna
+  prueba backend ejercitaba el grupo completo de endpoints de plantillas
+  (crear, actualizar, previsualizar ni archivar) antes de esta corrección.
+- **Resultado esperado:** Un botón "Eliminar plantilla" visible al editar
+  una plantilla existente (no al crear una nueva), que la archive y
+  refresque la biblioteca.
+- **Evidencia:** Reproducido y corregido en navegador real: se creó una
+  plantilla desechable ("Plantilla temporal QA CON-004"), se seleccionó, se
+  eliminó, y desapareció de "Plantillas activas" mientras la plantilla
+  predeterminada original permaneció intacta; el formulario volvió al modo
+  "Nueva plantilla" automáticamente.
+- **Causa:** Omisión de integración — mismo patrón que QA-018/021/022/023.
+- **Solución aplicada:** Nuevo método `archiveContractTemplate` en
+  `ApiService`; botón "Eliminar plantilla" en `ContractTemplatesPage`,
+  visible solo cuando hay una plantilla seleccionada (`selectedId()`), con
+  confirmación vía `window.confirm` (mismo patrón que el resto de la app).
+- **Prueba de regresión:** `ArchiveContractTemplate_RemovesItFromTheActiveLibrary`
+  (nueva, integración HTTP real): crea una plantilla, confirma que aparece
+  en la biblioteca, la archiva (204) y confirma que desaparece de
+  `GetAllAsync`. `api.service.spec.ts` cubre el nuevo método. Verificado en
+  navegador real.
 - **Commit:** Pendiente.
 - **Estado:** Corregido.
