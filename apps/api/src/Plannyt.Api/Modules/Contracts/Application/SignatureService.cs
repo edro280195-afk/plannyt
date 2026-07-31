@@ -1102,8 +1102,19 @@ public sealed class SignatureService(
                 entity.IsRequired,
                 entity.Status,
                 entity.SignedAt,
-                entity.DeclinedAt))
+                entity.DeclinedAt,
+                null))
             .ToListAsync(cancellationToken);
+        var activeRequestsBySigner = await GetActiveSignatureRequestsBySignerAsync(
+            contract.OrganizationId,
+            contract.Id,
+            cancellationToken);
+        signers = signers
+            .Select(signer => signer with
+            {
+                ActiveSignatureRequestId = activeRequestsBySigner.GetValueOrDefault(signer.Id)
+            })
+            .ToList();
         var requirements = await dbContext.ContractingRequirementSnapshots
             .AsNoTracking()
             .Where(entity =>
@@ -1142,6 +1153,26 @@ public sealed class SignatureService(
             contract.CompletedAt,
             contract.CancelledAt,
             contract.CancellationReason);
+    }
+
+    private async Task<Dictionary<Guid, Guid?>> GetActiveSignatureRequestsBySignerAsync(
+        Guid organizationId,
+        Guid contractId,
+        CancellationToken cancellationToken)
+    {
+        var now = timeProvider.GetUtcNow();
+        return await dbContext.SignatureRequests
+            .AsNoTracking()
+            .Where(entity =>
+                entity.OrganizationId == organizationId
+                && entity.ContractId == contractId
+                && entity.SignedAt == null
+                && entity.RevokedAt == null
+                && entity.ExpiresAt >= now)
+            .ToDictionaryAsync(
+                entity => entity.ContractSignerId,
+                entity => (Guid?)entity.Id,
+                cancellationToken);
     }
 
     private static void ValidateSignatureSubmission(

@@ -612,6 +612,8 @@ describe('ApiService', () => {
     expectRequest('POST', `${organizationUrl}/contract-templates`, template);
     service.updateContractTemplate('org-1', 'template-1', template).subscribe();
     expectRequest('PUT', `${organizationUrl}/contract-templates/template-1`, template);
+    service.archiveContractTemplate('org-1', 'template-1').subscribe();
+    expectRequest('DELETE', `${organizationUrl}/contract-templates/template-1`);
     const preview = {
       content: template.content,
       eventId: 'event-1',
@@ -687,6 +689,14 @@ describe('ApiService', () => {
       confirmDisplayedVersion: true,
       signatureDataUrl: null,
     });
+    service.revokeSignatureRequest('org-1', 'contract-1', 'request-1').subscribe();
+    expectRequest('DELETE', `${organizationUrl}/contracts/contract-1/requests/request-1`);
+    service.cancelContract('org-1', 'contract-1', 'El cliente ya no participa.').subscribe();
+    expectRequest('POST', `${organizationUrl}/contracts/contract-1/cancel`, {
+      reason: 'El cliente ya no participa.',
+    });
+    service.getContractEvidence('org-1', 'contract-1').subscribe();
+    expectRequest('GET', `${organizationUrl}/contracts/contract-1/evidence`);
   });
 
   it('maps plans, payments and every portal contract operation', () => {

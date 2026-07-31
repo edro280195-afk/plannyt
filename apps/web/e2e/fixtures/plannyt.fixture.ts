@@ -160,8 +160,11 @@ interface CommercialState {
   contractCreated: boolean;
   contractPublished: boolean;
   clientSignerAdded: boolean;
+  clientSignatureRequestActive: boolean;
   clientSigned: boolean;
   plannerSigned: boolean;
+  contractCancelled: boolean;
+  cancellationReason: string | null;
   planStatus: 'None' | 'Draft' | 'Active';
   paymentStatus: 'None' | 'PendingReview' | 'Approved';
   receiptUploaded: boolean;
@@ -234,8 +237,11 @@ export const test = base.extend<PlannytFixtures>({
         contractCreated: false,
         contractPublished: false,
         clientSignerAdded: false,
+        clientSignatureRequestActive: false,
         clientSigned: false,
         plannerSigned: false,
+        contractCancelled: false,
+        cancellationReason: null,
         planStatus: 'None',
         paymentStatus: 'None',
         receiptUploaded: false,
@@ -517,6 +523,7 @@ async function fulfillApi(
     path === '/api/organizations/org-1/contracts/contract-1/signers/signer-client/requests' &&
     method === 'POST'
   ) {
+    commercial.clientSignatureRequestActive = true;
     await json(route, {
       id: 'signature-request-1',
       contractVersionId: 'contract-version-1',
@@ -528,11 +535,58 @@ async function fulfillApi(
   }
 
   if (
+    path === '/api/organizations/org-1/contracts/contract-1/requests/signature-request-1' &&
+    method === 'DELETE'
+  ) {
+    commercial.clientSignatureRequestActive = false;
+    await noContent(route);
+    return;
+  }
+
+  if (
     path === '/api/organizations/org-1/contracts/contract-1/signers/signer-planner/sign' &&
     method === 'POST'
   ) {
     commercial.plannerSigned = true;
     await json(route, contractDetail(commercial));
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/contracts/contract-1/cancel' && method === 'POST') {
+    const body = request.postDataJSON() as { reason?: string } | null;
+    commercial.contractCancelled = true;
+    commercial.cancellationReason = body?.reason ?? null;
+    await noContent(route);
+    return;
+  }
+
+  if (path === '/api/organizations/org-1/contracts/contract-1/evidence' && method === 'GET') {
+    const evidence: object[] = [];
+    if (commercial.clientSigned) {
+      evidence.push({
+        id: 'evidence-client',
+        contractVersionId: 'contract-version-1',
+        contractSignerId: 'signer-client',
+        signingMethod: 'Typed',
+        declaredSignerName: 'Ana Martínez',
+        declaredSignerEmail: 'ana@example.com',
+        documentSha256: 'c7a2f5e89d9e7f6ef912bb62ca014678e2fd42ca8fbd67fe84fd5fb667ae1111',
+        signedAt: '2026-07-28T14:00:00Z',
+      });
+    }
+    if (commercial.plannerSigned) {
+      evidence.push({
+        id: 'evidence-planner',
+        contractVersionId: 'contract-version-1',
+        contractSignerId: 'signer-planner',
+        signingMethod: 'AuthenticatedConfirmation',
+        declaredSignerName: 'Mariana Torres',
+        declaredSignerEmail: 'mariana@armonia.mx',
+        documentSha256: 'c7a2f5e89d9e7f6ef912bb62ca014678e2fd42ca8fbd67fe84fd5fb667ae1111',
+        signedAt: '2026-07-28T15:00:00Z',
+      });
+    }
+    await json(route, evidence);
     return;
   }
 
@@ -1166,6 +1220,9 @@ function publicProposal(commercial: CommercialState): object {
 }
 
 function contractStatus(commercial: CommercialState): string {
+  if (commercial.contractCancelled) {
+    return 'Cancelled';
+  }
   if (commercial.clientSigned && commercial.plannerSigned) {
     return 'Completed';
   }
@@ -1255,6 +1312,7 @@ function contractSigners(commercial: CommercialState): object[] {
       status: commercial.plannerSigned ? 'Signed' : 'Pending',
       signedAt: commercial.plannerSigned ? '2026-07-28T15:00:00Z' : null,
       declinedAt: null,
+      activeSignatureRequestId: null,
     },
   ];
   if (commercial.clientSignerAdded) {
@@ -1271,6 +1329,9 @@ function contractSigners(commercial: CommercialState): object[] {
       status: commercial.clientSigned ? 'Signed' : 'Invited',
       signedAt: commercial.clientSigned ? '2026-07-28T14:00:00Z' : null,
       declinedAt: null,
+      activeSignatureRequestId: commercial.clientSignatureRequestActive
+        ? 'signature-request-1'
+        : null,
     });
   }
   return signers;
@@ -1302,8 +1363,8 @@ function contractDetail(commercial: CommercialState): object {
     createdAt: '2026-07-28T12:00:00Z',
     completedAt:
       commercial.clientSigned && commercial.plannerSigned ? '2026-07-28T15:00:00Z' : null,
-    cancelledAt: null,
-    cancellationReason: null,
+    cancelledAt: commercial.contractCancelled ? '2026-07-28T16:00:00Z' : null,
+    cancellationReason: commercial.cancellationReason,
   };
 }
 
@@ -1453,10 +1514,10 @@ function contractingReadiness(commercial: CommercialState): object {
   const readyForConfirmation = contractCompleted && depositSatisfied;
   const missingRequirements: string[] = [];
   if (!contractCompleted) {
-    missingRequirements.push('Contrato completado');
+    missingRequirements.push('Contrato por completar');
   }
   if (!depositSatisfied) {
-    missingRequirements.push('Anticipo cubierto');
+    missingRequirements.push('Anticipo por cubrir');
   }
   return {
     proposalAccepted: true,
@@ -1533,6 +1594,10 @@ async function json(route: Route, value: object | object[], status = 200): Promi
     contentType: 'application/json',
     body: JSON.stringify(value),
   });
+}
+
+async function noContent(route: Route): Promise<void> {
+  await route.fulfill({ status: 204 });
 }
 
 async function problem(route: Route, status: number, detail: string): Promise<void> {

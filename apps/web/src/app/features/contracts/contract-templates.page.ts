@@ -104,6 +104,16 @@ import { ToastService } from '../../core/ui/toast.service';
               <button class="btn btn--secondary" type="button" (click)="preview()">
                 Previsualizar
               </button>
+              @if (selectedId()) {
+                <button
+                  class="btn btn--quiet"
+                  type="button"
+                  [disabled]="saving()"
+                  (click)="deleteTemplate()"
+                >
+                  Eliminar plantilla
+                </button>
+              }
               <button class="btn btn--primary" type="submit" [disabled]="saving() || form.invalid">
                 {{ saving() ? 'Guardando…' : 'Guardar plantilla' }}
               </button>
@@ -220,6 +230,28 @@ export class ContractTemplatesPage {
         next: (template) => {
           this.toast.success('Plantilla guardada.');
           this.selectedId.set(template.id);
+          this.load();
+        },
+        error: (error: unknown) => this.toast.error(getApiErrorMessage(error)),
+      });
+  }
+
+  protected deleteTemplate(): void {
+    const templateId = this.selectedId();
+    if (!templateId || !window.confirm('¿Eliminar esta plantilla?')) {
+      return;
+    }
+    this.saving.set(true);
+    this.api
+      .archiveContractTemplate(this.organization.requireOrganizationId(), templateId)
+      .pipe(
+        finalize(() => this.saving.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: () => {
+          this.toast.success('Plantilla eliminada.');
+          this.newTemplate();
           this.load();
         },
         error: (error: unknown) => this.toast.error(getApiErrorMessage(error)),

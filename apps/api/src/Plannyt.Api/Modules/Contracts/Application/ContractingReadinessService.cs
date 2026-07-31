@@ -288,22 +288,22 @@ public sealed class ContractingReadinessService(
         var missing = new List<string>();
         if (requireAcceptedProposal && !proposalAccepted)
         {
-            missing.Add("Propuesta aceptada");
+            missing.Add("Propuesta por aceptar");
         }
 
         if (requireCompletedContract && !contractCompleted)
         {
-            missing.Add("Contrato completado");
+            missing.Add("Contrato por completar");
         }
 
         if (!depositSatisfied)
         {
-            missing.Add("Anticipo cubierto");
+            missing.Add("Anticipo por cubrir");
         }
 
         if (missingSigners > 0)
         {
-            missing.Add("Firmas requeridas");
+            missing.Add("Firmas pendientes");
         }
 
         var ready = missing.Count == 0;

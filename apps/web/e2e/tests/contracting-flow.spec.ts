@@ -42,6 +42,15 @@ test('completa contratación, firmas, anticipo y confirmación del evento', asyn
   await plannerSigner.getByRole('button', { name: 'Firmar aquí' }).click();
   await expect(page.getByText('Contrato completado')).toBeVisible();
 
+  const evidence = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'Evidencia' }) });
+  await expect(evidence.getByText('Ana Martínez')).toBeVisible();
+  await expect(evidence.getByText('Mariana Torres')).toBeVisible();
+  await expect(
+    evidence.getByText(/c7a2f5e89d9e7f6ef912bb62ca014678e2fd42ca8fbd67fe84fd5fb667ae1111/),
+  ).toHaveCount(2);
+
   await page.goto('/app/events/event-1/contracting');
   await page.getByRole('button', { name: 'Crear plan en borrador' }).click();
   await page.getByRole('button', { name: 'Activar plan' }).click();
@@ -93,6 +102,47 @@ test('mantiene el evento preliminar mientras falten contrato y anticipo', async 
   await page.goto('/app/events/event-1/contracting');
 
   await expect(page.getByText('Aún faltan requisitos')).toBeVisible();
-  await expect(page.getByText(/Contrato completado/)).toBeVisible();
+  await expect(page.getByText(/Contrato por completar/)).toBeVisible();
   await expect(page.getByRole('button', { name: 'Confirmar evento' })).toHaveCount(0);
+});
+
+test('permite revocar un enlace de firma antes de que se use', async ({ page, api }) => {
+  api.useProfile('owner');
+  api.prepareContractingScenario();
+  await page.goto('/app/contracts/contract-1');
+
+  await page.getByRole('button', { name: 'Publicar versión inmutable' }).click();
+  await page.locator('summary').filter({ hasText: 'Agregar firmante' }).click();
+  await page.getByLabel('Parte representada').selectOption('party-client');
+  await page.getByLabel('Nombre completo').fill('Ana Martínez');
+  await page.getByLabel('Correo').fill('ana@example.com');
+  await page.getByRole('button', { name: 'Agregar firmante' }).click();
+
+  const clientSigner = page.locator('.signer-card').filter({ hasText: 'Ana Martínez' });
+  await clientSigner.getByRole('button', { name: 'Crear enlace' }).click();
+  await expect(clientSigner.locator('.copy-box input')).toHaveValue(/signature-token/);
+
+  page.once('dialog', (dialog) => dialog.accept());
+  await clientSigner.getByRole('button', { name: 'Revocar enlace' }).click();
+
+  await expect(page.getByText('Enlace de firma revocado.')).toBeVisible();
+  await expect(clientSigner.getByRole('button', { name: 'Revocar enlace' })).toHaveCount(0);
+  await expect(clientSigner.locator('.copy-box')).toHaveCount(0);
+});
+
+test('permite cancelar un contrato con motivo desde el detalle', async ({ page, api }) => {
+  api.useProfile('owner');
+  api.prepareContractingScenario();
+  await page.goto('/app/contracts/contract-1');
+
+  page.once('dialog', (dialog) => dialog.accept('El cliente ya no participa en el evento.'));
+  await page.getByRole('button', { name: 'Cancelar contrato' }).click();
+
+  await expect(page.getByText('Contrato cancelado.')).toBeVisible();
+  await expect(page.getByText('Cancelado', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('Motivo de cancelación: El cliente ya no participa en el evento.'),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Cancelar contrato' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Firmar aquí' })).toHaveCount(0);
 });

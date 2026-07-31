@@ -84,6 +84,7 @@ import {
   RegisterPlannerRequest,
   ServiceCatalogItem,
   ServiceCatalogItemRequest,
+  SignatureEvidenceSummary,
   SignatureRequestLink,
   SigningMethod,
   UpdateClientRequest,
@@ -838,6 +839,12 @@ export class ApiService {
     );
   }
 
+  archiveContractTemplate(organizationId: string, templateId: string): Observable<unknown> {
+    return this.http.delete(
+      `${this.organizationUrl(organizationId)}/contract-templates/${templateId}`,
+    );
+  }
+
   previewContractTemplate(
     organizationId: string,
     request: {
@@ -955,6 +962,17 @@ export class ApiService {
     );
   }
 
+  cancelContract(
+    organizationId: string,
+    contractId: string,
+    reason: string,
+  ): Observable<unknown> {
+    return this.http.post(
+      `${this.organizationUrl(organizationId)}/contracts/${contractId}/cancel`,
+      { reason },
+    );
+  }
+
   downloadContractVersion(
     organizationId: string,
     contractId: string,
@@ -1003,6 +1021,16 @@ export class ApiService {
     );
   }
 
+  revokeSignatureRequest(
+    organizationId: string,
+    contractId: string,
+    requestId: string,
+  ): Observable<unknown> {
+    return this.http.delete(
+      `${this.organizationUrl(organizationId)}/contracts/${contractId}/requests/${requestId}`,
+    );
+  }
+
   signAsOrganization(
     organizationId: string,
     contractId: string,
@@ -1018,6 +1046,15 @@ export class ApiService {
         confirmDisplayedVersion: true,
         signatureDataUrl: null,
       },
+    );
+  }
+
+  getContractEvidence(
+    organizationId: string,
+    contractId: string,
+  ): Observable<SignatureEvidenceSummary[]> {
+    return this.http.get<SignatureEvidenceSummary[]>(
+      `${this.organizationUrl(organizationId)}/contracts/${contractId}/evidence`,
     );
   }
 

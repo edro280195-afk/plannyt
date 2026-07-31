@@ -1,4 +1,4 @@
-import { CurrencyPipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -14,12 +14,17 @@ import { finalize } from 'rxjs';
 import { ApiService } from '../../core/api/api.service';
 import { OrganizationContextService } from '../../core/auth/organization-context.service';
 import { getApiErrorMessage } from '../../core/errors/api-error';
-import { ContractResponse, ContractSigner } from '../../core/models/api.models';
+import {
+  ContractResponse,
+  ContractSigner,
+  SignatureEvidenceSummary,
+  SigningMethod,
+} from '../../core/models/api.models';
 import { ToastService } from '../../core/ui/toast.service';
 
 @Component({
   selector: 'app-contract-detail-page',
-  imports: [CurrencyPipe, ReactiveFormsModule, RouterLink],
+  imports: [CurrencyPipe, DatePipe, ReactiveFormsModule, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
@@ -40,13 +45,23 @@ import { ToastService } from '../../core/ui/toast.service';
               {{ current.contractGrandTotal | currency: current.currencyCode }} ·
               {{ sourceLabel(current.sourceType) }}
             </p>
+            @if (current.cancelledAt) {
+              <p class="helper-text">Motivo de cancelación: {{ current.cancellationReason }}</p>
+            }
           </div>
-          <a
-            class="btn btn--secondary"
-            [routerLink]="['/app/events', current.eventId, 'contracting']"
-          >
-            Ver contratación del evento
-          </a>
+          <div class="page-header__actions">
+            @if (isCancellable(current) && organization.hasPermission('contracts.cancel')) {
+              <button class="btn btn--quiet" type="button" [disabled]="working()" (click)="cancel()">
+                Cancelar contrato
+              </button>
+            }
+            <a
+              class="btn btn--secondary"
+              [routerLink]="['/app/events', current.eventId, 'contracting']"
+            >
+              Ver contratación del evento
+            </a>
+          </div>
         </header>
 
         <ol class="contracting-steps" aria-label="Etapas de contratación">
@@ -175,11 +190,7 @@ import { ToastService } from '../../core/ui/toast.service';
                   <span class="status-chip" [attr.data-status]="signer.status">
                     {{ signerStatusLabel(signer.status) }}
                   </span>
-                  @if (
-                    signer.status !== 'Signed' &&
-                    current.status !== 'Draft' &&
-                    current.status !== 'Completed'
-                  ) {
+                  @if (signer.status !== 'Signed' && isSignable(current)) {
                     <div class="card-actions">
                       @if (organization.hasPermission('signatures.create-request')) {
                         <button class="btn btn--quiet" type="button" (click)="createLink(signer)">
@@ -189,6 +200,19 @@ import { ToastService } from '../../core/ui/toast.service';
                       @if (organization.hasPermission('signatures.countersign')) {
                         <button class="btn btn--quiet" type="button" (click)="countersign(signer)">
                           Firmar aquí
+                        </button>
+                      }
+                      @if (
+                        signer.activeSignatureRequestId &&
+                        organization.hasPermission('signatures.revoke-request')
+                      ) {
+                        <button
+                          class="btn btn--quiet"
+                          type="button"
+                          [disabled]="working()"
+                          (click)="revokeRequest(signer)"
+                        >
+                          Revocar enlace
                         </button>
                       }
                     </div>
@@ -266,6 +290,34 @@ import { ToastService } from '../../core/ui/toast.service';
                 </small>
               }
             </section>
+
+            @if (organization.hasPermission('signatures.view-evidence')) {
+              <section class="panel">
+                <div class="section-heading">
+                  <div>
+                    <span class="eyebrow">Auditoría de firma</span>
+                    <h2>Evidencia</h2>
+                  </div>
+                </div>
+                @if (evidence().length === 0) {
+                  <p class="helper-text">Aún no hay firmas registradas para esta versión.</p>
+                }
+                @for (item of evidence(); track item.id) {
+                  <div class="summary-row">
+                    <span>
+                      {{ item.declaredSignerName }}
+                      <small>
+                        {{ signingMethodLabel(item.signingMethod) }} ·
+                        {{ item.signedAt | date: 'medium' }}
+                      </small>
+                    </span>
+                  </div>
+                  <div class="hash-box">
+                    <code>{{ item.documentSha256 }}</code>
+                  </div>
+                }
+              </section>
+            }
           </aside>
         </div>
       }
@@ -288,6 +340,7 @@ export class ContractDetailPage {
   protected readonly loading = signal(true);
   protected readonly working = signal(false);
   protected readonly signingLinks = signal<Record<string, string>>({});
+  protected readonly evidence = signal<SignatureEvidenceSummary[]>([]);
   protected readonly steps = computed(() => {
     const contract = this.contract();
     if (!contract) {
@@ -459,6 +512,76 @@ export class ContractDetailPage {
     );
   }
 
+  protected revokeRequest(signer: ContractSigner): void {
+    const contract = this.contract();
+    const requestId = signer.activeSignatureRequestId;
+    if (!contract || !requestId || !window.confirm(`¿Revocar el enlace de ${signer.name}?`)) {
+      return;
+    }
+    this.working.set(true);
+    this.api
+      .revokeSignatureRequest(this.organization.requireOrganizationId(), contract.id, requestId)
+      .pipe(
+        finalize(() => this.working.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: () => {
+          this.signingLinks.update((links) => {
+            const rest = { ...links };
+            delete rest[signer.id];
+            return rest;
+          });
+          this.toast.success('Enlace de firma revocado.');
+          this.load();
+        },
+        error: (error: unknown) => this.toast.error(getApiErrorMessage(error)),
+      });
+  }
+
+  protected isCancellable(contract: ContractResponse): boolean {
+    return (
+      contract.status !== 'Completed' &&
+      contract.status !== 'FullySigned' &&
+      contract.status !== 'Cancelled'
+    );
+  }
+
+  protected isSignable(contract: ContractResponse): boolean {
+    return (
+      contract.status !== 'Draft' &&
+      contract.status !== 'Completed' &&
+      contract.status !== 'Declined' &&
+      contract.status !== 'Expired' &&
+      contract.status !== 'Cancelled'
+    );
+  }
+
+  protected cancel(): void {
+    const contract = this.contract();
+    if (!contract) {
+      return;
+    }
+    const reason = window.prompt('Motivo de la cancelación:');
+    if (!reason?.trim()) {
+      return;
+    }
+    this.working.set(true);
+    this.api
+      .cancelContract(this.organization.requireOrganizationId(), contract.id, reason.trim())
+      .pipe(
+        finalize(() => this.working.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: () => {
+          this.toast.success('Contrato cancelado.');
+          this.load();
+        },
+        error: (error: unknown) => this.toast.error(getApiErrorMessage(error)),
+      });
+  }
+
   protected validateExternal(): void {
     const contract = this.contract();
     if (!contract || !window.confirm('¿Confirmas que cargaste el documento externo recibido?')) {
@@ -544,6 +667,16 @@ export class ContractDetailPage {
         : 'Contrato manual';
   }
 
+  protected signingMethodLabel(method: SigningMethod): string {
+    const labels: Record<SigningMethod, string> = {
+      Drawn: 'Firma dibujada',
+      Typed: 'Firma escrita',
+      AuthenticatedConfirmation: 'Confirmación con sesión autenticada',
+      External: 'Documento externo',
+    };
+    return labels[method];
+  }
+
   private load(): void {
     this.loading.set(true);
     this.api
@@ -567,6 +700,15 @@ export class ContractDetailPage {
         },
         error: (error: unknown) => this.toast.error(getApiErrorMessage(error)),
       });
+    if (this.organization.hasPermission('signatures.view-evidence')) {
+      this.api
+        .getContractEvidence(this.organization.requireOrganizationId(), this.contractId)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (evidence) => this.evidence.set(evidence),
+          error: (error: unknown) => this.toast.error(getApiErrorMessage(error)),
+        });
+    }
   }
 
   private run(operation: ReturnType<ApiService['updateContractDraft']>, message: string): void {

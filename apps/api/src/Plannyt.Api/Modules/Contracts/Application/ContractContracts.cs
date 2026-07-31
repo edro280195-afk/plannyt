@@ -137,7 +137,8 @@ public sealed record ContractSignerResponse(
     bool IsRequired,
     ContractSignerStatus Status,
     DateTimeOffset? SignedAt,
-    DateTimeOffset? DeclinedAt);
+    DateTimeOffset? DeclinedAt,
+    Guid? ActiveSignatureRequestId);
 
 public sealed record ContractVersionResponse(
     Guid Id,

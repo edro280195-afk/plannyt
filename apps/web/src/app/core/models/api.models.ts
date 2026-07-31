@@ -744,6 +744,7 @@ export interface ContractSigner {
   status: ContractSignerStatus;
   signedAt: string | null;
   declinedAt: string | null;
+  activeSignatureRequestId: string | null;
 }
 
 export interface ContractVersion {
@@ -807,6 +808,17 @@ export interface SignatureRequestLink {
   contractSignerId: string;
   expiresAt: string;
   signingUrl: string;
+}
+
+export interface SignatureEvidenceSummary {
+  id: string;
+  contractVersionId: string;
+  contractSignerId: string;
+  signingMethod: SigningMethod;
+  declaredSignerName: string;
+  declaredSignerEmail: string;
+  documentSha256: string;
+  signedAt: string;
 }
 
 export interface PublicSignatureContract {

@@ -319,6 +319,273 @@ public sealed class ContractingFlowTests(ApiFactory factory)
     }
 
     [Fact]
+    public async Task ContractingReadiness_WithoutContract_DescribesRequirementAsPendingNotDone()
+    {
+        var session = await TestSessionFactory.RegisterPlannerAsync(
+            factory,
+            "contracting-readiness-wording");
+        var context = await SeedAcceptedProposalAsync(session);
+
+        var readiness = await GetAuthorizedAsync(
+            session,
+            $"/api/organizations/{session.OrganizationId}/events/{context.EventId}/contracting-readiness");
+
+        var missing = readiness.GetProperty("missingRequirements")
+            .EnumerateArray()
+            .Select(item => item.GetString())
+            .ToList();
+        Assert.False(readiness.GetProperty("readyForConfirmation").GetBoolean());
+        Assert.Contains("Contrato por completar", missing);
+        Assert.DoesNotContain("Contrato completado", missing);
+        Assert.DoesNotContain("Anticipo cubierto", missing);
+
+        using var confirmAttempt = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"/api/organizations/{session.OrganizationId}/events/{context.EventId}/confirm")
+        {
+            Content = JsonContent.Create(new { })
+        };
+        confirmAttempt.Headers.Authorization =
+            new AuthenticationHeaderValue("Bearer", session.AccessToken);
+        using var response = await factory.CreateClient().SendAsync(confirmAttempt);
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var detail = problem.GetProperty("detail").GetString();
+        Assert.Contains("Contrato por completar", detail);
+        Assert.DoesNotContain("Contrato completado", detail);
+    }
+
+    [Fact]
+    public async Task RevokeRequest_Decline_AndCancel_UpdateContractAndSignerStateCorrectly()
+    {
+        var session = await TestSessionFactory.RegisterPlannerAsync(
+            factory,
+            "contracting-cancel-revoke");
+        var context = await SeedAcceptedProposalAsync(session);
+
+        var contract = await PostAuthorizedAsync(
+            session,
+            $"/api/organizations/{session.OrganizationId}/contracts/from-proposal",
+            new
+            {
+                proposalId = context.ProposalId,
+                name = "Contrato de coordinación integral",
+                templateId = (Guid?)null,
+                content = (string?)null,
+                consentText =
+                    "Declaro que revisé el documento y acepto utilizar medios electrónicos.",
+                validUntil = DateTimeOffset.UtcNow.AddDays(7)
+            });
+        var contractId = contract.GetProperty("id").GetGuid();
+        var parties = contract.GetProperty("parties").EnumerateArray().ToList();
+        var clientPartyId = parties.Single(item =>
+            item.GetProperty("partyType").GetString() == "Client")
+            .GetProperty("id")
+            .GetGuid();
+        var plannerPartyId = parties.Single(item =>
+            item.GetProperty("partyType").GetString() == "PlannerOrganization")
+            .GetProperty("id")
+            .GetGuid();
+
+        _ = await PostAuthorizedAsync(
+            session,
+            $"/api/organizations/{session.OrganizationId}/contracts/{contractId}/publish",
+            new { });
+
+        var clientSigner = await PostAuthorizedAsync(
+            session,
+            $"/api/organizations/{session.OrganizationId}/contracts/{contractId}/signers",
+            new
+            {
+                contractPartyId = clientPartyId,
+                personId = context.ClientPersonId,
+                userAccountId = (Guid?)null,
+                name = "Ana López",
+                email = "ana@example.invalid",
+                signerRole = "Cliente contratante",
+                signingOrder = 1,
+                isRequired = true
+            });
+        var clientSignerId = clientSigner.GetProperty("id").GetGuid();
+        var plannerSigner = await PostAuthorizedAsync(
+            session,
+            $"/api/organizations/{session.OrganizationId}/contracts/{contractId}/signers",
+            new
+            {
+                contractPartyId = plannerPartyId,
+                personId = (Guid?)null,
+                userAccountId = session.UserAccountId,
+                name = "Mariana Torres",
+                email = session.Email,
+                signerRole = "Representante de la organización",
+                signingOrder = 2,
+                isRequired = true
+            });
+        var plannerSignerId = plannerSigner.GetProperty("id").GetGuid();
+
+        var beforeAnyRequest = await GetAuthorizedAsync(
+            session,
+            $"/api/organizations/{session.OrganizationId}/contracts/{contractId}");
+        Assert.All(
+            beforeAnyRequest.GetProperty("signers").EnumerateArray(),
+            signer => Assert.Equal(
+                JsonValueKind.Null,
+                signer.GetProperty("activeSignatureRequestId").ValueKind));
+
+        var firstLink = await PostAuthorizedAsync(
+            session,
+            $"/api/organizations/{session.OrganizationId}/contracts/{contractId}/signers/{clientSignerId}/requests",
+            new { expiresAt = (DateTimeOffset?)null });
+        var firstRequestId = firstLink.GetProperty("id").GetGuid();
+        var firstUrl = firstLink.GetProperty("signingUrl").GetString()
+            ?? throw new InvalidOperationException("No se generó el enlace.");
+        var firstToken = firstUrl[(firstUrl.LastIndexOf('/') + 1)..];
+
+        var afterFirstRequest = await GetAuthorizedAsync(
+            session,
+            $"/api/organizations/{session.OrganizationId}/contracts/{contractId}");
+        var clientSignerAfterRequest = afterFirstRequest.GetProperty("signers")
+            .EnumerateArray()
+            .Single(item => item.GetProperty("id").GetGuid() == clientSignerId);
+        Assert.Equal(
+            firstRequestId,
+            clientSignerAfterRequest.GetProperty("activeSignatureRequestId").GetGuid());
+
+        using (var revoke = TestSessionFactory.CreateAuthorizedRequest(
+            HttpMethod.Delete,
+            $"/api/organizations/{session.OrganizationId}/contracts/{contractId}/requests/{firstRequestId}",
+            session.AccessToken))
+        using (var revokeResponse = await factory.CreateClient().SendAsync(revoke))
+        {
+            Assert.Equal(HttpStatusCode.NoContent, revokeResponse.StatusCode);
+        }
+
+        var afterRevoke = await GetAuthorizedAsync(
+            session,
+            $"/api/organizations/{session.OrganizationId}/contracts/{contractId}");
+        var clientSignerAfterRevoke = afterRevoke.GetProperty("signers")
+            .EnumerateArray()
+            .Single(item => item.GetProperty("id").GetGuid() == clientSignerId);
+        Assert.Equal(
+            JsonValueKind.Null,
+            clientSignerAfterRevoke.GetProperty("activeSignatureRequestId").ValueKind);
+
+        using (var revokedTokenResponse = await factory.CreateClient().GetAsync(
+            $"/api/public/signatures/{firstToken}"))
+        {
+            Assert.Equal(HttpStatusCode.Gone, revokedTokenResponse.StatusCode);
+        }
+
+        var secondLink = await PostAuthorizedAsync(
+            session,
+            $"/api/organizations/{session.OrganizationId}/contracts/{contractId}/signers/{clientSignerId}/requests",
+            new { expiresAt = (DateTimeOffset?)null });
+        var secondUrl = secondLink.GetProperty("signingUrl").GetString()
+            ?? throw new InvalidOperationException("No se generó el enlace.");
+        var secondToken = secondUrl[(secondUrl.LastIndexOf('/') + 1)..];
+
+        using (var decline = await factory.CreateClient().PostAsJsonAsync(
+            $"/api/public/signatures/{secondToken}/decline",
+            new { reason = "No estoy de acuerdo con el clausulado de pago." }))
+        {
+            Assert.Equal(HttpStatusCode.NoContent, decline.StatusCode);
+        }
+
+        var afterDecline = await GetAuthorizedAsync(
+            session,
+            $"/api/organizations/{session.OrganizationId}/contracts/{contractId}");
+        Assert.Equal("Declined", afterDecline.GetProperty("status").GetString());
+
+        using (var blockedSignAttempt = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"/api/organizations/{session.OrganizationId}/contracts/{contractId}/signers/{plannerSignerId}/sign")
+        {
+            Content = JsonContent.Create(new
+            {
+                signingMethod = "AuthenticatedConfirmation",
+                declaredSignerName = "Mariana Torres",
+                acceptElectronicMeans = true,
+                confirmDisplayedVersion = true,
+                signatureDataUrl = (string?)null
+            })
+        })
+        {
+            blockedSignAttempt.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", session.AccessToken);
+            using var blockedSignResponse = await factory.CreateClient().SendAsync(
+                blockedSignAttempt);
+            Assert.Equal(HttpStatusCode.BadRequest, blockedSignResponse.StatusCode);
+        }
+
+        const string cancellationReason = "El cliente rechazó el contrato.";
+        using (var cancel = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"/api/organizations/{session.OrganizationId}/contracts/{contractId}/cancel")
+        {
+            Content = JsonContent.Create(new { reason = cancellationReason })
+        })
+        {
+            cancel.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", session.AccessToken);
+            using var cancelResponse = await factory.CreateClient().SendAsync(cancel);
+            Assert.Equal(HttpStatusCode.NoContent, cancelResponse.StatusCode);
+        }
+
+        var afterCancel = await GetAuthorizedAsync(
+            session,
+            $"/api/organizations/{session.OrganizationId}/contracts/{contractId}");
+        Assert.Equal("Cancelled", afterCancel.GetProperty("status").GetString());
+        Assert.Equal(
+            cancellationReason,
+            afterCancel.GetProperty("cancellationReason").GetString());
+        Assert.NotEqual(JsonValueKind.Null, afterCancel.GetProperty("cancelledAt").ValueKind);
+    }
+
+    [Fact]
+    public async Task ArchiveContractTemplate_RemovesItFromTheActiveLibrary()
+    {
+        var session = await TestSessionFactory.RegisterPlannerAsync(
+            factory,
+            "contract-template-archive");
+
+        var template = await PostAuthorizedAsync(
+            session,
+            $"/api/organizations/{session.OrganizationId}/contract-templates",
+            new
+            {
+                name = "Plantilla temporal",
+                description = "Desechable",
+                content = "<p>{{organization.name}}</p>",
+                isDefault = false,
+                isActive = true
+            });
+        var templateId = template.GetProperty("id").GetGuid();
+
+        var beforeArchive = await GetAuthorizedAsync(
+            session,
+            $"/api/organizations/{session.OrganizationId}/contract-templates");
+        Assert.Contains(
+            beforeArchive.EnumerateArray(),
+            item => item.GetProperty("id").GetGuid() == templateId);
+
+        using (var archiveRequest = TestSessionFactory.CreateAuthorizedRequest(
+            HttpMethod.Delete,
+            $"/api/organizations/{session.OrganizationId}/contract-templates/{templateId}",
+            session.AccessToken))
+        using (var archiveResponse = await factory.CreateClient().SendAsync(archiveRequest))
+        {
+            Assert.Equal(HttpStatusCode.NoContent, archiveResponse.StatusCode);
+        }
+
+        var afterArchive = await GetAuthorizedAsync(
+            session,
+            $"/api/organizations/{session.OrganizationId}/contract-templates");
+        Assert.DoesNotContain(
+            afterArchive.EnumerateArray(),
+            item => item.GetProperty("id").GetGuid() == templateId);
+    }
+
+    [Fact]
     public async Task PublicSignature_WithInvalidToken_ReturnsNotFound()
     {
         using var response = await factory.CreateClient().GetAsync(
