@@ -486,6 +486,17 @@ public sealed class ProspectService(
             created = true;
         }
 
+        var prospectProposals = await dbContext.Proposals
+            .Where(entity =>
+                entity.OrganizationId == organizationId
+                && entity.ProspectId == prospectId
+                && entity.ClientId == null)
+            .ToListAsync(cancellationToken);
+        foreach (var proposal in prospectProposals)
+        {
+            proposal.LinkClient(client.Id, now);
+        }
+
         prospect.MarkConverted(client.Id, now);
         if (prospect.Status != ProspectStatus.Won)
         {

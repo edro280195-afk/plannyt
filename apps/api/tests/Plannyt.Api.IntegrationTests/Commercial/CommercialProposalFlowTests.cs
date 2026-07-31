@@ -224,6 +224,156 @@ public sealed class CommercialProposalFlowTests(ApiFactory factory)
         Assert.Equal(2, shared.GetProperty("lines").GetArrayLength());
     }
 
+    [Fact]
+    public async Task Send_WithAlternateLocalhostOrigin_BuildsShareUrlFromRequestOrigin()
+    {
+        // Regresión QA-017: el enlace público debe reflejar el origen real
+        // desde el que se hizo la solicitud (loopback, Development) en vez de
+        // un valor fijo desactualizado. Ver FrontendPublicUrlResolver.
+        var session = await TestSessionFactory.RegisterPlannerAsync(
+            factory,
+            "share-url-origin");
+        var prospectId = await CreateOpportunityAsync(session);
+        var serviceId = await CreateServiceAsync(session);
+        var proposalId = await CreateProposalAsync(
+            session,
+            prospectId,
+            serviceId,
+            null,
+            null,
+            5000m);
+        await PostAuthorizedAsync(
+            session,
+            $"/api/organizations/{session.OrganizationId}/proposals/{proposalId}/publish",
+            new { });
+
+        using var request = TestSessionFactory.CreateAuthorizedRequest(
+            HttpMethod.Post,
+            $"/api/organizations/{session.OrganizationId}/proposals/{proposalId}/send",
+            session.AccessToken,
+            JsonContent.Create(new { expiresAt = (DateTimeOffset?)null }));
+        request.Headers.Add("Origin", "http://localhost:4210");
+
+        using var response = await factory.CreateClient().SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        var payload = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        var shareUrl = payload.GetProperty("shareUrl").GetString()
+            ?? throw new InvalidOperationException("No se generó el enlace.");
+        Assert.StartsWith(
+            "http://localhost:4210/proposal/",
+            shareUrl,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task LinkPreliminaryEvent_ThenCreateContract_SucceedsFromAcceptedProposal()
+    {
+        // Regresión QA-018 y QA-019. QA-018: /proposals/{id}/preliminary-event
+        // no tenía ninguna prueba end-to-end; sin él, ninguna propuesta
+        // aceptada podía originar un contrato porque contracts/from-proposal
+        // exige EventId, y ningún flujo de la UI llamaba a este endpoint
+        // (backend correcto, frontend nunca lo conectó). QA-019: convertir un
+        // prospecto a cliente nunca actualizaba el ClientId de sus propuestas
+        // existentes (Proposal.LinkClient existía pero no tenía ningún
+        // llamador), así que ni siquiera el camino prospecto→cliente podía
+        // completar la contratación.
+        var session = await TestSessionFactory.RegisterPlannerAsync(
+            factory,
+            "proposal-preliminary-event");
+        var prospectId = await CreateOpportunityAsync(session);
+        var serviceId = await CreateServiceAsync(session);
+        var proposalId = await CreateProposalAsync(
+            session,
+            prospectId,
+            serviceId,
+            null,
+            null,
+            12500m);
+        await PostAuthorizedAsync(
+            session,
+            $"/api/organizations/{session.OrganizationId}/proposals/{proposalId}/publish",
+            new { });
+        var token = await SendAndGetTokenAsync(session, proposalId);
+        using (var acceptance = await factory.CreateClient().PostAsJsonAsync(
+            $"/api/public/proposals/{token}/accept",
+            new { authorDisplayName = "María Hernández", reason = (string?)null }))
+        {
+            acceptance.EnsureSuccessStatusCode();
+        }
+
+        var contractRequest = new
+        {
+            proposalId,
+            name = "Contrato de coordinación integral",
+            templateId = (Guid?)null,
+            content = (string?)null,
+            consentText = "Acepto medios electrónicos.",
+            validUntil = (DateTimeOffset?)null
+        };
+
+        async Task<HttpStatusCode> TryCreateContractAsync()
+        {
+            using var request = TestSessionFactory.CreateAuthorizedRequest(
+                HttpMethod.Post,
+                $"/api/organizations/{session.OrganizationId}/contracts/from-proposal",
+                session.AccessToken,
+                JsonContent.Create(contractRequest));
+            using var response = await factory.CreateClient().SendAsync(request);
+            return response.StatusCode;
+        }
+
+        Assert.Equal(HttpStatusCode.Conflict, await TryCreateContractAsync());
+
+        var conversion = await PostAuthorizedAsync(
+            session,
+            $"/api/organizations/{session.OrganizationId}/prospects/{prospectId}/convert",
+            new
+            {
+                existingClientId = (Guid?)null,
+                newClientType = "Person",
+                confirmCreateDespiteMatches = true
+            });
+        var clientId = conversion.GetProperty("clientId").GetGuid();
+
+        var afterConversion = await GetAuthorizedAsync(
+            session,
+            $"/api/organizations/{session.OrganizationId}/proposals/{proposalId}");
+        Assert.Equal(clientId, afterConversion.GetProperty("clientId").GetGuid());
+
+        // El cliente ya quedó vinculado por la conversión, pero el evento
+        // todavía no: contracts/from-proposal debe seguir bloqueando.
+        Assert.Equal(HttpStatusCode.Conflict, await TryCreateContractAsync());
+
+        var linked = await PostAuthorizedAsync(
+            session,
+            $"/api/organizations/{session.OrganizationId}/proposals/{proposalId}/preliminary-event",
+            new
+            {
+                existingEventId = (Guid?)null,
+                name = "Boda de María y Carlos",
+                eventType = "Wedding",
+                startDateTime = DateTimeOffset.UtcNow.AddMonths(6),
+                timeZone = "America/Matamoros",
+                city = "Matamoros",
+                countryCode = "MX",
+                estimatedGuestCount = 140
+            });
+        var eventId = linked.GetProperty("eventId").GetGuid();
+
+        var afterLinking = await GetAuthorizedAsync(
+            session,
+            $"/api/organizations/{session.OrganizationId}/proposals/{proposalId}");
+        Assert.Equal(eventId, afterLinking.GetProperty("eventId").GetGuid());
+
+        var contract = await PostAuthorizedAsync(
+            session,
+            $"/api/organizations/{session.OrganizationId}/contracts/from-proposal",
+            contractRequest);
+        Assert.Equal(eventId, contract.GetProperty("eventId").GetGuid());
+        Assert.Equal(clientId, contract.GetProperty("clientId").GetGuid());
+    }
+
     private async Task<Guid> CreateOpportunityAsync(TestSession session)
     {
         var prospect = await PostAuthorizedAsync(

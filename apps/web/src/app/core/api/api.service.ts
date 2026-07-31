@@ -677,6 +677,26 @@ export class ApiService {
     );
   }
 
+  linkProposalPreliminaryEvent(
+    organizationId: string,
+    proposalId: string,
+    request: {
+      existingEventId: string | null;
+      name: string | null;
+      eventType: string | null;
+      startDateTime: string | null;
+      timeZone: string | null;
+      city: string | null;
+      countryCode: string | null;
+      estimatedGuestCount: number | null;
+    },
+  ): Observable<{ eventId: string }> {
+    return this.http.post<{ eventId: string }>(
+      `${this.organizationUrl(organizationId)}/proposals/${proposalId}/preliminary-event`,
+      request,
+    );
+  }
+
   publishProposal(organizationId: string, proposalId: string): Observable<unknown> {
     return this.http.post(
       `${this.organizationUrl(organizationId)}/proposals/${proposalId}/publish`,

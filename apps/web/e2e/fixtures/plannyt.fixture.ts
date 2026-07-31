@@ -156,6 +156,7 @@ interface CommercialState {
   proposalCreated: boolean;
   proposalStatus: string;
   proposalVersion: number;
+  proposalEventLinked: boolean;
   contractCreated: boolean;
   contractPublished: boolean;
   clientSignerAdded: boolean;
@@ -229,6 +230,7 @@ export const test = base.extend<PlannytFixtures>({
         proposalCreated: false,
         proposalStatus: 'Draft',
         proposalVersion: 0,
+        proposalEventLinked: false,
         contractCreated: false,
         contractPublished: false,
         clientSignerAdded: false,
@@ -251,6 +253,7 @@ export const test = base.extend<PlannytFixtures>({
           commercial.proposalCreated = true;
           commercial.proposalStatus = 'Accepted';
           commercial.proposalVersion = 1;
+          commercial.proposalEventLinked = true;
         },
         requestFor(method, path) {
           return requests.find((request) => request.method === method && request.path === path);
@@ -612,6 +615,15 @@ async function fulfillApi(
     commercial.proposalVersion += 1;
     commercial.proposalStatus = 'Ready';
     await json(route, proposalVersion(commercial.proposalVersion));
+    return;
+  }
+
+  if (
+    path === '/api/organizations/org-1/proposals/proposal-1/preliminary-event' &&
+    method === 'POST'
+  ) {
+    commercial.proposalEventLinked = true;
+    await json(route, { eventId: eventSummary.id });
     return;
   }
 
@@ -1066,7 +1078,7 @@ function proposalSummary(commercial: CommercialState): object {
     proposalNumber: 'P-20260728-ABC123',
     prospectId: 'prospect-1',
     clientId: null,
-    eventId: null,
+    eventId: commercial.proposalEventLinked ? eventSummary.id : null,
     targetDisplayName: 'María Hernández',
     status: commercial.proposalStatus,
     currentVersionNumber: commercial.proposalVersion,

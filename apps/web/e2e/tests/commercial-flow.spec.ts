@@ -74,6 +74,26 @@ test('completa el flujo comercial versionado de prospecto a evento preliminar', 
   await finalDecision.getByRole('button', { name: 'Aceptar propuesta' }).click();
   await expect(page.getByRole('heading', { name: 'Propuesta aceptada' })).toBeVisible();
 
+  // Regresión QA-018: una propuesta aceptada sin evento vinculado no debía
+  // poder generar contrato; el botón "Generar contrato" quedaba inalcanzable
+  // porque ningún flujo de la UI llamaba al endpoint existente
+  // /proposals/{id}/preliminary-event.
+  await page.goto('/app/proposals/proposal-1');
+  await expect(page.getByText('Sin evento vinculado todavía')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Generar contrato' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Vincular evento preliminar' }).click();
+  const proposalEventDialog = page.getByRole('dialog', { name: 'Vincular evento preliminar' });
+  await proposalEventDialog.getByLabel('Nombre del evento').fill('Boda de María y Carlos');
+  await proposalEventDialog.getByLabel('Tipo').fill('Boda');
+  await proposalEventDialog.getByLabel('Fecha estimada').fill('2027-02-14T18:00');
+  await proposalEventDialog.getByLabel('Ciudad').fill('Matamoros');
+  await proposalEventDialog.getByLabel('Invitados estimados').fill('140');
+  await proposalEventDialog.getByRole('button', { name: 'Vincular evento' }).click();
+  await expect(page.getByRole('link', { name: 'Generar contrato' })).toBeVisible();
+  expect(
+    api.requestFor('POST', '/api/organizations/org-1/proposals/proposal-1/preliminary-event'),
+  ).toBeDefined();
+
   await page.goto('/app/prospects/prospect-1');
   await page.getByRole('button', { name: 'Revisar conversión' }).click();
   await page.getByRole('button', { name: 'Confirmar conversión' }).click();

@@ -1,3 +1,4 @@
+import { A11yModule } from '@angular/cdk/a11y';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -22,7 +23,7 @@ import { ToastService } from '../../core/ui/toast.service';
 
 @Component({
   selector: 'app-proposal-builder-page',
-  imports: [FormsModule, RouterLink, CurrencyPipe, DatePipe],
+  imports: [A11yModule, FormsModule, RouterLink, CurrencyPipe, DatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page proposal-workspace">
@@ -85,6 +86,21 @@ import { ToastService } from '../../core/ui/toast.service';
                   ></textarea>
                 </label>
               </div>
+              @if (proposal(); as current) {
+                @if (current.eventId) {
+                  <p class="muted">
+                    Evento vinculado ·
+                    <a [routerLink]="['/app/events', current.eventId]">ver evento</a>
+                  </p>
+                } @else {
+                  <p class="muted">
+                    Sin evento vinculado todavía. Se necesita para generar un contrato.
+                  </p>
+                  <button class="btn btn--quiet" type="button" (click)="showEvent.set(true)">
+                    Vincular evento preliminar
+                  </button>
+                }
+              }
             </section>
 
             <section class="card card--padded section-gap">
@@ -332,13 +348,19 @@ import { ToastService } from '../../core/ui/toast.service';
                 @if (
                   current.status === 'Accepted' && organization.hasPermission('contracts.create')
                 ) {
-                  <a
-                    class="btn btn--primary btn--full"
-                    [routerLink]="['/app/contracts']"
-                    [queryParams]="{ proposalId: current.id }"
-                  >
-                    Generar contrato
-                  </a>
+                  @if (current.eventId) {
+                    <a
+                      class="btn btn--primary btn--full"
+                      [routerLink]="['/app/contracts']"
+                      [queryParams]="{ proposalId: current.id }"
+                    >
+                      Generar contrato
+                    </a>
+                  } @else {
+                    <p class="calculation-note">
+                      Vincula un evento preliminar para poder generar el contrato.
+                    </p>
+                  }
                 }
                 <button
                   class="btn btn--secondary btn--full"
@@ -371,6 +393,70 @@ import { ToastService } from '../../core/ui/toast.service';
             </section>
           </aside>
         </div>
+        @if (showEvent()) {
+          <div
+            class="modal-layer"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="proposal-preliminary-event-title"
+            (keydown.escape)="showEvent.set(false)"
+          >
+            <form
+              class="modal card card--padded form-stack"
+              cdkTrapFocus
+              [cdkTrapFocusAutoCapture]="true"
+              (ngSubmit)="linkPreliminaryEvent()"
+            >
+              <div class="section-heading">
+                <div>
+                  <span class="eyebrow">Sin confirmar</span>
+                  <h2 id="proposal-preliminary-event-title">Vincular evento preliminar</h2>
+                </div>
+                <button
+                  class="icon-button"
+                  type="button"
+                  aria-label="Cerrar alta de evento preliminar"
+                  (click)="showEvent.set(false)"
+                >
+                  ×
+                </button>
+              </div>
+              <div class="form-grid">
+                <label class="span-2"
+                  >Nombre del evento<input name="eventName" [(ngModel)]="eventDraft.name" required
+                /></label>
+                <label
+                  >Tipo<input name="eventType" [(ngModel)]="eventDraft.eventType" required
+                /></label>
+                <label
+                  >Fecha estimada<input
+                    name="eventStart"
+                    type="datetime-local"
+                    [(ngModel)]="eventStartLocal"
+                    required
+                /></label>
+                <label
+                  >Ciudad<input name="eventCity" [(ngModel)]="eventDraft.city" required
+                /></label>
+                <label
+                  >Invitados estimados<input
+                    name="eventGuests"
+                    type="number"
+                    min="1"
+                    [(ngModel)]="eventDraft.estimatedGuestCount"
+                /></label>
+              </div>
+              <div class="form-actions">
+                <button class="btn btn--quiet" type="button" (click)="showEvent.set(false)">
+                  Cancelar
+                </button>
+                <button class="btn btn--primary" type="submit" [disabled]="savingEvent()">
+                  {{ savingEvent() ? 'Vinculando…' : 'Vincular evento' }}
+                </button>
+              </div>
+            </form>
+          </div>
+        }
       }
     </div>
   `,
@@ -395,6 +481,15 @@ export class ProposalBuilderPage {
   protected readonly publishing = signal(false);
   protected readonly sending = signal(false);
   protected readonly shareUrl = signal('');
+  protected readonly showEvent = signal(false);
+  protected readonly savingEvent = signal(false);
+  protected eventStartLocal = '';
+  protected eventDraft = {
+    name: '',
+    eventType: '',
+    city: '',
+    estimatedGuestCount: null as number | null,
+  };
   protected validUntilLocal = this.toLocalDateTime(new Date(Date.now() + 14 * 86_400_000));
   protected draft: ProposalDraftRequest = {
     prospectId: this.route.snapshot.queryParamMap.get('prospectId'),
@@ -630,6 +725,45 @@ export class ProposalBuilderPage {
     return (
       proposal.currentVersionNumber > 0 && ['Ready', 'Sent', 'Viewed'].includes(proposal.status)
     );
+  }
+
+  protected linkPreliminaryEvent(): void {
+    const current = this.proposal();
+    if (
+      !current ||
+      !this.eventDraft.name.trim() ||
+      !this.eventDraft.eventType.trim() ||
+      !this.eventDraft.city.trim() ||
+      !this.eventStartLocal
+    ) {
+      this.toast.error('Completa los datos del evento preliminar.');
+      return;
+    }
+    this.savingEvent.set(true);
+    this.api
+      .linkProposalPreliminaryEvent(this.organization.requireOrganizationId(), current.id, {
+        existingEventId: null,
+        name: this.eventDraft.name.trim(),
+        eventType: this.eventDraft.eventType.trim(),
+        startDateTime: new Date(this.eventStartLocal).toISOString(),
+        timeZone: 'America/Matamoros',
+        city: this.eventDraft.city.trim(),
+        countryCode: 'MX',
+        estimatedGuestCount: this.eventDraft.estimatedGuestCount,
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.savingEvent.set(false);
+          this.showEvent.set(false);
+          this.toast.success('Evento preliminar creado y relacionado.');
+          this.loadProposal(current.id);
+        },
+        error: (error: unknown) => {
+          this.savingEvent.set(false);
+          this.toast.error(getApiErrorMessage(error));
+        },
+      });
   }
 
   protected copyLink(): void {

@@ -409,6 +409,21 @@ describe('ApiService', () => {
     expectRequest('POST', `${organizationUrl}/prospects/prospect-1/preliminary-event`, preliminary);
   });
 
+  it('links a preliminary event to a proposal', () => {
+    const preliminary = {
+      existingEventId: null,
+      name: 'Boda',
+      eventType: 'Wedding',
+      startDateTime: '2027-02-14T18:00:00Z',
+      timeZone: 'America/Matamoros',
+      city: 'Matamoros',
+      countryCode: 'MX',
+      estimatedGuestCount: 140,
+    };
+    service.linkProposalPreliminaryEvent('org-1', 'proposal-1', preliminary).subscribe();
+    expectRequest('POST', `${organizationUrl}/proposals/proposal-1/preliminary-event`, preliminary);
+  });
+
   it('maps catalog mutations and proposal drafts', () => {
     const catalogService = {
       name: 'Producción',
