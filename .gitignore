@@ -36,6 +36,7 @@ yarn-error.log*
 
 # Pruebas de navegador
 playwright-report/
+playwright-report-real/
 test-results/
 blob-report/
 

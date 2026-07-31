@@ -12,6 +12,8 @@
     "typecheck:e2e": "tsc --noEmit -p tsconfig.e2e.json",
     "e2e": "playwright test",
     "e2e:report": "playwright show-report",
+    "e2e:real": "playwright test --config=playwright.real.config.ts",
+    "e2e:real:report": "playwright show-report playwright-report-real",
     "icons:generate": "node scripts/generate-icons.mjs"
   },
   "private": true,
