@@ -92,17 +92,23 @@ public sealed class OrganizationService(
                 dbContext.UserAccounts.AsNoTracking(),
                 item => item.Membership.UserAccountId,
                 account => account.Id,
-                (item, account) => new OrganizationMemberResponse(
-                    item.Membership.Id,
-                    account.Id,
-                    item.Person.Id,
-                    item.Person.DisplayName,
-                    account.Email,
-                    item.Membership.BaseRole,
-                    item.Membership.Status,
-                    item.Membership.JoinedAt,
-                    item.Membership.ExpiresAt))
-            .OrderBy(entity => entity.DisplayName)
+                (item, account) => new
+                {
+                    item.Membership,
+                    item.Person,
+                    Account = account
+                })
+            .OrderBy(item => item.Person.DisplayName)
+            .Select(item => new OrganizationMemberResponse(
+                item.Membership.Id,
+                item.Account.Id,
+                item.Person.Id,
+                item.Person.DisplayName,
+                item.Account.Email,
+                item.Membership.BaseRole,
+                item.Membership.Status,
+                item.Membership.JoinedAt,
+                item.Membership.ExpiresAt))
             .ToListAsync(cancellationToken);
     }
 

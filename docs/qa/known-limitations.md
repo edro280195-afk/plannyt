@@ -1,6 +1,6 @@
 # Limitaciones conocidas
 
-Actualizado: 2026-07-31
+Actualizado: 2026-08-03
 
 Este documento reúne, en un solo lugar, los huecos reales que la auditoría
 2B.4 no cerró. Ninguno se presenta como corregido. Cada uno indica su
@@ -200,6 +200,22 @@ DTOs/mapeos que no aportan lógica de negocio. No se introdujo una compuerta
 nueva en este sprint por ser un cambio de política transversal fuera del
 alcance de una corrección puntual.
 
+## 8. Compuerta de cobertura frontend (85%) incumplida
+
+**Prioridad: Media — ver QA-031.**
+
+`npm run test:coverage` mide hoy 70.56% statements / 69.59% branches /
+74.44% functions / 74.01% lines, por debajo de la compuerta de 85% definida
+en `angular.json`, y termina con `ERROR: Coverage for ... does not meet
+global threshold`. El reporte v8 sólo instrumenta los archivos alcanzados
+por los 14 specs existentes; `portal-guest-experience.page.ts` (~900
+líneas, mayormente CSV/grupos/comentarios/enlaces sin prueba dedicada más
+allá del gating de permisos de QA-026) es el que más arrastra el promedio.
+Ninguna sesión de continuación posterior al tag había vuelto a correr la
+suite completa de cobertura — sólo corridas acotadas con `--include`, que no
+disparan la compuerta. Detalle completo, evidencia y decisión de no bajar el
+umbral en `docs/qa/defect-register.md` QA-031.
+
 ## Resumen de prioridades
 
 | # | Limitación | Prioridad |
@@ -211,9 +227,10 @@ alcance de una corrección puntual.
 | 5 | UI de administración Allow/Deny | Baja (alcance) |
 | 6 | Dependencia npm moderada sin fix compatible | Baja (diferido, QA-004) |
 | 7 | Sin compuerta de cobertura backend global | Baja (alcance existente) |
+| 8 | Compuerta de cobertura frontend (85%) incumplida desde hace 3 sesiones | Media (QA-031, abierto) |
 
 Ninguna de estas limitaciones se presenta como corregida en
 `docs/qa/defect-register.md`. Los elementos 2–4 son extensiones razonables
 de trabajo ya empezado (la matriz de portal, el inventario estático, las
 pruebas de tenant cruzado en API); el elemento 1 es el de mayor impacto y
-mayor esfuerzo restante.
+mayor esfuerzo restante. El elemento 8 es un hallazgo nuevo de esta sesión.

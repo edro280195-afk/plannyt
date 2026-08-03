@@ -79,8 +79,8 @@ Leyenda:
 
 | Acción | Visible permitida | Oculta/deshabilitada prohibida | Backend manual | Deny | Tenant/evento ajeno | Evidencia inicial | Estado |
 |---|---|---|---|---|---|---|---|
-| Actualizar organización | Owner/Admin | Otros | `organization.update` | Resolver probado | Tenant ajeno 403 | Unidad + integración | Automatizado parcial |
-| Invitar/revocar miembro | Owner/Admin | Otros | Permisos `organization.members.*` y regla último Owner | Resolver probado | Tenant ajeno 403 | Integración | Automatizado backend |
+| Actualizar organización | Owner/Admin | Otros | `organization.update` | Resolver probado | Tenant ajeno 403 | Unidad + integración + manual real | Revisado real (403 directo confirmado para Finance, `docs/qa/defect-register.md` sin defecto propio) |
+| Invitar/revocar miembro | Owner/Admin | Otros | Permisos `organization.members.*` y regla último Owner | Resolver probado | Tenant ajeno 403 | Integración + manual real | Revisado real (UI oculta y backend rechaza 403 para Assistant; último Owner rechazado con 409 y mensaje claro; ver QA-032/QA-033) |
 | Crear/archivar cliente | Roles CRM permitidos | Finance/Assistant según acción | `clients.create/archive` | Resolver probado | Consultas tenant-aware | Integración | Automatizado backend |
 | Publicar/enviar propuesta | Owner/Admin/Planner/Commercial | Coordinator/Assistant/Finance | `proposals.publish/send` | Resolver probado | Tenant/evento validados | Integración/E2E mock | Parcial |
 | Publicar/cancelar contrato | Roles permitidos | Roles sin permiso | `contracts.publish/cancel` | Resolver probado | Tenant/evento validados | Integración/E2E mock | Parcial |

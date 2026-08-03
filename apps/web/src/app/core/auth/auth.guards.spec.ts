@@ -43,6 +43,18 @@ describe('authentication guards', () => {
     router = TestBed.inject(Router);
   });
 
+  it('sends a user with neither professional nor portal access to login instead of looping between guards', () => {
+    const professionalRedirect = TestBed.runInInjectionContext(() =>
+      professionalGuard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot),
+    );
+    expect(router.serializeUrl(professionalRedirect as UrlTree)).toBe('/auth/login');
+
+    const portalRedirect = TestBed.runInInjectionContext(() =>
+      portalGuard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot),
+    );
+    expect(router.serializeUrl(portalRedirect as UrlTree)).toBe('/auth/login');
+  });
+
   it('keeps the requested URL when redirecting to login', () => {
     const result = TestBed.runInInjectionContext(() =>
       authGuard({} as ActivatedRouteSnapshot, { url: '/app/events' } as RouterStateSnapshot),
@@ -62,11 +74,14 @@ describe('authentication guards', () => {
   });
 
   it('separates professional and client portal access', () => {
+    portalAccess.set(true);
     const professionalRedirect = TestBed.runInInjectionContext(() =>
       professionalGuard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot),
     );
     expect(router.serializeUrl(professionalRedirect as UrlTree)).toBe('/portal/events');
 
+    portalAccess.set(false);
+    professionalAccess.set(true);
     const portalRedirect = TestBed.runInInjectionContext(() =>
       portalGuard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot),
     );

@@ -7,8 +7,8 @@ Actualizado: 2026-08-03
 | Severidad | Abiertos | Corregidos | Diferidos |
 | --------- | -------: | ---------: | --------: |
 | Crítica   |        0 |          3 |         0 |
-| Alta      |        0 |         10 |         0 |
-| Media     |        0 |         14 |         1 |
+| Alta      |        0 |         12 |         0 |
+| Media     |        1 |         14 |         1 |
 | Baja      |        0 |          2 |         0 |
 
 ## QA-001 — El seed demo no inicia con la cuenta cliente preexistente
@@ -1084,5 +1084,169 @@ logout`, prueba de revocación backend y recorrido manual en dos pestañas.
 - **Prueba de regresión:** Verificado en navegador real con viewport móvil y
   estado API del token público. El build Angular completo valida compilación
   del componente.
+- **Commit:** Commit local de esta sesión.
+- **Estado:** Corregido.
+
+## QA-031 — La compuerta de cobertura frontend (85%) lleva tres bloques incumplida sin detectarse
+
+- **Severidad:** Media.
+- **Módulo:** Frontend — infraestructura de pruebas/cobertura.
+- **Ruta:** `npm run test:coverage` (`ng test --watch=false --coverage`),
+  compuerta declarada en `angular.json` (`coverageThresholds` 85% en las
+  cuatro métricas).
+- **Rol:** Desarrollo/QA.
+- **Precondición:** Ninguna; se detecta al ejecutar la suite completa de
+  cobertura, no una corrida acotada con `--include`.
+- **Pasos:**
+  1. Ejecutar `npm run test:coverage` sobre el estado actual de `main`
+     (commit `1101d99`, árbol limpio).
+- **Resultado actual:** 93/93 pruebas pasan, pero el reporte de cobertura v8
+  (que instrumenta únicamente los archivos que los 14 specs existentes
+  importan, no la aplicación completa) mide 70.56% statements, 69.59%
+  branches, 74.44% functions, 74.01% lines. El comando termina con
+  `ERROR: Coverage for ... does not meet global threshold (85%)` en las
+  cuatro métricas — es decir, `npm run test:coverage` falla hoy.
+- **Resultado esperado:** La compuerta declarada debe reflejar el estado real
+  del código en cada sesión, o su incumplimiento debe quedar documentado de
+  inmediato en vez de asumirse heredado de la última medición reportada
+  (90.10%/86.20%/88.39%/91.82%, sección 11 de `sprint-2b4.md`, fechada antes
+  de los bloques de Contratación, Invitados/Invitación y RSVP).
+- **Evidencia:** Salida completa en
+  `apps/web` vía `npm.cmd run test:coverage` (no truncada, 55 líneas). El
+  archivo que más arrastra el promedio es
+  `app/features/portal/portal-guest-experience.page.ts`: 43.63% statements,
+  16.27% functions sobre un componente de más de 900 líneas (grupos,
+  invitados, CSV, etiquetas, comentarios, enlaces). Su spec
+  (`portal-guest-experience.page.spec.ts`) sólo prueba el filtrado de
+  permisos `canManageGuests`/`canApproveDesign` corregido en QA-026, no el
+  resto del componente.
+- **Causa:** Las tres sesiones de continuación posteriores al tag
+  (`CON-001..004`, `GST-001`/`INV-002`, `RSV-001..004`) sólo ejecutaron
+  pruebas frontend acotadas con `--include <archivo>` para verificar cada
+  corrección puntual (documentado así en las secciones 12-14 de
+  `sprint-2b4.md`), y ninguna volvió a correr `npm run test:coverage`
+  completo. Como el reporte v8 sólo instrumenta archivos alcanzados por los
+  specs que sí se ejecutan, cuando `portal-guest-experience.page.spec.ts` se
+  amplió para cubrir QA-026 incorporó por primera vez al conjunto medido un
+  componente grande y mayormente sin probar, y el promedio global cayó por
+  debajo de la compuerta sin que ninguna corrida completa lo expusiera hasta
+  ahora.
+- **Solución aplicada:** Ninguna todavía — se registra como abierto. No se
+  bajó el umbral de `coverageThresholds` ni se marcó la compuerta como
+  opcional; ocultar el incumplimiento bajando el número contradiría el
+  mandato de no eliminar pruebas ni relajar compuertas para "hacer pasar" la
+  suite. Ver `docs/qa/known-limitations.md` para la decisión de alcance sobre
+  si se cierra dentro de este sprint o se prioriza para la siguiente sesión.
+- **Prueba de regresión:** N/D hasta que se agreguen casos que cubran
+  `portal-guest-experience.page.ts` de forma más completa.
+- **Commit:** N/D (hallazgo documentado, sin corrección de código todavía).
+- **Estado:** Abierto.
+
+## QA-032 — El listado de miembros del equipo siempre respondía 500
+
+- **Severidad:** Alta.
+- **Módulo:** Backend — Organización/Equipo.
+- **Ruta:** `GET /api/organizations/{organizationId}/members`, pantalla
+  `/app/team`.
+- **Rol:** Cualquier rol con `organization.members.view` (Owner, OrgAdmin,
+  Planner, Coordinator, Assistant).
+- **Precondición:** Ninguna especial — ocurre siempre, para cualquier
+  organización, con cualquier cantidad de miembros.
+- **Pasos:**
+  1. Iniciar sesión con cualquier cuenta miembro de una organización.
+  2. Abrir `/app/team`.
+- **Resultado anterior:** La pantalla mostraba "0 personas" de forma
+  permanente, incluso con miembros reales, porque
+  `GET .../members` devolvía 500 en cada solicitud. La interfaz no
+  distinguía "sin miembros" de "la carga falló"; sólo un toast transitorio
+  (4.5s) delataba el error.
+- **Resultado esperado:** El listado debe devolver los miembros reales.
+- **Evidencia:** Reproducido en vivo contra la organización real "Eventos
+  Auditoría 2B.4"
+  (`162153fd-ca08-4b2a-a9a4-9ee079d06257`); log de la API mostró
+  `System.InvalidOperationException: The LINQ expression ... could not be
+  translated`, con CorrelationId `1b1e04ea820541c7a6fbf6d4ca64f67e`.
+- **Causa:** `OrganizationService.GetMembersAsync` proyectaba directamente al
+  `record OrganizationMemberResponse` dentro del segundo `Join(...)` y
+  encadenaba `.OrderBy(entity => entity.DisplayName)` sobre esa proyección.
+  EF Core no puede traducir un `OrderBy` posterior a una proyección
+  construida vía el constructor posicional de un `record`; nunca se detectó
+  porque ninguna prueba automatizada llamaba al endpoint `GET .../members`
+  real (las pruebas de equipo existentes sólo cubrían revocar membresías,
+  consultando `DbContext` directamente para obtener el `membershipId`).
+- **Solución aplicada:** Se reordenó la consulta: el `Join` final proyecta a
+  un tipo anónimo intermedio, `OrderBy` ordena sobre `item.Person.DisplayName`
+  antes de la proyección final, y un `.Select(...)` posterior construye el
+  `OrganizationMemberResponse`. Todo se sigue traduciendo a una sola
+  sentencia SQL.
+- **Prueba de regresión:** Nueva prueba de integración
+  `OrganizationAccessTests.GetMembers_WithOwnerAndAdditionalMember_ReturnsOrderedList`
+  contra PostgreSQL real, que falla con 500 contra el código anterior (se
+  verificó revirtiendo el cambio temporalmente) y pasa después, verificando
+  además el orden alfabético con un nombre acentuado ("Ángel Ríos" antes que
+  "Mariana Torres"). Suite completa: 257/257 unitarias, 96/96 integración
+  (antes 95).
+- **Commit:** Commit local de esta sesión.
+- **Estado:** Corregido.
+
+## QA-033 — Bucle infinito entre `professionalGuard` y `portalGuard` congela el navegador para una cuenta sin ningún acceso activo
+
+- **Severidad:** Alta.
+- **Módulo:** Frontend — enrutamiento/guards de sesión.
+- **Ruta:** Cualquier URL bajo `/app/**` o `/portal/**`; reproducido en
+  `/app/dashboard` tras iniciar sesión.
+- **Rol:** Cualquier cuenta autenticada cuya única membresía de organización
+  fue revocada y que tampoco tiene ningún `EventAccess` de portal (estado
+  alcanzable de inmediato tras "Revocar" en `/app/team`, o tras revocar el
+  único acceso de portal de un cliente).
+- **Precondición:** Cuenta con `me.organizations.length === 0` y
+  `me.eventAccesses.length === 0` simultáneamente.
+- **Pasos:**
+  1. Como Owner, invitar y aceptar un miembro Assistant; revocar esa
+     membresía desde `/app/team` (única membresía del Assistant).
+  2. Iniciar sesión con la cuenta del Assistant revocado (la cuenta sigue
+     activa; sólo la membresía fue revocada).
+- **Resultado anterior:** La pestaña quedaba completamente congelada e
+  irrecuperable: `read_page`, `screenshot` e incluso `navigate` (forzar una
+  recarga completa) agotaban el tiempo de espera indefinidamente. Se
+  reprodujo de forma idéntica en dos pestañas independientes del mismo
+  navegador. Ninguna solicitud de red nueva aparecía tras `GET /api/auth/me`,
+  consistente con un bucle sin llamadas HTTP: `professionalGuard` redirige a
+  `/portal/events` cuando falta acceso profesional sin comprobar si existe
+  acceso de portal, y `portalGuard` redirige a `/app/dashboard` cuando falta
+  acceso de portal sin comprobar si existe acceso profesional. Con ambos en
+  `false`, el Router de Angular alterna entre ambas rutas indefinidamente.
+- **Resultado esperado:** Una cuenta sin ningún acceso activo debe aterrizar
+  en una pantalla estable y comprensible, nunca en un ciclo.
+- **Evidencia:** Cuenta real
+  `asistente.qa.org001b@plannyt-test.invalid`, organización "Eventos
+  Auditoría 2B.4". Dos pestañas del navegador (`seed` y una pestaña nueva)
+  quedaron congeladas de forma idéntica; la pestaña `seed` nunca se
+  recuperó ni siquiera con `navigate` (300s de espera agotados dos veces).
+  Una prueba unitaria previa
+  (`auth.guards.spec.ts`, caso `'separates professional and client portal
+  access'`) afirmaba como comportamiento correcto exactamente el par de
+  redirecciones que produce el ciclo (profesional→portal y portal→app sin
+  condición de salida), sin combinarlas nunca en secuencia — el mismo patrón
+  ya visto en QA-020, donde una prueba automatizada fijaba como "esperado"
+  un comportamiento que un recorrido real expone como defecto.
+- **Causa:** `professionalGuard`/`portalGuard`
+  (`apps/web/src/app/core/auth/auth.guards.ts`) no contemplaban el caso en
+  que ninguna de las dos áreas es accesible; cada uno asumía que la
+  alternativa siempre lo era.
+- **Solución aplicada:** Cada guard ahora comprueba también la otra área
+  antes de redirigir: si ninguna aplica, redirige a `/auth/login` (ruta
+  pública, sin guard, que no reevalúa acceso profesional/portal) en vez de a
+  la otra zona protegida, y muestra un toast explicando la pérdida de
+  acceso.
+- **Prueba de regresión:** Nueva prueba
+  `auth.guards.spec.ts` — `'sends a user with neither professional nor
+  portal access to login instead of looping between guards'` — verifica que
+  ambos guards resuelven a `/auth/login` sin ciclo. La prueba preexistente
+  se corrigió para afirmar el comportamiento real por par (profesional↔portal)
+  en vez del estado "ninguno" que ocultaba el ciclo. Verificado además en
+  navegador real: iniciar sesión con la misma cuenta revocada ahora aterriza
+  de inmediato en `/auth/login` con el aviso, sin congelarse, en una pestaña
+  nueva.
 - **Commit:** Commit local de esta sesión.
 - **Estado:** Corregido.
