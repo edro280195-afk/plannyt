@@ -889,7 +889,9 @@ describe('ApiService', () => {
     service.confirmGuestImport('org-1', 'event-1', 'import-1').subscribe();
     expectRequest('POST', `${guestUrl}/imports/import-1/confirm`, null);
     service.downloadGuestTemplate('org-1', 'event-1').subscribe();
-    expectBlobRequest(`${guestUrl}/imports/template`);
+    expectBlobRequest(`${guestUrl}/imports/template?format=csv&language=es`);
+    service.downloadGuestTemplate('org-1', 'event-1', 'xlsx', 'en').subscribe();
+    expectBlobRequest(`${guestUrl}/imports/template?format=xlsx&language=en`);
     service.exportGuests('org-1', 'event-1').subscribe();
     expectBlobRequest(`${guestUrl}/export`);
   });
@@ -1070,7 +1072,9 @@ describe('ApiService', () => {
     service.confirmPortalGuestImport('event-1', 'import-1').subscribe();
     expectRequest('POST', `${portalUrl}/imports/import-1/confirm`, null);
     service.downloadPortalGuestImportTemplate('event-1').subscribe();
-    expectBlobRequest(`${portalUrl}/imports/template`);
+    expectBlobRequest(`${portalUrl}/imports/template?format=csv&language=es`);
+    service.downloadPortalGuestImportTemplate('event-1', 'xlsx', 'en').subscribe();
+    expectBlobRequest(`${portalUrl}/imports/template?format=xlsx&language=en`);
     service.getPortalGuestDuplicates('event-1').subscribe();
     expectRequest('GET', `${portalUrl}/duplicates`);
     service.getPortalGuestLinks('event-1').subscribe();

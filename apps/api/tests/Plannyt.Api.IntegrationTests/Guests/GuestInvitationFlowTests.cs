@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using ClosedXML.Excel;
 using Plannyt.Api.IntegrationTests.Infrastructure;
 
 namespace Plannyt.Api.IntegrationTests.Guests;
@@ -134,6 +135,77 @@ public sealed class GuestInvitationFlowTests(ApiFactory factory)
         var dashboard = await GetDashboardAsync(session, eventId);
         Assert.Equal(2, dashboard.GetProperty("activeGuestCount").GetInt32());
         Assert.Single(dashboard.GetProperty("groups").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task ImportTemplate_ReturnsCsvAndExcelInSpanishAndEnglish()
+    {
+        var session = await TestSessionFactory.RegisterPlannerAsync(
+            factory,
+            "guest-template");
+        var eventId = await CreateConfirmedEventAsync(session);
+
+        await AssertTemplateAsync(
+            session,
+            eventId,
+            "csv",
+            "es",
+            "text/csv",
+            csv => Assert.Contains("Nombre del grupo,Tipo de grupo", csv, StringComparison.Ordinal));
+        await AssertTemplateAsync(
+            session,
+            eventId,
+            "csv",
+            "en",
+            "text/csv",
+            csv => Assert.Contains("Group name,Group type", csv, StringComparison.Ordinal));
+        await AssertXlsxTemplateAsync(session, eventId, "es", "Invitados", "Instrucciones");
+        await AssertXlsxTemplateAsync(session, eventId, "en", "Guests", "Instructions");
+    }
+
+    [Fact]
+    public async Task CsvImport_AcceptsSpanishHeadersAndReadableValues()
+    {
+        var session = await TestSessionFactory.RegisterPlannerAsync(
+            factory,
+            "guest-csv-es");
+        var eventId = await CreateConfirmedEventAsync(session);
+        const string csv =
+            "Nombre del grupo,Tipo de grupo,Invitados permitidos,Nombre de contacto,Teléfono de contacto,Correo de contacto,Nombre del invitado,Apellido del invitado,Categoría de edad,Contacto principal,VIP,Etiquetas\r\n"
+            + "Familia Robles,Familia,2,Ana Robles,8991234567,ana@example.com,Ana,Robles,Adulto,Sí,Sí,Familia|VIP\r\n"
+            + "Familia Robles,Familia,2,Ana Robles,8991234567,ana@example.com,Luis,Robles,Niño,No,No,Familia|VIP\r\n";
+
+        var importId = await AnalyzeCsvAsync(
+            session,
+            eventId,
+            csv,
+            expectedErrorRows: 0);
+        var result = await ConfirmImportAsync(session, eventId, importId);
+
+        Assert.Equal(1, result.GetProperty("createdGroups").GetInt32());
+        Assert.Equal(2, result.GetProperty("createdGuests").GetInt32());
+    }
+
+    [Fact]
+    public async Task XlsxImport_AcceptsExcelFileWithSpanishHeaders()
+    {
+        var session = await TestSessionFactory.RegisterPlannerAsync(
+            factory,
+            "guest-xlsx-es");
+        var eventId = await CreateConfirmedEventAsync(session);
+        var xlsx = BuildSpanishImportWorkbook();
+
+        var importId = await AnalyzeFileAsync(
+            session,
+            eventId,
+            xlsx,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "invitados.xlsx",
+            expectedErrorRows: 0);
+        var result = await ConfirmImportAsync(session, eventId, importId);
+
+        Assert.Equal(1, result.GetProperty("createdGroups").GetInt32());
+        Assert.Equal(2, result.GetProperty("createdGuests").GetInt32());
     }
 
     [Fact]
@@ -537,10 +609,27 @@ public sealed class GuestInvitationFlowTests(ApiFactory factory)
         string csv,
         int expectedErrorRows)
     {
+        return await AnalyzeFileAsync(
+            session,
+            eventId,
+            Encoding.UTF8.GetBytes(csv),
+            "text/csv",
+            "invitados.csv",
+            expectedErrorRows);
+    }
+
+    private async Task<Guid> AnalyzeFileAsync(
+        TestSession session,
+        Guid eventId,
+        byte[] bytes,
+        string contentType,
+        string fileName,
+        int expectedErrorRows)
+    {
         using var content = new MultipartFormDataContent();
-        var file = new ByteArrayContent(Encoding.UTF8.GetBytes(csv));
-        file.Headers.ContentType = new MediaTypeHeaderValue("text/csv");
-        content.Add(file, "file", "invitados.csv");
+        var file = new ByteArrayContent(bytes);
+        file.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        content.Add(file, "file", fileName);
         using var request = TestSessionFactory.CreateAuthorizedRequest(
             HttpMethod.Post,
             $"/api/organizations/{session.OrganizationId}/events/{eventId}/guests/imports/analyze",
@@ -551,6 +640,122 @@ public sealed class GuestInvitationFlowTests(ApiFactory factory)
         var payload = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal(expectedErrorRows, payload.GetProperty("errorRows").GetInt32());
         return payload.GetProperty("importId").GetGuid();
+    }
+
+    private async Task AssertTemplateAsync(
+        TestSession session,
+        Guid eventId,
+        string format,
+        string language,
+        string expectedMediaType,
+        Action<string> assertContent)
+    {
+        using var request = TestSessionFactory.CreateAuthorizedRequest(
+            HttpMethod.Get,
+            $"/api/organizations/{session.OrganizationId}/events/{eventId}/guests/imports/template?format={format}&language={language}",
+            session.AccessToken);
+        using var response = await factory.CreateClient().SendAsync(request);
+        response.EnsureSuccessStatusCode();
+
+        Assert.Equal(expectedMediaType, response.Content.Headers.ContentType?.MediaType);
+        assertContent(await response.Content.ReadAsStringAsync());
+    }
+
+    private async Task AssertXlsxTemplateAsync(
+        TestSession session,
+        Guid eventId,
+        string language,
+        string expectedDataSheet,
+        string expectedGuideSheet)
+    {
+        using var request = TestSessionFactory.CreateAuthorizedRequest(
+            HttpMethod.Get,
+            $"/api/organizations/{session.OrganizationId}/events/{eventId}/guests/imports/template?format=xlsx&language={language}",
+            session.AccessToken);
+        using var response = await factory.CreateClient().SendAsync(request);
+        response.EnsureSuccessStatusCode();
+
+        Assert.Equal(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            response.Content.Headers.ContentType?.MediaType);
+        await using var stream = await response.Content.ReadAsStreamAsync();
+        using var workbook = new XLWorkbook(stream);
+        Assert.True(workbook.TryGetWorksheet(expectedDataSheet, out var dataSheet));
+        Assert.True(workbook.TryGetWorksheet(expectedGuideSheet, out var guideSheet));
+        Assert.False(string.IsNullOrWhiteSpace(dataSheet.Cell(1, 1).GetString()));
+        Assert.False(string.IsNullOrWhiteSpace(guideSheet.Cell(1, 1).GetString()));
+    }
+
+    private static byte[] BuildSpanishImportWorkbook()
+    {
+        using var workbook = new XLWorkbook();
+        var worksheet = workbook.Worksheets.Add("Invitados");
+        var headers = new[]
+        {
+            "Nombre del grupo",
+            "Tipo de grupo",
+            "Invitados permitidos",
+            "Nombre de contacto",
+            "Teléfono de contacto",
+            "Correo de contacto",
+            "Nombre del invitado",
+            "Apellido del invitado",
+            "Categoría de edad",
+            "Contacto principal",
+            "VIP",
+            "Etiquetas"
+        };
+
+        for (var index = 0; index < headers.Length; index++)
+        {
+            worksheet.Cell(1, index + 1).Value = headers[index];
+        }
+
+        string[][] rows =
+        {
+            new[]
+            {
+                "Familia Excel",
+                "Familia",
+                "2",
+                "Ana Excel",
+                string.Empty,
+                string.Empty,
+                "Ana",
+                "Excel",
+                "Adulto",
+                "Sí",
+                "Sí",
+                "Familia|VIP"
+            },
+            new[]
+            {
+                "Familia Excel",
+                "Familia",
+                "2",
+                "Ana Excel",
+                string.Empty,
+                string.Empty,
+                "Luis",
+                "Excel",
+                "Niño",
+                "No",
+                "No",
+                "Familia|VIP"
+            }
+        };
+
+        for (var rowIndex = 0; rowIndex < rows.Length; rowIndex++)
+        {
+            for (var columnIndex = 0; columnIndex < rows[rowIndex].Length; columnIndex++)
+            {
+                worksheet.Cell(rowIndex + 2, columnIndex + 1).Value = rows[rowIndex][columnIndex];
+            }
+        }
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
     }
 
     private async Task SetExperienceSuspendedAsync(

@@ -102,7 +102,30 @@ test.describe('Sprint 2A · invitados y experiencia digital', () => {
     ).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Familia Luna' })).toBeVisible();
 
-    // 15. Verificar que el portal no ofrece publicación ni revocación.
+    // 15. Verificar plantilla e importación Excel desde el portal.
+    await page.getByRole('button', { name: 'Importar', exact: true }).click();
+    await page.getByLabel('Formato').selectOption('xlsx');
+    await page.getByLabel('Idioma').selectOption('en');
+    await page.locator('summary').filter({ hasText: 'Ver guía de llenado' }).click();
+    await expect(page.getByText('Group name', { exact: true })).toBeVisible();
+    const templateRequest = page.waitForRequest((request) => {
+      const url = new URL(request.url());
+      return (
+        url.pathname === '/api/client-portal/events/event-1/guest-experience/imports/template' &&
+        url.searchParams.get('format') === 'xlsx' &&
+        url.searchParams.get('language') === 'en'
+      );
+    });
+    await page.getByRole('button', { name: 'Descargar plantilla' }).click();
+    await templateRequest;
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'invitados.xlsx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      buffer: Buffer.from('xlsx'),
+    });
+    await expect(page.getByText('Familia Portal Importada')).toBeVisible();
+
+    // 16. Verificar que el portal no ofrece publicación ni revocación.
     await page.getByRole('button', { name: 'Diseño' }).click();
     await expect(page.getByRole('button', { name: /Publicar/ })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Revocar/ })).toHaveCount(0);
@@ -299,6 +322,44 @@ async function handleGuestExperienceApi(
         isVip: guest['isVip'],
       })),
       design: state.design,
+    });
+    return true;
+  }
+  if (
+    path === '/api/client-portal/events/event-1/guest-experience/imports/template' &&
+    method === 'GET'
+  ) {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      body: Buffer.from('xlsx'),
+    });
+    return true;
+  }
+  if (
+    path === '/api/client-portal/events/event-1/guest-experience/imports/analyze' &&
+    method === 'POST'
+  ) {
+    await json(route, {
+      importId: 'portal-import-1',
+      status: 'Analyzed',
+      headers: ['Nombre del grupo', 'Nombre del invitado'],
+      mapping: {
+        GroupName: 'Nombre del grupo',
+        GuestFirstName: 'Nombre del invitado',
+      },
+      totalRows: 1,
+      validRows: 1,
+      errorRows: 0,
+      preview: [
+        {
+          rowNumber: 2,
+          groupName: 'Familia Portal Importada',
+          guestName: 'Laura Portal',
+          isValid: true,
+          errors: [],
+        },
+      ],
     });
     return true;
   }

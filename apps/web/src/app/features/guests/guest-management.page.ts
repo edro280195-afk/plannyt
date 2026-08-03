@@ -14,12 +14,21 @@ import { ApiService } from '../../core/api/api.service';
 import { OrganizationContextService } from '../../core/auth/organization-context.service';
 import { getApiErrorMessage } from '../../core/errors/api-error';
 import {
+  GUEST_IMPORT_FORMAT_OPTIONS,
+  GUEST_IMPORT_LANGUAGE_OPTIONS,
+  GuestImportFieldGuideEntry,
+  guestImportFieldGuide,
+  templateFileName,
+} from '../../core/guests/guest-import-guide';
+import {
   AgeCategory,
   EventGuest,
   GuestDashboard,
   GuestDuplicateSuggestion,
   GuestImportAnalysis,
   GuestImportResult,
+  GuestImportTemplateFormat,
+  GuestImportTemplateLanguage,
   GuestTag,
   GuestType,
   InvitationGroup,
@@ -425,15 +434,68 @@ import { ToastService } from '../../core/ui/toast.service';
             <h2>Importación CSV segura</h2>
             <p>Analiza encabezados, valida cada fila y confirma en una sola transacción.</p>
           </div>
+          <div class="import-template-picker">
+            <label>
+              <span>Formato</span>
+              <select
+                [value]="templateFormat()"
+                (change)="setTemplateFormat(eventValue($event))"
+              >
+                @for (option of formatOptions; track option.value) {
+                  <option [value]="option.value">{{ option.label }}</option>
+                }
+              </select>
+            </label>
+            <label>
+              <span>Idioma</span>
+              <select
+                [value]="templateLanguage()"
+                (change)="setTemplateLanguage(eventValue($event))"
+              >
+                @for (option of languageOptions; track option.value) {
+                  <option [value]="option.value">{{ option.label }}</option>
+                }
+              </select>
+            </label>
+          </div>
           <div class="import-actions">
             <button class="btn btn--secondary" type="button" (click)="downloadTemplate()">
               Descargar plantilla
             </button>
             <label class="file-button btn btn--primary">
-              Seleccionar CSV
-              <input type="file" accept=".csv,text/csv" (change)="analyzeFile($event)" />
+              Seleccionar archivo
+              <input
+                type="file"
+                accept=".csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                (change)="analyzeFile($event)"
+              />
             </label>
           </div>
+          <details class="disclosure">
+            <summary>Ver guía de llenado</summary>
+            <div class="field-guide-scroll">
+              <table class="field-guide">
+                <thead>
+                  <tr>
+                    <th>Campo</th>
+                    <th>Obligatorio</th>
+                    <th>Descripción</th>
+                    <th>Valores válidos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (field of fieldGuide(); track field.label) {
+                    <tr>
+                      <td>{{ field.label }}</td>
+                      <td>{{ field.required ? 'Sí' : 'No' }}</td>
+                      <td>{{ field.description }}</td>
+                      <td>{{ field.validValues }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </details>
           @if (importAnalysis(); as analysis) {
             <div class="import-summary">
               <span
@@ -526,6 +588,10 @@ export class GuestManagementPage {
   protected readonly duplicates = signal<GuestDuplicateSuggestion[]>([]);
   protected readonly importAnalysis = signal<GuestImportAnalysis | null>(null);
   protected readonly importResult = signal<GuestImportResult | null>(null);
+  protected readonly templateFormat = signal<GuestImportTemplateFormat>('csv');
+  protected readonly templateLanguage = signal<GuestImportTemplateLanguage>('es');
+  protected readonly formatOptions = GUEST_IMPORT_FORMAT_OPTIONS;
+  protected readonly languageOptions = GUEST_IMPORT_LANGUAGE_OPTIONS;
   protected readonly saving = signal(false);
   protected readonly activeView = signal<'guests' | 'groups' | 'import' | 'duplicates'>('guests');
   protected readonly editingGuestId = signal<string | null>(null);
@@ -867,9 +933,32 @@ export class GuestManagementPage {
       });
   }
 
+  protected setTemplateFormat(value: string): void {
+    this.templateFormat.set(value === 'xlsx' ? 'xlsx' : 'csv');
+  }
+
+  protected setTemplateLanguage(value: string): void {
+    this.templateLanguage.set(value === 'en' ? 'en' : 'es');
+  }
+
+  protected fieldGuide(): GuestImportFieldGuideEntry[] {
+    return guestImportFieldGuide(this.templateLanguage());
+  }
+
+  protected eventValue(event: Event): string {
+    const target = event.target;
+    return target instanceof HTMLInputElement
+      || target instanceof HTMLSelectElement
+      || target instanceof HTMLTextAreaElement
+      ? target.value
+      : '';
+  }
+
   protected downloadTemplate(): void {
-    this.api.downloadGuestTemplate(this.organizationId, this.eventId).subscribe({
-      next: (blob) => this.download(blob, 'plantilla-invitados.csv'),
+    const format = this.templateFormat();
+    const language = this.templateLanguage();
+    this.api.downloadGuestTemplate(this.organizationId, this.eventId, format, language).subscribe({
+      next: (blob) => this.download(blob, templateFileName(format, language)),
       error: (error: unknown) => this.toast.error(getApiErrorMessage(error)),
     });
   }
@@ -939,7 +1028,9 @@ export class GuestManagementPage {
         Individual: 'Individual',
         Couple: 'Pareja',
         Family: 'Familia',
+        Group: 'Grupo',
         Company: 'Empresa',
+        CorporateTable: 'Mesa corporativa',
         Other: 'Otro',
       } as Record<InvitationGroupType, string>
     )[type];

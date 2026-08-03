@@ -37,6 +37,8 @@ import {
   GuestExperience,
   GuestImportAnalysis,
   GuestImportResult,
+  GuestImportTemplateFormat,
+  GuestImportTemplateLanguage,
   GuestTag,
   GuestType,
   AgeCategory,
@@ -1482,10 +1484,16 @@ export class ApiService {
     );
   }
 
-  downloadGuestTemplate(organizationId: string, eventId: string): Observable<Blob> {
-    return this.http.get(`${this.guestUrl(organizationId, eventId)}/imports/template`, {
-      responseType: 'blob',
-    });
+  downloadGuestTemplate(
+    organizationId: string,
+    eventId: string,
+    format: GuestImportTemplateFormat = 'csv',
+    language: GuestImportTemplateLanguage = 'es',
+  ): Observable<Blob> {
+    return this.http.get(
+      `${this.guestUrl(organizationId, eventId)}/imports/template?format=${format}&language=${language}`,
+      { responseType: 'blob' },
+    );
   }
 
   exportGuests(organizationId: string, eventId: string): Observable<Blob> {
@@ -1818,10 +1826,15 @@ export class ApiService {
     );
   }
 
-  downloadPortalGuestImportTemplate(eventId: string): Observable<Blob> {
-    return this.http.get(`${this.portalGuestUrl(eventId)}/imports/template`, {
-      responseType: 'blob',
-    });
+  downloadPortalGuestImportTemplate(
+    eventId: string,
+    format: GuestImportTemplateFormat = 'csv',
+    language: GuestImportTemplateLanguage = 'es',
+  ): Observable<Blob> {
+    return this.http.get(
+      `${this.portalGuestUrl(eventId)}/imports/template?format=${format}&language=${language}`,
+      { responseType: 'blob' },
+    );
   }
 
   getPortalGuestDuplicates(eventId: string): Observable<GuestDuplicateSuggestion[]> {

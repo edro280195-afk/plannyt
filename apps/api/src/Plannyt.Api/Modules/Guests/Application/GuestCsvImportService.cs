@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
 using Plannyt.Api.BuildingBlocks.Errors;
 using Plannyt.Api.Infrastructure.Persistence;
@@ -80,37 +81,46 @@ public sealed class GuestCsvImportService(
         IFormFile file,
         CancellationToken cancellationToken)
     {
-        if (!string.Equals(
-                Path.GetExtension(file.FileName),
-                ".csv",
-                StringComparison.OrdinalIgnoreCase))
+        var extension = Path.GetExtension(file.FileName);
+        var isXlsx = string.Equals(extension, ".xlsx", StringComparison.OrdinalIgnoreCase);
+        var isCsv = string.Equals(extension, ".csv", StringComparison.OrdinalIgnoreCase);
+        if (!isXlsx && !isCsv)
         {
-            throw new UnsupportedMediaTypeException("Solo se permiten archivos CSV.");
+            throw new UnsupportedMediaTypeException(
+                "Solo se permiten archivos CSV o Excel (.xlsx).");
         }
 
         if (file.Length is <= 0 or > MaximumBytes)
         {
             throw new PayloadTooLargeException(
-                "El CSV debe contener datos y pesar como máximo 5 MB.");
+                "El archivo debe contener datos y pesar como máximo 5 MB.");
         }
 
         string content;
-        try
+        if (isXlsx)
         {
-            await using var stream = file.OpenReadStream();
-            using var reader = new StreamReader(
-                stream,
-                new UTF8Encoding(false, true),
-                detectEncodingFromByteOrderMarks: true);
-            content = await reader.ReadToEndAsync(cancellationToken);
+            await using var xlsxStream = file.OpenReadStream();
+            content = ConvertXlsxToCsv(xlsxStream);
         }
-        catch (DecoderFallbackException)
+        else
         {
-            throw new RequestValidationException(
-                new Dictionary<string, string[]>
-                {
-                    ["file"] = ["El CSV debe estar codificado en UTF-8."]
-                });
+            try
+            {
+                await using var stream = file.OpenReadStream();
+                using var reader = new StreamReader(
+                    stream,
+                    new UTF8Encoding(false, true),
+                    detectEncodingFromByteOrderMarks: true);
+                content = await reader.ReadToEndAsync(cancellationToken);
+            }
+            catch (DecoderFallbackException)
+            {
+                throw new RequestValidationException(
+                    new Dictionary<string, string[]>
+                    {
+                        ["file"] = ["El CSV debe estar codificado en UTF-8."]
+                    });
+            }
         }
 
         var table = ParseCsv(content);
@@ -521,13 +531,135 @@ public sealed class GuestCsvImportService(
         return new UTF8Encoding(true).GetBytes(builder.ToString());
     }
 
-    public static byte[] GetTemplate()
+    public static GuestImportTemplateFile GetTemplate(string? format, string? language)
     {
-        const string content =
-            "GroupName,GroupType,AllowedGuestCount,ContactName,ContactPhone,ContactEmail,GuestFirstName,GuestLastName,AgeCategory,IsPrimaryContact,IsVip,Tags\r\n"
-            + "Familia García,Family,4,Ana García,8991234567,ana@example.com,Ana,García,Adult,true,true,Familia|VIP\r\n"
-            + "Familia García,Family,4,Ana García,8991234567,ana@example.com,Luis,García,Adult,false,false,Familia|VIP\r\n";
-        return new UTF8Encoding(true).GetBytes(content);
+        var normalizedFormat = (format ?? "csv").Trim().ToLowerInvariant();
+        var normalizedLanguage = (language ?? "es").Trim().ToLowerInvariant();
+        if (!GuestImportLocalization.SupportedFormats.Contains(normalizedFormat))
+        {
+            throw new RequestValidationException(
+                new Dictionary<string, string[]>
+                {
+                    ["format"] = ["El formato debe ser csv o xlsx."]
+                });
+        }
+
+        if (!GuestImportLocalization.SupportedLanguages.Contains(normalizedLanguage))
+        {
+            throw new RequestValidationException(
+                new Dictionary<string, string[]>
+                {
+                    ["language"] = ["El idioma debe ser es o en."]
+                });
+        }
+
+        return normalizedFormat == "xlsx"
+            ? BuildXlsxTemplate(normalizedLanguage)
+            : BuildCsvTemplate(normalizedLanguage);
+    }
+
+    private static GuestImportTemplateFile BuildCsvTemplate(string language)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine(string.Join(
+            ',',
+            GuestImportLocalization.ColumnOrder.Select(
+                column => GuestImportLocalization.ColumnLabel(column, language))));
+        foreach (var row in BuildExampleRows(language))
+        {
+            builder.AppendLine(string.Join(',', row));
+        }
+
+        var fileName = language == "en" ? "guest-import-template.csv" : "plantilla-invitados.csv";
+        return new GuestImportTemplateFile(
+            new UTF8Encoding(true).GetBytes(builder.ToString()),
+            "text/csv; charset=utf-8",
+            fileName);
+    }
+
+    private static GuestImportTemplateFile BuildXlsxTemplate(string language)
+    {
+        using var workbook = new XLWorkbook();
+        var columns = GuestImportLocalization.ColumnOrder;
+
+        var data = workbook.Worksheets.Add(language == "en" ? "Guests" : "Invitados");
+        for (var index = 0; index < columns.Count; index++)
+        {
+            data.Cell(1, index + 1).Value = GuestImportLocalization.ColumnLabel(columns[index], language);
+        }
+
+        var exampleRow = 2;
+        foreach (var row in BuildExampleRows(language))
+        {
+            for (var index = 0; index < row.Length; index++)
+            {
+                data.Cell(exampleRow, index + 1).Value = row[index];
+            }
+
+            exampleRow++;
+        }
+
+        data.Row(1).Style.Font.Bold = true;
+        data.Row(1).Style.Fill.BackgroundColor = XLColor.FromHtml("#E8ECFB");
+        data.SheetView.FreezeRows(1);
+        data.Columns().AdjustToContents();
+
+        var guide = workbook.Worksheets.Add(language == "en" ? "Instructions" : "Instrucciones");
+        var guideHeaders = language == "en"
+            ? new[] { "Column", "Required", "Description", "Valid values" }
+            : new[] { "Columna", "Obligatorio", "Descripción", "Valores válidos" };
+        for (var index = 0; index < guideHeaders.Length; index++)
+        {
+            guide.Cell(1, index + 1).Value = guideHeaders[index];
+        }
+
+        var guideRow = 2;
+        foreach (var field in GuestImportLocalization.FieldGuide(language))
+        {
+            guide.Cell(guideRow, 1).Value = field.Label;
+            guide.Cell(guideRow, 2).Value = GuestImportLocalization.BooleanLabel(field.Required, language);
+            guide.Cell(guideRow, 3).Value = field.Description;
+            guide.Cell(guideRow, 4).Value = field.ValidValues;
+            guideRow++;
+        }
+
+        guide.Row(1).Style.Font.Bold = true;
+        guide.Row(1).Style.Fill.BackgroundColor = XLColor.FromHtml("#E8ECFB");
+        guide.Column(3).Width = 48;
+        guide.Column(4).Width = 48;
+        guide.Column(3).Style.Alignment.WrapText = true;
+        guide.Column(4).Style.Alignment.WrapText = true;
+        guide.Column(1).AdjustToContents();
+        guide.SheetView.FreezeRows(1);
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        var fileName = language == "en" ? "guest-import-template.xlsx" : "plantilla-invitados.xlsx";
+        return new GuestImportTemplateFile(
+            stream.ToArray(),
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            fileName);
+    }
+
+    private static IReadOnlyList<string[]> BuildExampleRows(string language)
+    {
+        var groupName = language == "en" ? "García Family" : "Familia García";
+        var groupType = GuestImportLocalization.GroupTypeLabel(InvitationGroupType.Family, language);
+        var age = GuestImportLocalization.AgeCategoryLabel(AgeCategory.Adult, language);
+        var yes = GuestImportLocalization.BooleanLabel(true, language);
+        var no = GuestImportLocalization.BooleanLabel(false, language);
+        var tags = language == "en" ? "Family|VIP" : "Familia|VIP";
+        return
+        [
+            [
+                groupName, groupType, "4", "Ana García", "8991234567", "ana@example.com",
+                "Ana", "García", age, yes, yes, tags
+            ],
+            [
+                groupName, groupType, "4", "Ana García", "8991234567", "ana@example.com",
+                "Luis", "García", age, no, no, tags
+            ]
+        ];
     }
 
     private async Task<Organizations.Authorization.TenantAccess> RequireAsync(
@@ -596,7 +728,7 @@ public sealed class GuestCsvImportService(
             var lastName = Get(source, mapping, "GuestLastName").Trim();
             if (groupName.Length == 0)
             {
-                errors.Add("Falta GroupName.");
+                errors.Add($"Falta {FieldName("GroupName")}.");
             }
 
             if (firstName.Length == 0 && lastName.Length == 0)
@@ -605,13 +737,10 @@ public sealed class GuestCsvImportService(
             }
 
             var groupTypeText = Get(source, mapping, "GroupType");
-            if (!Enum.TryParse<InvitationGroupType>(
-                    groupTypeText,
-                    true,
-                    out var groupType))
+            if (!GuestImportLocalization.TryParseGroupType(groupTypeText, out var groupType))
             {
                 groupType = InvitationGroupType.Other;
-                errors.Add("GroupType no es válido.");
+                errors.Add($"{FieldName("GroupType")} no es válido.");
             }
 
             if (!int.TryParse(
@@ -622,14 +751,14 @@ public sealed class GuestCsvImportService(
                 || capacity < 1)
             {
                 capacity = 1;
-                errors.Add("AllowedGuestCount debe ser un entero mayor a cero.");
+                errors.Add($"{FieldName("AllowedGuestCount")} debe ser un entero mayor a cero.");
             }
 
             var ageText = Get(source, mapping, "AgeCategory");
-            if (!Enum.TryParse<AgeCategory>(ageText, true, out var age))
+            if (!GuestImportLocalization.TryParseAgeCategory(ageText, out var age))
             {
                 age = AgeCategory.Adult;
-                errors.Add("AgeCategory no es válido.");
+                errors.Add($"{FieldName("AgeCategory")} no es válido.");
             }
 
             var primary = ParseBoolean(
@@ -641,7 +770,7 @@ public sealed class GuestCsvImportService(
             if (email is not null
                 && !GuestRequestValidator.IsValidEmail(email))
             {
-                errors.Add("ContactEmail no es válido.");
+                errors.Add($"{FieldName("ContactEmail")} no es válido.");
             }
 
             result.Add(new ParsedGuestImportRow(
@@ -672,7 +801,7 @@ public sealed class GuestCsvImportService(
                 foreach (var row in group)
                 {
                     ((List<string>)row.Errors).Add(
-                        "Las filas del grupo exceden AllowedGuestCount.");
+                        $"Las filas del grupo exceden {FieldName("AllowedGuestCount")}.");
                 }
             }
 
@@ -710,23 +839,36 @@ public sealed class GuestCsvImportService(
             return false;
         }
 
-        if (bool.TryParse(value, out var result))
+        if (GuestImportLocalization.TryParseBoolean(value, out var result))
         {
             return result;
         }
 
-        errors.Add($"{column} debe ser true o false.");
+        errors.Add($"{FieldName(column)} debe ser Sí o No.");
         return false;
     }
 
+    private static string FieldName(string column) =>
+        GuestImportLocalization.ColumnLabel(column, "es");
+
     private static Dictionary<string, string> BuildDefaultMapping(
-        IReadOnlyList<string> headers) =>
-        SupportedColumns.ToDictionary(
+        IReadOnlyList<string> headers)
+    {
+        var resolved = headers
+            .Select(header => (
+                Header: header,
+                Resolved: GuestImportLocalization.TryResolveColumn(header, out var column)
+                    ? column
+                    : null))
+            .Where(item => item.Resolved is not null)
+            .ToList();
+        return SupportedColumns.ToDictionary(
             column => column,
-            column => headers.FirstOrDefault(header =>
-                string.Equals(header, column, StringComparison.OrdinalIgnoreCase))
-                ?? string.Empty,
+            column => resolved.FirstOrDefault(item =>
+                    string.Equals(item.Resolved, column, StringComparison.OrdinalIgnoreCase))
+                .Header ?? string.Empty,
             StringComparer.OrdinalIgnoreCase);
+    }
 
     private static void ValidateMapping(
         IReadOnlyDictionary<string, string> mapping,
@@ -761,6 +903,50 @@ public sealed class GuestCsvImportService(
         }
 
         return row.Values.GetValueOrDefault(header) ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Lee la primera hoja de un archivo subido en Excel y la convierte a texto CSV
+    /// equivalente, para que el resto del importador (almacenamiento del lote,
+    /// remapeo posterior, análisis) siga operando exactamente igual que con un CSV.
+    /// </summary>
+    private static string ConvertXlsxToCsv(Stream stream)
+    {
+        try
+        {
+            using var workbook = new XLWorkbook(stream);
+            var worksheet = workbook.Worksheets.First();
+            var usedRange = worksheet.RangeUsed();
+            if (usedRange is null)
+            {
+                throw new RequestValidationException(
+                    new Dictionary<string, string[]>
+                    {
+                        ["file"] = ["El archivo no contiene datos."]
+                    });
+            }
+
+            var builder = new StringBuilder();
+            var firstColumn = usedRange.FirstColumn().ColumnNumber();
+            var lastColumn = usedRange.LastColumn().ColumnNumber();
+            foreach (var row in usedRange.Rows())
+            {
+                builder.AppendLine(string.Join(
+                    ',',
+                    row.Cells(firstColumn, lastColumn).Select(cell => CsvCell(cell.GetString()))));
+            }
+
+            return builder.ToString();
+        }
+        catch (Exception exception) when (
+            exception is not ApiException and not OperationCanceledException)
+        {
+            throw new RequestValidationException(
+                new Dictionary<string, string[]>
+                {
+                    ["file"] = ["No se pudo leer el archivo de Excel."]
+                });
+        }
     }
 
     private static CsvTable ParseCsv(string content)

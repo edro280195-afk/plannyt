@@ -214,10 +214,11 @@ public static class GuestEndpoints
 
         group.MapGet(
             "/imports/template",
-            () => Results.File(
-                GuestCsvImportService.GetTemplate(),
-                "text/csv; charset=utf-8",
-                "plantilla-invitados.csv"));
+            (string? format, string? language) =>
+            {
+                var file = GuestCsvImportService.GetTemplate(format, language);
+                return Results.File(file.Content, file.ContentType, file.FileName);
+            });
 
         group.MapPost(
                 "/imports/analyze",

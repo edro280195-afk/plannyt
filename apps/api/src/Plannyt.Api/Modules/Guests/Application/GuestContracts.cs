@@ -132,6 +132,11 @@ public sealed record GuestImportResultResponse(
     IReadOnlyList<GuestImportRowPreview> Errors,
     DateTimeOffset CompletedAt);
 
+public sealed record GuestImportTemplateFile(
+    byte[] Content,
+    string ContentType,
+    string FileName);
+
 internal sealed record ParsedGuestImportRow(
     int RowNumber,
     string GroupName,

@@ -5,11 +5,20 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api/api.service';
 import { getApiErrorMessage } from '../../core/errors/api-error';
 import {
+  GUEST_IMPORT_FORMAT_OPTIONS,
+  GUEST_IMPORT_LANGUAGE_OPTIONS,
+  GuestImportFieldGuideEntry,
+  guestImportFieldGuide,
+  templateFileName,
+} from '../../core/guests/guest-import-guide';
+import {
   AgeCategory,
   GuestAccessLink,
   GuestDuplicateSuggestion,
   GuestImportAnalysis,
   GuestImportResult,
+  GuestImportTemplateFormat,
+  GuestImportTemplateLanguage,
   GuestType,
   InvitationGroupType,
   PortalGuest,
@@ -318,19 +327,69 @@ import { ToastService } from '../../core/ui/toast.service';
       @if (tab() === 'import') {
         <section class="panel import-panel">
           <div>
-            <span class="eyebrow">CSV</span>
+            <span class="eyebrow">CSV / Excel</span>
             <h2>Analizar lista</h2>
             <p>El archivo se valida antes de agregar cualquier registro.</p>
+          </div>
+          <div class="import-template-picker">
+            <label>
+              <span>Formato</span>
+              <select [value]="templateFormat()" (change)="setTemplateFormat(eventValue($event))">
+                @for (option of formatOptions; track option.value) {
+                  <option [value]="option.value">{{ option.label }}</option>
+                }
+              </select>
+            </label>
+            <label>
+              <span>Idioma</span>
+              <select
+                [value]="templateLanguage()"
+                (change)="setTemplateLanguage(eventValue($event))"
+              >
+                @for (option of languageOptions; track option.value) {
+                  <option [value]="option.value">{{ option.label }}</option>
+                }
+              </select>
+            </label>
           </div>
           <div class="button-row">
             <button class="btn btn--secondary" type="button" (click)="downloadTemplate()">
               Descargar plantilla
             </button>
             <label class="file-button btn btn--primary">
-              Seleccionar CSV
-              <input type="file" accept=".csv,text/csv" (change)="analyze($event)" />
+              Seleccionar archivo
+              <input
+                type="file"
+                accept=".csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                (change)="analyze($event)"
+              />
             </label>
           </div>
+          <details class="disclosure">
+            <summary>Ver guía de llenado</summary>
+            <div class="field-guide-scroll">
+              <table class="field-guide">
+                <thead>
+                  <tr>
+                    <th>Campo</th>
+                    <th>Obligatorio</th>
+                    <th>Descripción</th>
+                    <th>Valores válidos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (field of fieldGuide(); track field.label) {
+                    <tr>
+                      <td>{{ field.label }}</td>
+                      <td>{{ field.required ? 'Sí' : 'No' }}</td>
+                      <td>{{ field.description }}</td>
+                      <td>{{ field.validValues }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </details>
           @if (analysis(); as result) {
             <div class="import-summary">
               <span
@@ -444,6 +503,10 @@ export class PortalGuestExperiencePage {
   protected readonly importResult = signal<GuestImportResult | null>(null);
   protected readonly links = signal<GuestAccessLink[]>([]);
   protected readonly duplicates = signal<GuestDuplicateSuggestion[]>([]);
+  protected readonly templateFormat = signal<GuestImportTemplateFormat>('csv');
+  protected readonly templateLanguage = signal<GuestImportTemplateLanguage>('es');
+  protected readonly formatOptions = GUEST_IMPORT_FORMAT_OPTIONS;
+  protected readonly languageOptions = GUEST_IMPORT_LANGUAGE_OPTIONS;
   protected readonly tab = signal<'list' | 'design' | 'import' | 'links'>('list');
   protected readonly editingGroupId = signal<string | null>(null);
   protected readonly editingGuestId = signal<string | null>(null);
@@ -665,13 +728,36 @@ export class PortalGuestExperiencePage {
     });
   }
 
+  protected setTemplateFormat(value: string): void {
+    this.templateFormat.set(value === 'xlsx' ? 'xlsx' : 'csv');
+  }
+
+  protected setTemplateLanguage(value: string): void {
+    this.templateLanguage.set(value === 'en' ? 'en' : 'es');
+  }
+
+  protected fieldGuide(): GuestImportFieldGuideEntry[] {
+    return guestImportFieldGuide(this.templateLanguage());
+  }
+
+  protected eventValue(event: Event): string {
+    const target = event.target;
+    return target instanceof HTMLInputElement
+      || target instanceof HTMLSelectElement
+      || target instanceof HTMLTextAreaElement
+      ? target.value
+      : '';
+  }
+
   protected downloadTemplate(): void {
-    this.api.downloadPortalGuestImportTemplate(this.eventId).subscribe({
+    const format = this.templateFormat();
+    const language = this.templateLanguage();
+    this.api.downloadPortalGuestImportTemplate(this.eventId, format, language).subscribe({
       next: (blob) => {
         const url = URL.createObjectURL(blob);
         const anchor = document.createElement('a');
         anchor.href = url;
-        anchor.download = 'plantilla-invitados.csv';
+        anchor.download = templateFileName(format, language);
         anchor.click();
         URL.revokeObjectURL(url);
       },

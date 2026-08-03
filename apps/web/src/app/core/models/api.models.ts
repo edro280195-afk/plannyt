@@ -1064,6 +1064,9 @@ export interface GuestImportRowPreview {
   errors: string[];
 }
 
+export type GuestImportTemplateFormat = 'csv' | 'xlsx';
+export type GuestImportTemplateLanguage = 'es' | 'en';
+
 export interface GuestImportAnalysis {
   importId: string;
   status: 'Analyzed' | 'Completed' | 'Failed';
