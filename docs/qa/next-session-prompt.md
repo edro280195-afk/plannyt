@@ -69,83 +69,44 @@ siguen aplicando:
 - Cada corrección de un defecto medio o superior necesita **prueba de
   regresión** (unitaria, integración, frontend o E2E según corresponda) y
   debe quedar registrada en `docs/qa/defect-register.md` con el mismo
-  formato que los defectos existentes (QA-001 a QA-025).
+  formato que los defectos existentes (QA-001 a QA-030).
 
 ## Estado al cierre de esta sesión
 
-- **Commits:** hasta `2b7d630` en `main`. **`origin/main` está en
-  `62a2183`** (el estado del tag `v0.5.2-sprint2b4`, ya publicado desde
-  antes de esta sesión) — hay 2 commits locales sin publicar: `b59ae7f`
-  (código y pruebas de QA-020 a QA-025) y `2b7d630` (defect-register.md y
-  functional-inventory.md). Pendiente además: los reportes
-  `docs/sprint-reports/sprint-2b4.md` y `docs/qa/final-regression-report.md`
-  quedaron actualizados en el árbol de trabajo — **verifica con `git
-  status` al empezar la siguiente sesión si ya se commitearon** (esta
-  sesión los deja listos para un commit de cierre, pero puede que se haga
-  en el mismo momento en que termines de leer este archivo). No se hizo
+- **Commits locales relevantes:** `b59ae7f` (QA-020 a QA-025), `2b7d630`,
+  `9ef8864`, `47fda00` (plantilla/importación de invitados), `cc80c13`
+  (QA-026) y el commit local posterior de RSVP (QA-027 a QA-030). No se hizo
   push ni se movió el tag, tal como exige el mandato.
-- **Nota sobre el estado de `origin/main` heredado:** el brief anterior
-  afirmaba que `origin/main` seguía en `e6d2049`; al empezar esta sesión ya
-  estaba en `62a2183` (el tag completo). Esta sesión no hizo push — el
-  avance debe haber ocurrido fuera de una sesión de Claude Code (el
-  usuario, probablemente). Si el patrón se repite, no asumas que
-  `origin/main` sigue donde lo dejó el brief anterior; confírmalo con `git
-  log origin/main` al empezar.
-- **Defectos:** 25 registrados (`docs/qa/defect-register.md`), 24
-  corregidos con evidencia y prueba de regresión, 1 diferido y justificado
-  (QA-004), 0 abiertos. Los 6 nuevos de esta sesión:
-  - **QA-020 (Media):** "Aún faltan requisitos" mostraba frases que
-    afirman el estado contrario ("Contrato completado", "Anticipo
-    cubierto"), contradiciendo la lista de etapas en la misma pantalla.
-    Corregido: las cuatro etiquetas en `ContractingReadinessService` ahora
-    se leen como pendientes ("Contrato por completar", "Anticipo por
-    cubrir", "Firmas pendientes", "Propuesta por aceptar").
-  - **QA-021 (Alta):** no existía botón para cancelar un contrato, aunque
-    `POST /contracts/{id}/cancel` ya estaba completo. Corregido: botón
-    "Cancelar contrato" en `ContractDetailPage`.
-  - **QA-022 (Alta):** no existía botón para revocar un enlace de firma ya
-    generado, ni forma de que la interfaz supiera si un firmante tenía una
-    solicitud activa. Corregido: nuevo campo `activeSignatureRequestId` en
-    `ContractSignerResponse` + botón "Revocar enlace".
-  - **QA-023 (Media):** la evidencia de firma nunca se mostraba, aunque
-    `GET .../evidence` ya la devolvía completa. Corregido: sección
-    "Evidencia" en `ContractDetailPage`.
-  - **QA-024 (Media):** los botones de firma seguían visibles en contratos
-    rechazados, vencidos o cancelados. Corregido: `isSignable()` replica
-    la lista de exclusión real de `Contract.EnsureSignable`.
-  - **QA-025 (Media):** no existía botón para eliminar (archivar) una
-    plantilla de contrato. Corregido: botón "Eliminar plantilla" en
-    `ContractTemplatesPage`.
+- **Defectos:** 30 registrados (`docs/qa/defect-register.md`), 29 corregidos
+  con evidencia y prueba de regresión, 1 diferido y justificado (QA-004), 0
+  abiertos. Los nuevos del bloque RSVP:
+  - **QA-027 (Alta):** el editor RSVP publicaba snapshots operativos vacíos.
+  - **QA-028 (Alta):** `GET /rsvp/menus` fallaba al contar selecciones sobre
+    `jsonb`.
+  - **QA-029 (Alta):** el envío público con hospedaje fallaba por enum
+    serializado como texto.
+  - **QA-030 (Alta):** los acompañantes sin nombre no guardaban selección de
+    menú.
 
-  **Importante para no reinvestigar:** QA-021 a QA-025 son la misma
-  familia que QA-018 — backend completo, interfaz nunca conectada. Si en
-  una sesión futura falta un botón que "debería existir" en cualquier
-  pantalla de contratación, propuestas o similar, **primero revisa si el
-  endpoint de backend ya existe** (`grep` en `*Endpoints.cs` y en el
-  `*Service.cs` correspondiente) antes de asumir que hay que construir
-  lógica nueva — es más probable que sea el mismo patrón. QA-020 no se
-  reinvestiga tampoco: ya está corregido de forma genérica (las cuatro
-  etiquetas de `missingRequirements`).
+  **Importante para no reinvestigar:** QA-021 a QA-025 y QA-027 repiten el
+  patrón de backend/capacidad existente que la interfaz no estaba conectando o
+  no estaba congelando correctamente. Antes de construir lógica nueva, revisa
+  si el endpoint ya existe y si la falla está en integración de UI.
 
-- **Pruebas:** backend 240 unitarias + 92 integración (contra PostgreSQL
-  real vía Testcontainers, +3 respecto a la sesión anterior), frontend 89
-  unitarias (cobertura 90.13% statements / 86.20% branches / 88.49%
-  functions / 91.85% lines, las cuatro sobre la compuerta de 85%), E2E con
-  mocks 133 aprobadas / 2 omitidas / 0 fallidas de 135 (+6 respecto a la
-  sesión anterior), modo estricto de consola, sin regresión.
+- **Pruebas recientes del bloque RSVP:** `rsvp-form-editor.page.spec.ts` 5/5,
+  `npm.cmd run build` correcto, `EventMenu` unitarias 6/6, integración RSVP
+  34/34. Además se recorrió navegador real contra Angular 4210 + API real +
+  PostgreSQL real.
 - **E2E contra API/PostgreSQL reales:** sin cambios respecto a la sesión
   anterior — Flujo A implementado, ejecución automatizada intermitente en
   este equipo, ver `docs/qa/known-limitations.md` punto 1 antes de
   reinvestigar.
-- **Bloque de esta sesión:** `CON-001` completo (sin defectos propios:
-  plan de pagos, activación, anticipo, readiness bloqueando confirmación y
-  confirmación real de extremo a extremo, todo verificado contra el
-  contrato ya firmado `C-20260731-169AB4`); `CON-003` completo (firma de
-  organización verificada por su bloqueo con API real más la E2E mock ya
-  existente — sin un éxito fresco con API real para ese caso puntual;
-  revocar, rechazar público, cancelar y evidencia sí con éxito fresco de
-  extremo a extremo); `CON-004` completo (eliminar/archivar plantilla).
-  Detalle exacto en la fila correspondiente de `functional-inventory.md`.
+- **Bloques ya recorridos con navegador real:** `CON-001`, `CON-003`,
+  `CON-004`, `GST-001`, `INV-002`, `RSV-001`, `RSV-003`, `RSV-004`,
+  `TRA-001`, `HOS-001` y `SEN-001`. `RSV-002` quedó como `Revisado mixto`
+  porque dashboard/portal/export sensible se probaron, pero diagnóstico,
+  reparación, excepciones y exportaciones generales pueden recorrerse después
+  si se priorizan.
 - **Documentos vivos que hay que leer antes de tocar código**, en este
   orden:
   1. `docs/qa/known-limitations.md` — qué falta y con qué prioridad (sin
@@ -154,11 +115,11 @@ siguen aplicando:
      columna "Estado final" por fila. **Esta es la lista maestra de
      trabajo pendiente.**
   3. `docs/qa/defect-register.md` — defectos ya conocidos, para no
-     duplicar hallazgos (ahora QA-001 a QA-026).
+     duplicar hallazgos (ahora QA-001 a QA-030).
   4. `docs/qa/permission-audit.md` — matriz de permisos y sus huecos.
   5. `docs/qa/manual-smoke-checklist.md` — qué revisar en cada tipo de
      control cuando se prueba algo manualmente.
-  6. `docs/sprint-reports/sprint-2b4.md` (secciones 11, 12 y 13) y
+  6. `docs/sprint-reports/sprint-2b4.md` (secciones 11 a 14) y
      `docs/qa/final-regression-report.md` — resumen de las sesiones de
      continuación con más detalle que este
      archivo.
@@ -167,25 +128,21 @@ siguen aplicando:
 
 `functional-inventory.md` sigue teniendo estas filas en `Parcial` o
 `Revisado mixto` con partes sin cubrir, en el orden razonable de la tabla.
-Contratación (`CON-001` a `CON-004`) e Invitados/Invitación digital
-(`GST-001`, `INV-002`) ya quedaron recorridos con navegador real. El
-siguiente bloque lógico es RSVP:
+Contratación (`CON-001` a `CON-004`), Invitados/Invitación digital
+(`GST-001`, `INV-002`) y el bloque RSVP principal ya quedaron recorridos con
+navegador real. El siguiente bloque lógico es:
 
-1. **`RSV-002`, `RSV-003`, `RSV-004`** (RSVP profesional: dashboard,
-   configuración, editor de formulario) y luego **`RSV-001`** (RSVP
-   público) — probar el wizard público completo en viewport móvil,
-   acompañante, menú, transporte, tal como pide el checklist de humo
-   sección 7.
-2. **`ORG-001`, `ORG-002`** (Equipo, Organización): invitar, copiar enlace,
+1. **`ORG-001`, `ORG-002`** (Equipo, Organización): invitar, copiar enlace,
    revocar invitación, revocar miembro, editar organización.
-3. **`NAV-003`, `POR-002`, `POR-004`, `POR-007`** (Portal del cliente).
+2. **`NAV-003`, `POR-002`, `POR-004`, `POR-007`** (Portal del cliente).
    Nota: el evento "Boda de María José y Roberto" ahora tiene un contrato
    en estado Cancelado (ver "Datos de prueba" abajo) — sirve para probar
    cómo el portal proyecta un contrato cancelado, pero no sirve para
    probar "firmar como cliente" desde el portal (`POR-007`); usa el
    contrato completado de "XV de Fernanda" para eso, o genera uno nuevo.
-4. Transversales: `NAV-004`, `DOC-001`, `CSV-001`, `AUD-001`, `REC-001`,
-   `TRA-001`, `HOS-001`, `SEN-001`.
+3. Transversales: `NAV-004`, `DOC-001`, `CSV-001`, `AUD-001`, `REC-001` y
+   los pendientes finos de `RSV-002` (diagnóstico, reparar, excepciones,
+   exportaciones generales) si el usuario quiere cerrar esa fila al 100%.
 
 No hace falta seguir este orden exacto si algo más lógico surge durante el
 recorrido (por ejemplo, si conviene resolver Invitados junto con RSVP en
@@ -376,7 +333,7 @@ documentado en el README principal si prefieres datos ya poblados.
   sesión salvo que el usuario lo pida explícitamente.
 - No toques `.tools/`, `.env`, ni ningún archivo con credenciales.
 - No hagas `git push`, no crees ni muevas tags, sin pedirlo explícitamente
-  en esa sesión — recuerda que ya hay 2 commits locales sin publicar
-  esperando esa decisión (más los reportes, ver "Estado al cierre").
+  en esa sesión — recuerda que hay commits locales sin publicar esperando esa
+  decisión; confirma con `git log origin/main..HEAD` antes de tocar remoto.
 - No marques una fila de `functional-inventory.md` como verificada sin
   haberla probado tú mismo en el navegador real durante esa sesión.

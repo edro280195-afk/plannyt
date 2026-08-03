@@ -1,10 +1,13 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { ApiService } from '../../core/api/api.service';
 import { OrganizationContextService } from '../../core/auth/organization-context.service';
 import type {
+  EventAccommodationOptionResponse,
+  EventMenuResponse,
+  EventTransportOptionResponse,
   RsvpFormResponse,
   RsvpFormVersionResponse,
   RsvpQuestion,
@@ -53,8 +56,69 @@ describe('RsvpFormEditorPage', () => {
     approvedAt: null,
     publishedAt: null,
   };
+  const menus: EventMenuResponse[] = [
+    {
+      id: 'menu-1',
+      name: 'Cena adultos',
+      description: 'Menú principal',
+      menuCategory: 'AdultMeal',
+      isActive: true,
+      selectionRequired: true,
+      minimumSelections: 1,
+      maximumSelections: 1,
+      sortOrder: 0,
+      options: [
+        {
+          id: 'option-1',
+          name: 'Pollo',
+          description: null,
+          dietaryTags: '',
+          isActive: true,
+          capacity: null,
+          selectionCount: 0,
+          sortOrder: 0,
+        },
+      ],
+      updatedAt: '2026-07-29T12:00:00Z',
+    },
+  ];
+  const transport: EventTransportOptionResponse[] = [
+    {
+      id: 'transport-1',
+      name: 'Camión recepción',
+      description: null,
+      direction: 'RoundTrip',
+      pickupPoint: 'Hotel sede',
+      departureAt: null,
+      returnAt: null,
+      capacity: 40,
+      allowWaitlist: true,
+      isActive: true,
+      sortOrder: 0,
+      confirmedCount: 0,
+      waitlistCount: 0,
+    },
+  ];
+  const accommodation: EventAccommodationOptionResponse[] = [
+    {
+      id: 'hotel-1',
+      name: 'Hotel sede',
+      description: null,
+      address: null,
+      bookingUrl: null,
+      bookingCode: null,
+      bookingDeadline: null,
+      contactInformation: null,
+      isActive: true,
+      sortOrder: 0,
+      interestedCount: 0,
+    },
+  ];
   const api = {
     getRsvpQuestionCatalog: vi.fn(() => of(catalog)),
+    getEventMenus: vi.fn(() => of(menus)),
+    getTransportOptions: vi.fn(() => of(transport)),
+    getAccommodationOptions: vi.fn(() => of(accommodation)),
     getRsvpForm: vi.fn(() => of(publishedForm)),
     getRsvpFormVersion: vi.fn(() => of(version)),
     getRsvpDraftFormVersion: vi.fn(() => of(savedVersion)),
@@ -135,6 +199,36 @@ describe('RsvpFormEditorPage', () => {
     expect(content).toContain('La respuesta se oculta de DTO');
   });
 
+  it('muestra los catálogos operativos que se congelarán en la versión', () => {
+    const content = fixture.nativeElement.textContent as string;
+
+    expect(api.getEventMenus).toHaveBeenCalledWith('org-1', 'event-1');
+    expect(api.getTransportOptions).toHaveBeenCalledWith(
+      'org-1',
+      'event-1',
+    );
+    expect(api.getAccommodationOptions).toHaveBeenCalledWith(
+      'org-1',
+      'event-1',
+    );
+    expect(content).toContain('Menú, transporte y hospedaje');
+    expect(content).toContain('1 opciones activas');
+    expect(content).toContain('1 activos');
+  });
+
+  it('no bloquea el editor si un catálogo operativo falla', () => {
+    api.getEventMenus.mockReturnValueOnce(
+      throwError(() => new Error('menús no disponibles')),
+    );
+
+    const secondFixture = TestBed.createComponent(RsvpFormEditorPage);
+    secondFixture.detectChanges();
+
+    const content = secondFixture.nativeElement.textContent as string;
+    expect(content).toContain('Preguntas');
+    expect(content).toContain('0 opciones activas');
+  });
+
   it('crea un nuevo borrador sin retirar la versión publicada y guarda el snapshot', () => {
     clickButton(fixture, 'Crear nueva versión');
     fixture.detectChanges();
@@ -150,6 +244,9 @@ describe('RsvpFormEditorPage', () => {
     const snapshot = call[2];
     expect(typeof snapshot).toBe('string');
     expect(JSON.parse(snapshot)).toHaveLength(8);
+    expect(JSON.parse(call[3])).toEqual(menus);
+    expect(JSON.parse(call[4])).toEqual(transport);
+    expect(JSON.parse(call[5])).toEqual(accommodation);
   });
 });
 

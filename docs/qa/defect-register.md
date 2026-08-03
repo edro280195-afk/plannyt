@@ -1,14 +1,14 @@
 # Registro de defectos
 
-Actualizado: 2026-07-31
+Actualizado: 2026-08-03
 
 ## Resumen actual
 
 | Severidad | Abiertos | Corregidos | Diferidos |
 | --------- | -------: | ---------: | --------: |
 | Crítica   |        0 |          3 |         0 |
-| Alta      |        0 |          6 |         0 |
-| Media     |        0 |         13 |         1 |
+| Alta      |        0 |         10 |         0 |
+| Media     |        0 |         14 |         1 |
 | Baja      |        0 |          2 |         0 |
 
 ## QA-001 — El seed demo no inicia con la cuenta cliente preexistente
@@ -671,7 +671,7 @@ logout`, prueba de revocación backend y recorrido manual en dos pestañas.
   caso "mantiene el evento preliminar..." ahora exige la nueva redacción).
   Fixture E2E (`plannyt.fixture.ts`) actualizado para no fijar la redacción
   vieja como "correcta". Verificado en navegador real antes/después del fix.
-- **Commit:** Pendiente.
+- **Commit:** `b59ae7f`.
 - **Estado:** Corregido.
 
 ## QA-021 — No existía forma de cancelar un contrato desde la interfaz
@@ -719,7 +719,7 @@ logout`, prueba de revocación backend y recorrido manual en dos pestañas.
   cubre el nuevo método del cliente HTTP; `contracting-flow.spec.ts` agrega
   "permite cancelar un contrato con motivo desde el detalle" (E2E mock).
   Verificado en navegador real.
-- **Commit:** Pendiente.
+- **Commit:** `b59ae7f`.
 - **Estado:** Corregido.
 
 ## QA-022 — No existía forma de revocar un enlace de firma ya generado
@@ -778,7 +778,7 @@ logout`, prueba de revocación backend y recorrido manual en dos pestañas.
   cubre el nuevo método; `contracting-flow.spec.ts` agrega "permite revocar
   un enlace de firma antes de que se use" (E2E mock). Verificado en
   navegador real.
-- **Commit:** Pendiente.
+- **Commit:** `b59ae7f`.
 - **Estado:** Corregido.
 
 ## QA-023 — La evidencia de firma nunca se mostraba en la interfaz
@@ -819,7 +819,7 @@ logout`, prueba de revocación backend y recorrido manual en dos pestañas.
   dos entradas de evidencia (cliente y organización) con el hash correcto
   una vez que ambas firmas se completan. Verificado en navegador real
   contra datos reales de una sesión anterior.
-- **Commit:** Pendiente.
+- **Commit:** `b59ae7f`.
 - **Estado:** Corregido.
 
 ## QA-024 — Los botones de firma seguían visibles en contratos que ya no admiten firmas (rechazado, cancelado, vencido)
@@ -863,7 +863,7 @@ logout`, prueba de revocación backend y recorrido manual en dos pestañas.
   cancelar un contrato con motivo desde el detalle" (verifica que "Firmar
   aquí" desaparece tras cancelar). Verificado en navegador real
   antes/después para el caso Rechazado y para el caso Cancelado.
-- **Commit:** Pendiente.
+- **Commit:** `b59ae7f`.
 - **Estado:** Corregido.
 
 ## QA-025 — No existía forma de eliminar (archivar) una plantilla de contrato desde la interfaz
@@ -903,7 +903,7 @@ logout`, prueba de revocación backend y recorrido manual en dos pestañas.
   en la biblioteca, la archiva (204) y confirma que desaparece de
   `GetAllAsync`. `api.service.spec.ts` cubre el nuevo método. Verificado en
   navegador real.
-- **Commit:** Pendiente.
+- **Commit:** `b59ae7f`.
 - **Estado:** Corregido.
 
 ## QA-026 — El portal mostraba acciones de invitados/importación a roles que el backend rechaza
@@ -948,5 +948,141 @@ logout`, prueba de revocación backend y recorrido manual en dos pestañas.
   importación ni edición de invitados pero sí aprobación de diseño, y que
   `ClientGuestManager` ve gestión/importación sin aprobación de diseño. Build
   Angular y prueba unitaria específica ejecutados correctamente.
-- **Commit:** Pendiente.
+- **Commit:** `cc80c13`.
+- **Estado:** Corregido.
+
+## QA-027 — El editor RSVP publicaba snapshots operativos vacíos
+
+- **Severidad:** Alta.
+- **Módulo:** Frontend — editor de formulario RSVP.
+- **Ruta:** `/app/events/:id/rsvp/form`; `/rsvp/:token`.
+- **Rol:** Profesional con `rsvp-forms.*`.
+- **Precondición:** Evento con configuración RSVP abierta, formulario publicado
+  y catálogos activos de menú, transporte y hospedaje.
+- **Pasos:** Crear o editar una versión del formulario RSVP desde la interfaz,
+  publicarla y abrir el enlace público.
+- **Resultado anterior:** `RsvpFormEditorPage.saveVersion()` enviaba
+  `menuSnapshotJson`, `transportSnapshotJson` y `accommodationSnapshotJson`
+  como `'[]'` siempre. El backend aceptaba la versión y el público usaba un
+  formulario publicado, pero el wizard no podía mostrar opciones reales de
+  menú, transporte ni hospedaje aunque los endpoints y catálogos existieran.
+- **Resultado esperado:** La versión publicada debe congelar los catálogos
+  activos reales para que el enlace público tenga una definición estable.
+- **Evidencia:** Reproducido contra el evento real
+  `70269a5e-215e-4582-b9d8-ac5e710b5ce2`. Tras crear catálogos reales por
+  API, el editor seguía publicando snapshots vacíos. Después de la corrección,
+  el editor mostró "Snapshot operativo" con 1 menú, 1 opción activa, 1
+  transporte y 1 hospedaje, y la versión 2 publicada expuso esos snapshots en
+  `/api/guest/rsvp/{token}/state`.
+- **Causa:** El editor sólo cargaba el catálogo de preguntas y no consultaba
+  los catálogos operativos antes de guardar la versión.
+- **Solución aplicada:** `RsvpFormEditorPage` carga menús, transporte y
+  hospedaje con `forkJoin`, muestra un resumen operativo y serializa esos
+  catálogos al crear la versión. Si un catálogo auxiliar falla, el editor no
+  bloquea la edición de preguntas y usa lista vacía sólo para ese catálogo.
+- **Prueba de regresión:** `rsvp-form-editor.page.spec.ts` ahora verifica que
+  se consulten los tres catálogos, que se muestren los conteos operativos, que
+  un fallo auxiliar no bloquee el editor y que `createRsvpFormVersion` reciba
+  los snapshots reales. Verificado en navegador real y con build Angular.
+- **Commit:** Commit local de esta sesión.
+- **Estado:** Corregido.
+
+## QA-028 — La consulta de menús RSVP fallaba al contar selecciones sobre jsonb
+
+- **Severidad:** Alta.
+- **Módulo:** Backend — RSVP / menús.
+- **Ruta:** `GET /organizations/{organizationId}/events/{eventId}/rsvp/menus`.
+- **Rol:** Profesional con acceso al evento.
+- **Precondición:** Evento con menús RSVP y respuestas/submissions existentes.
+- **Pasos:** Abrir el editor de formulario RSVP o llamar al endpoint de menús.
+- **Resultado anterior:** El endpoint podía responder 500 porque intentaba
+  traducir `MenuSelectionsSnapshot.Contains(opt.Id.ToString())` sobre una
+  columna `jsonb`. Esto impedía al editor consumir los catálogos reales y
+  ocultaba el problema de snapshots vacíos.
+- **Resultado esperado:** El endpoint debe devolver los menús y el conteo de
+  selecciones sin romper por el tipo de columna.
+- **Evidencia:** Reproducido en el evento real
+  `70269a5e-215e-4582-b9d8-ac5e710b5ce2`: la carga de menús falló con 500
+  antes del ajuste. Después, el editor cargó 1 menú y 1 opción activa.
+- **Causa:** Uso de una operación de cadena que EF/Npgsql no podía traducir de
+  forma válida contra el snapshot `jsonb` en esa consulta.
+- **Solución aplicada:** `RsvpService.GetMenusAsync` primero carga los ids de
+  submissions del evento y sus snapshots de menú, luego calcula el conteo de
+  selección en memoria con comparación ordinal insensible a mayúsculas.
+- **Prueba de regresión:** `dotnet test
+  apps\api\tests\Plannyt.Api.UnitTests\Plannyt.Api.UnitTests.csproj --filter
+  "FullyQualifiedName~EventMenu"` pasó 6/6. También quedó cubierto por la
+  integración RSVP completa.
+- **Commit:** Commit local de esta sesión.
+- **Estado:** Corregido.
+
+## QA-029 — Enviar RSVP con hospedaje fallaba por enum serializado como texto
+
+- **Severidad:** Alta.
+- **Módulo:** Backend — RSVP público / hospedaje.
+- **Ruta:** `POST /api/guest/rsvp/{token}/submit`.
+- **Rol:** Invitado público con token RSVP válido.
+- **Precondición:** Formulario RSVP publicado con snapshot de hospedaje y un
+  invitado que selecciona estado de hospedaje desde el wizard público.
+- **Pasos:** Completar el RSVP público con menú, transporte, hospedaje,
+  consentimiento y preguntas, y enviarlo.
+- **Resultado anterior:** El envío fallaba con 400 "El valor no tiene el
+  formato esperado." cuando el payload embebido de hospedaje incluía el estado
+  como string, que es el formato usado por el frontend y los contratos externos
+  del API.
+- **Resultado esperado:** El coordinador debe aceptar enums enviados como
+  texto, igual que el resto de DTOs públicos.
+- **Evidencia:** Reproducido en navegador real con el token
+  `8vLCkcRsgHMIKwT02Y06dviTHVLGr2naHKU1M5vUa-JToEA71-GGJa6bj56ZqBsg`.
+  Después de la corrección, el envío público terminó correctamente y generó
+  códigos de confirmación, con menú, transporte, hospedaje y datos sensibles
+  proyectados en el dashboard.
+- **Causa:** Las opciones locales de `JsonSerializer` en
+  `RsvpSubmissionCoordinator` y en la reconciliación de proyecciones no
+  incluían `JsonStringEnumConverter`.
+- **Solución aplicada:** Se agregó `JsonStringEnumConverter` a las opciones de
+  serialización de `RsvpSubmissionCoordinator` y
+  `RsvpProjectionReconciliationService`.
+- **Prueba de regresión:** `dotnet test
+  apps\api\tests\Plannyt.Api.IntegrationTests\Plannyt.Api.IntegrationTests.csproj
+  --filter "FullyQualifiedName~Rsvp" --no-restore` pasó 34/34. Verificado en
+  navegador real con API/PostgreSQL reales.
+- **Commit:** Commit local de esta sesión.
+- **Estado:** Corregido.
+
+## QA-030 — Los acompañantes sin nombre no guardaban selección de menú
+
+- **Severidad:** Alta.
+- **Módulo:** Frontend — RSVP público.
+- **Ruta:** `/rsvp/:token`.
+- **Rol:** Invitado público.
+- **Precondición:** Grupo RSVP que permite acompañantes sin nombre y formulario
+  publicado con menú obligatorio.
+- **Pasos:** Abrir el RSVP público, agregar un acompañante, seleccionar menú
+  para la invitada nombrada y para el acompañante, y enviar o editar la
+  respuesta.
+- **Resultado anterior:** Los acompañantes no entraban en
+  `attendingWizardGuests()` para la selección de menú. Tras una primera
+  corrección parcial podían verse, pero la plantilla y `canProceed()` usaban
+  llaves inconsistentes (`eventGuestId ?? displayName`) mientras el payload del
+  acompañante se enviaba siempre con `menuSelectionsJson: {}`.
+- **Resultado esperado:** Cada acompañante debe comportarse como un invitado
+  asistente dentro del wizard y guardar su selección de menú con una llave
+  estable.
+- **Evidencia:** Reproducido con el grupo real "RSVP Acompañantes QA". Después
+  de la corrección, el estado público del token muestra dos invitados en la
+  respuesta actual, ambos con `menuSelectionsJson` apuntando al menú
+  `c4f14d8a-e08c-478d-a354-d2b5075e4a7f` y la opción
+  `df353a11-d55c-49e1-845f-34036b8d6b6e`.
+- **Causa:** El wizard diferenciaba invitados nombrados y acompañantes para
+  algunas pantallas, pero no normalizaba a los acompañantes como
+  `WizardGuest` ni usaba siempre `responseGuestId` como llave.
+- **Solución aplicada:** `attendingWizardGuests()` ahora incluye acompañantes,
+  el cálculo de cupos cuenta sólo invitados nombrados asistentes, la selección,
+  resumen y validación de menú usan `responseGuestId`, y el payload de cada
+  acompañante serializa su menú real.
+- **Prueba de regresión:** Verificado en navegador real con viewport móvil y
+  estado API del token público. El build Angular completo valida compilación
+  del componente.
+- **Commit:** Commit local de esta sesión.
 - **Estado:** Corregido.

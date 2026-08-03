@@ -262,8 +262,8 @@ function normalizeQuestionSnapshot(
                             <label class="menu-option" [class.menu-option--disabled]="option.selectionCount >= (option.capacity ?? 999999)">
                               <input
                                 type="checkbox"
-                                [checked]="isMenuOptionSelected(wGuest.eventGuestId ?? wGuest.displayName, menu.id, option.id)"
-                                (change)="toggleMenuOption(wGuest.eventGuestId ?? wGuest.displayName, menu.id, option.id)"
+                                [checked]="isMenuOptionSelected(wGuest.responseGuestId, menu.id, option.id)"
+                                (change)="toggleMenuOption(wGuest.responseGuestId, menu.id, option.id)"
                               />
                               <span>{{ option.name }}</span>
                               @if (option.dietaryTags) {
@@ -635,7 +635,7 @@ function normalizeQuestionSnapshot(
                       <p>{{ wGuest.displayName }}:</p>
                       <ul>
                         @for (menu of parsedMenus(); track menu.id) {
-                          @for (optId of guestMenuSelections()[wGuest.eventGuestId ?? wGuest.displayName]?.[menu.id] ?? []; track optId) {
+                          @for (optId of guestMenuSelections()[wGuest.responseGuestId]?.[menu.id] ?? []; track optId) {
                             <li>{{ menuNameAndOption(menu, optId) }}</li>
                           }
                         }
@@ -1277,18 +1277,32 @@ export class PublicRsvpPage {
   );
 
   protected readonly attendingWizardGuests = computed<WizardGuest[]>(() => {
-    return this.wizardGuests().filter(
+    const namedGuests = this.wizardGuests().filter(
       (g) =>
         (this.attendanceStatus()[g.responseGuestId] ?? 'Pending')
         === 'Attending',
     );
+    const companions = this.companions().map((companion) => ({
+      responseGuestId: companion.responseGuestId,
+      eventGuestId: null,
+      displayName: companion.displayName.trim() || 'Acompañante',
+      ageCategory: 'Adult',
+      guestType: 'Other',
+      isPrimaryContact: false,
+      isUnnamedCompanion: true,
+      isNamed: false,
+    }));
+    return [...namedGuests, ...companions];
   });
 
   protected readonly availableCompanionSlots = computed<number>(() => {
     const s = this.state();
     if (!s || !s.allowUnnamedCompanions) return 0;
-    const namedCount = this.wizardGuests().length;
-    const attendingCount = this.attendingWizardGuests().length;
+    const attendingCount = this.wizardGuests().filter(
+      (g) =>
+        (this.attendanceStatus()[g.responseGuestId] ?? 'Pending')
+        === 'Attending',
+    ).length;
     const slots = Math.min(s.maxUnnamedCompanions, s.allowedGuestCount - attendingCount);
     return Math.max(0, slots - this.companions().length);
   });
@@ -1671,7 +1685,7 @@ export class PublicRsvpPage {
       for (const menu of menus) {
         if (!menu.selectionRequired) continue;
         for (const wGuest of this.attendingWizardGuests()) {
-          const key = wGuest.eventGuestId ?? wGuest.displayName;
+          const key = wGuest.responseGuestId;
           const selected = this.guestMenuSelections()[key]?.[menu.id] ?? [];
           if (selected.length < menu.minimumSelections) return false;
         }
@@ -1817,6 +1831,9 @@ export class PublicRsvpPage {
     }
 
     for (const companion of this.companions()) {
+      const menuJson = JSON.stringify(
+        this.guestMenuSelections()[companion.responseGuestId] ?? {},
+      );
       guests.push({
         responseGuestId: companion.responseGuestId,
         eventGuestId: null,
@@ -1824,7 +1841,7 @@ export class PublicRsvpPage {
           companion.displayName.trim() || 'Acompañante',
         ageCategory: 'Adult',
         attendanceStatus: 'Attending',
-        menuSelectionsJson: JSON.stringify({}),
+        menuSelectionsJson: menuJson,
         transportSelectionJson: this.buildTransportJson(),
         accommodationSelectionJson: this.buildAccommodationJson(),
         dietaryJson: JSON.stringify(this.dietaryForm.value),

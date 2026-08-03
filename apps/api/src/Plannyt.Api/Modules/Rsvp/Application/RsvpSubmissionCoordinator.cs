@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Plannyt.Api.BuildingBlocks.Errors;
@@ -23,7 +24,8 @@ public sealed class RsvpSubmissionCoordinator(
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
+        Converters = { new JsonStringEnumConverter() }
     };
 
     public async Task<Guid> SubmitPublicAsync(

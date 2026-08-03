@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Plannyt.Api.Infrastructure.Persistence;
 using Plannyt.Api.Modules.Audit.Application;
@@ -16,7 +17,8 @@ public sealed class RsvpProjectionReconciliationService(
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
+        Converters = { new JsonStringEnumConverter() }
     };
 
     public Task<RsvpProjectionReconciliationResponse> DiagnoseAsync(

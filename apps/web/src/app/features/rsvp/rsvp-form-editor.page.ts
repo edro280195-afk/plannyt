@@ -9,9 +9,13 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { catchError, forkJoin, of } from 'rxjs';
 import { ApiService } from '../../core/api/api.service';
 import { getApiErrorMessage } from '../../core/errors/api-error';
 import type {
+  EventAccommodationOptionResponse,
+  EventMenuResponse,
+  EventTransportOptionResponse,
   RsvpFormResponse,
   RsvpFormVersionResponse,
   GuestAttendanceStatus,
@@ -143,6 +147,34 @@ import {
             </ul>
           </section>
         }
+
+        <section class="snapshot-panel panel" aria-label="Catálogos incluidos en el RSVP">
+          <div>
+            <span class="eyebrow">Snapshot operativo</span>
+            <h2>Menú, transporte y hospedaje</h2>
+            <p>
+              La versión guardada congela los catálogos activos actuales para
+              que el enlace público use una definición estable.
+            </p>
+          </div>
+          <div class="snapshot-grid">
+            <article>
+              <strong>{{ eventMenus().length }}</strong>
+              <span>menús</span>
+              <small>{{ menuOptionCount() }} opciones activas</small>
+            </article>
+            <article>
+              <strong>{{ transportOptions().length }}</strong>
+              <span>transportes</span>
+              <small>{{ activeTransportCount() }} activos</small>
+            </article>
+            <article>
+              <strong>{{ accommodationOptions().length }}</strong>
+              <span>hospedajes</span>
+              <small>{{ activeAccommodationCount() }} activos</small>
+            </article>
+          </div>
+        </section>
 
         <div class="editor-layout">
           <section class="question-column">
@@ -917,6 +949,41 @@ import {
     .section-heading { margin: 4px 0 14px; }
     .section-heading h2 { margin: 0; }
     .question-card { margin-bottom: 16px; padding: 18px; }
+    .snapshot-panel {
+      align-items: start;
+      display: grid;
+      gap: 16px;
+      grid-template-columns: minmax(0, 1fr) minmax(300px, 520px);
+      margin-bottom: 20px;
+    }
+    .snapshot-panel h2 { margin: 2px 0 8px; }
+    .snapshot-panel p {
+      color: #6b6f73;
+      margin: 0;
+    }
+    .snapshot-grid {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .snapshot-grid article {
+      background: #f8f6f2;
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .snapshot-grid strong {
+      display: block;
+      font-size: 24px;
+    }
+    .snapshot-grid span,
+    .snapshot-grid small {
+      display: block;
+    }
+    .snapshot-grid small {
+      color: #6b6f73;
+      font-size: 12px;
+      margin-top: 3px;
+    }
     .question-card__header {
       border-bottom: 1px solid #eee8de;
       margin-bottom: 16px;
@@ -1052,6 +1119,8 @@ import {
       .workflow { flex-direction: column; }
       .form-grid,
       .rules-grid,
+      .snapshot-panel,
+      .snapshot-grid,
       .visibility-row,
       .option-row,
       .child-condition { grid-template-columns: 1fr; }
@@ -1074,6 +1143,11 @@ export class RsvpFormEditorPage {
   protected readonly form = signal<RsvpFormResponse | null>(null);
   protected readonly versionId = signal<string | null>(null);
   protected readonly questions = signal<RsvpQuestion[]>([]);
+  protected readonly eventMenus = signal<EventMenuResponse[]>([]);
+  protected readonly transportOptions =
+    signal<EventTransportOptionResponse[]>([]);
+  protected readonly accommodationOptions =
+    signal<EventAccommodationOptionResponse[]>([]);
   protected readonly simulationAttendance =
     signal<GuestAttendanceStatus>('Attending');
   protected readonly simulationAge = signal('Adult');
@@ -1096,6 +1170,14 @@ export class RsvpFormEditorPage {
   protected readonly simpleConditionTypes = computed(() =>
     (this.catalog()?.visibilityConditionTypes ?? [])
       .filter((type) => type !== 'All' && type !== 'Any'));
+  protected readonly menuOptionCount = computed(() =>
+    this.eventMenus()
+      .reduce((total, menu) =>
+        total + menu.options.filter((option) => option.isActive).length, 0));
+  protected readonly activeTransportCount = computed(() =>
+    this.transportOptions().filter((option) => option.isActive).length);
+  protected readonly activeAccommodationCount = computed(() =>
+    this.accommodationOptions().filter((option) => option.isActive).length);
   protected readonly simulationVisibleIds = computed(() => {
     const guestId = 'simulation-guest';
     return new Set(
@@ -1170,9 +1252,9 @@ export class RsvpFormEditorPage {
         this.organization.requireOrganizationId(),
         this.eventId(),
         JSON.stringify(this.orderedQuestions()),
-        '[]',
-        '[]',
-        '[]',
+        JSON.stringify(this.eventMenus()),
+        JSON.stringify(this.transportOptions()),
+        JSON.stringify(this.accommodationOptions()),
       ), (version) => {
       this.versionId.set(version.id);
       this.toast.success('Versión guardada y validada por la API.');
@@ -1661,14 +1743,31 @@ export class RsvpFormEditorPage {
   private load(): void {
     const organizationId =
       this.organization.requireOrganizationId();
-    this.api.getRsvpQuestionCatalog(
-      organizationId,
-      this.eventId(),
-    )
+    forkJoin({
+      catalog: this.api.getRsvpQuestionCatalog(
+        organizationId,
+        this.eventId(),
+      ),
+      menus: this.api.getEventMenus(
+        organizationId,
+        this.eventId(),
+      ).pipe(catchError(() => of([]))),
+      transport: this.api.getTransportOptions(
+        organizationId,
+        this.eventId(),
+      ).pipe(catchError(() => of([]))),
+      accommodation: this.api.getAccommodationOptions(
+        organizationId,
+        this.eventId(),
+      ).pipe(catchError(() => of([]))),
+    })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (catalog) => {
+        next: ({ catalog, menus, transport, accommodation }) => {
           this.catalog.set(catalog);
+          this.eventMenus.set(menus);
+          this.transportOptions.set(transport);
+          this.accommodationOptions.set(accommodation);
           this.loadForm();
         },
         error: (error) => {

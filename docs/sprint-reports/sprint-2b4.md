@@ -1,6 +1,6 @@
 # Reporte del Sprint 2B.4 — Auditoría funcional integral, estabilización y regresión
 
-Actualizado: 2026-07-31 (incluye la continuación post-tag; ver secciones 11 y 12)
+Actualizado: 2026-08-03 (incluye continuaciones post-tag hasta RSVP; ver secciones 11 a 14)
 
 ## 1. Resumen ejecutivo
 
@@ -34,6 +34,17 @@ abiertos.
 `CON-001`, `CON-003` y `CON-004` con el mismo método de recorrido real.
 Total acumulado: **25 defectos identificados, 24 corregidos con evidencia y
 prueba de regresión, 1 diferido, 0 abiertos.**
+
+**Tercera sesión de continuación (Invitados e invitación digital, ver sección
+13):** 1 defecto adicional encontrado y corregido (QA-026) al recorrer
+`GST-001` e `INV-002` contra API/PostgreSQL reales.
+
+**Cuarta sesión de continuación (RSVP, ver sección 14):** 4 defectos
+adicionales encontrados y corregidos (QA-027 a QA-030) al recorrer
+configuración, editor, wizard público con acompañante, menú, transporte,
+hospedaje, datos sensibles, dashboard profesional y portal. Total acumulado:
+**30 defectos identificados, 29 corregidos con evidencia y prueba de
+regresión, 1 diferido, 0 abiertos.**
 
 No se avanzó a Sprint 2C ni a ninguno de sus módulos en ningún momento de
 este sprint ni de su continuación.
@@ -377,6 +388,80 @@ Comandos ejecutados:
 
 ### Estado de Git de este bloque
 
-Cambios pendientes sin commit al cierre de esta sección: corrección
-frontend de `QA-026`, prueba de regresión y documentación de avance. No se
-publicó ni etiquetó nada.
+Bloque cerrado en dos commits locales sobre el cierre anterior:
+`47fda00` (plantilla/importación de invitados) y `cc80c13` (permisos del
+portal de invitados). No se publicó ni etiquetó nada.
+
+## 14. Cuarta sesión de continuación: RSVP público, profesional y portal (RSV-001 a RSV-004)
+
+Siguiente bloque recorrido con navegador real contra Angular `4210`, API real
+y PostgreSQL real: configuración RSVP, editor de formulario, wizard público
+con acompañante, menú, transporte, hospedaje, datos sensibles, dashboard
+profesional y vista de portal.
+
+### Evidencia del recorrido real
+
+- Evento reutilizado:
+  `70269a5e-215e-4582-b9d8-ac5e710b5ce2` ("Boda QA Invitados
+  1785774298535"), ya confirmado desde el bloque de invitados/invitación.
+- En `/app/events/:id/rsvp/settings`: configuración guardada, publicada y
+  abierta desde UI real, con textos de consentimiento y mensajes de estado.
+- En `/app/events/:id/rsvp/form`: formulario creado con 5 preguntas, enviado a
+  revisión, aprobado y publicado. Después de corregir los snapshots, la versión
+  publicada mostró 1 menú, 1 opción activa, 1 transporte y 1 hospedaje en el
+  panel "Snapshot operativo".
+- Catálogos operativos creados contra API real para completar el recorrido:
+  menú `Cena QA RSVP num`, opción `Pollo QA`, transporte `Camion QA RSVP num`
+  y hospedaje `Hotel QA RSVP`.
+- Grupo público "RSVP Acompañantes QA" con token
+  `8vLCkcRsgHMIKwT02Y06dviTHVLGr2naHKU1M5vUa-JToEA71-GGJa6bj56ZqBsg`.
+  El wizard móvil permitió agregar acompañante, seleccionar menú, transporte,
+  hospedaje, datos dietarios, consentimiento y preguntas.
+- El estado público actual confirmó 2 invitados en la respuesta: "Lucía
+  Acompañantes" y "Acompañante QA"; ambos quedaron con el mismo
+  `menuSelectionsJson` persistido para el menú y opción reales. La respuesta
+  quedó en revisión 3.
+- En `/app/events/:id/rsvp`: dashboard profesional mostró 2 confirmados en el
+  grupo "RSVP Acompañantes QA", con flags Menú, Transporte, Hospedaje y
+  Sensible. La exportación `rsvp-sensitive-70269a5e-215e-4582-b9d8-ac5e710b5ce2.csv`
+  descargó alergias, restricciones y la pregunta sensible.
+- En `/portal/events/:id/rsvp` como `ClientGuestManager`: el portal mostró el
+  mismo grupo confirmado con flags de menú/transporte/hospedaje y no expuso el
+  panel ni la exportación de datos sensibles.
+
+### Defectos encontrados en este bloque
+
+- **QA-027 (Alta):** el editor RSVP publicaba snapshots operativos vacíos, por
+  lo que el público no recibía menú/transporte/hospedaje aunque los catálogos
+  existieran.
+- **QA-028 (Alta):** `GET /rsvp/menus` podía fallar 500 al contar selecciones
+  con `Contains` sobre `jsonb`.
+- **QA-029 (Alta):** el envío público con hospedaje fallaba 400 porque el enum
+  embebido llegaba como texto y el deserializador local no aceptaba strings.
+- **QA-030 (Alta):** los acompañantes sin nombre no guardaban selección de menú
+  por no participar como `WizardGuest` estable y por serializar siempre `{}`.
+
+Detalle completo, causa raíz, solución y evidencia en
+`docs/qa/defect-register.md`.
+
+### Verificación ejecutada
+
+| Suite                          | Resultado | Contra |
+| ------------------------------ | --------: | ------ |
+| Frontend unitarias específicas |       5/5 | Angular TestBed / Vitest |
+| Frontend build                 |  Correcto | Angular production build |
+| Backend unitarias específicas  |       6/6 | .NET unit tests |
+| Backend integración RSVP       |     34/34 | PostgreSQL real |
+| Navegador real                 |  Correcto | Angular 4210 + API real + PostgreSQL real |
+
+Comandos ejecutados:
+
+- `npm.cmd test -- --watch=false --include src/app/features/rsvp/rsvp-form-editor.page.spec.ts`
+- `npm.cmd run build`
+- `dotnet test apps\api\tests\Plannyt.Api.UnitTests\Plannyt.Api.UnitTests.csproj --filter "FullyQualifiedName~EventMenu" --no-restore`
+- `dotnet test apps\api\tests\Plannyt.Api.IntegrationTests\Plannyt.Api.IntegrationTests.csproj --filter "FullyQualifiedName~Rsvp" --no-restore`
+
+### Estado de Git de este bloque
+
+Cambios de `QA-027` a `QA-030`, pruebas y documentación listos para commit
+local. No se publicó ni etiquetó nada.

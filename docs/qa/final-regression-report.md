@@ -1,11 +1,10 @@
 # Reporte final de regresión — Sprint 2B.4
 
-Actualizado: 2026-07-31 (incluye la continuación post-tag; ver secciones
-2ter y 2quater)
+Actualizado: 2026-08-03 (incluye continuaciones post-tag hasta RSVP; ver
+`docs/sprint-reports/sprint-2b4.md`, secciones 11 a 14)
 Commit del tag de cierre `v0.5.2-sprint2b4`: `62a2183` (ver
-`docs/sprint-reports/sprint-2b4.md`, secciones 11 y 12). Estado actual: 2
-commits locales adicionales sobre ese tag, no publicados ni etiquetados —
-ver sección 6.
+`docs/sprint-reports/sprint-2b4.md`). Estado actual: hay commits locales
+adicionales sobre ese tag, no publicados ni etiquetados — ver sección 6.
 Rama: `main`
 
 ## Cómo leer este reporte
@@ -185,17 +184,18 @@ el bloque anterior.
 
 ## 4. Defectos
 
-Ver `docs/qa/defect-register.md` para el detalle completo de los 25
-defectos (QA-001 a QA-025; QA-001 a QA-015 al cierre del tag, QA-016 a
-QA-019 en la primera continuación post-tag, QA-020 a QA-025 en la segunda).
+Ver `docs/qa/defect-register.md` para el detalle completo de los 30
+defectos (QA-001 a QA-030; QA-001 a QA-015 al cierre del tag, QA-016 a
+QA-019 en la primera continuación post-tag, QA-020 a QA-025 en la segunda,
+QA-026 en invitados/portal y QA-027 a QA-030 en RSVP).
 
 | Severidad | Corregidos | Diferidos | Abiertos |
 | --------- | ---------: | --------: | -------: |
 | Crítica   |          3 |         0 |        0 |
-| Alta      |          6 |         0 |        0 |
-| Media     |         13 |         1 |        0 |
+| Alta      |         10 |         0 |        0 |
+| Media     |         14 |         1 |        0 |
 | Baja      |          2 |         0 |        0 |
-| **Total** |     **24** |     **1** |    **0** |
+| **Total** |     **29** |     **1** |    **0** |
 
 El único defecto diferido (QA-004, dependencia npm moderada de desarrollo)
 tiene justificación documentada y no representa exposición en el bundle
@@ -219,15 +219,14 @@ prioridades. Resumen:
 ## 6. Estado de Git
 
 Al tag `v0.5.2-sprint2b4` (commit `62a2183`): ver
-`docs/sprint-reports/sprint-2b4.md`, secciones 11 y 12, para el detalle de
+`docs/sprint-reports/sprint-2b4.md`, secciones 11 a 14, para el detalle de
 cada bloque de continuación.
 
-Estado actual (después de la segunda continuación post-tag): rama `main`,
-árbol de trabajo limpio, 2 commits locales adicionales sobre el tag
-(`b59ae7f` código y pruebas, `2b7d630` documentación), **no publicados a
-`origin/main` ni etiquetados**, según el mandato invariable de no hacer
-`git push` ni crear/mover tags sin pedirlo explícitamente en la misma
-sesión (`docs/qa/next-session-prompt.md`).
+Estado actual: rama `main`, con commits locales adicionales sobre el tag
+(`b59ae7f`, `2b7d630`, `9ef8864`, `47fda00`, `cc80c13` y el commit local
+del bloque RSVP), **no publicados a `origin/main` ni etiquetados**, según el
+mandato invariable de no hacer `git push` ni crear/mover tags sin pedirlo
+explícitamente en la misma sesión (`docs/qa/next-session-prompt.md`).
 
 ## 7. Conclusión honesta
 
@@ -289,3 +288,15 @@ el backend las rechazaba con 403. Quedó corregido con gating por rol en la
 vista del portal y prueba unitaria específica. El total acumulado queda en
 26 defectos, 25 corregidos con evidencia y prueba de regresión, 1 diferido
 con justificación documentada, 0 abiertos.
+
+La cuarta sesión de continuación cubrió el bloque RSVP principal contra
+API/PostgreSQL reales: configuración, editor de formulario, publicación de
+versión, wizard público móvil con acompañante, menú, transporte, hospedaje,
+consentimiento, pregunta sensible, dashboard profesional, exportación sensible
+y dashboard de portal sin filtrar datos sensibles. Encontró cuatro defectos
+adicionales (QA-027 a QA-030): snapshots operativos vacíos, conteo de menús
+sobre `jsonb`, deserialización de hospedaje con enum textual y menú de
+acompañantes sin persistir. Todos quedaron corregidos con prueba de regresión
+automatizada o verificación real específica. El total acumulado queda en 30
+defectos, 29 corregidos con evidencia y prueba de regresión, 1 diferido con
+justificación documentada, 0 abiertos.

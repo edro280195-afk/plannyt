@@ -1045,6 +1045,16 @@ public sealed class RsvpService(
         var menus = await dbContext.EventMenus.AsNoTracking()
             .Where(m => m.OrganizationId == organizationId && m.EventId == eventId && m.ArchivedAt == null)
             .OrderBy(m => m.SortOrder).ToListAsync(ct);
+        var submissionIds = await dbContext.RsvpSubmissions.AsNoTracking()
+            .Where(s => s.OrganizationId == organizationId && s.EventId == eventId)
+            .Select(s => s.Id)
+            .ToListAsync(ct);
+        var menuSelectionSnapshots = submissionIds.Count == 0
+            ? new List<string>()
+            : await dbContext.RsvpSubmissionGuests.AsNoTracking()
+                .Where(g => submissionIds.Contains(g.RsvpSubmissionId))
+                .Select(g => g.MenuSelectionsSnapshot)
+                .ToListAsync(ct);
         var result = new List<EventMenuResponse>();
         foreach (var menu in menus)
         {
@@ -1054,8 +1064,13 @@ public sealed class RsvpService(
             var optionResponses = new List<EventMenuOptionResponse>();
             foreach (var opt in options)
             {
-                var selectionCount = await dbContext.RsvpSubmissionGuests.AsNoTracking()
-                    .CountAsync(g => g.MenuSelectionsSnapshot.Contains(opt.Id.ToString()), ct);
+                var optionIdText = opt.Id.ToString();
+                var selectionCount = menuSelectionSnapshots
+                    .Count(snapshot =>
+                        !string.IsNullOrEmpty(snapshot)
+                        && snapshot.Contains(
+                            optionIdText,
+                            StringComparison.OrdinalIgnoreCase));
                 optionResponses.Add(new EventMenuOptionResponse(opt.Id, opt.Name, opt.Description, opt.DietaryTags, opt.IsActive, opt.Capacity, selectionCount, opt.SortOrder));
             }
             result.Add(new EventMenuResponse(menu.Id, menu.Name, menu.Description, menu.MenuCategory, menu.IsActive, menu.SelectionRequired, menu.MinimumSelections, menu.MaximumSelections, menu.SortOrder, optionResponses, menu.UpdatedAt));
