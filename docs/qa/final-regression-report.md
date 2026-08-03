@@ -30,20 +30,20 @@ presenta como "probado" si solo tiene revisión estática.
 
 ## 1. Estado de build
 
-| Verificación | Resultado | Nivel |
-|---|---|---|
-| `dotnet build apps/api/Plannyt.Api.slnx -c Release` | Correcto. 0 warnings, 0 errores | Automatizado |
-| `npm run build` (Angular producción) | Correcto. Bundle inicial ~403 kB | Automatizado |
-| `npm run typecheck:e2e` (incluye `e2e/` y `e2e-real/`) | Correcto | Automatizado |
+| Verificación                                           | Resultado                        | Nivel        |
+| ------------------------------------------------------ | -------------------------------- | ------------ |
+| `dotnet build apps/api/Plannyt.Api.slnx -c Release`    | Correcto. 0 warnings, 0 errores  | Automatizado |
+| `npm run build` (Angular producción)                   | Correcto. Bundle inicial ~403 kB | Automatizado |
+| `npm run typecheck:e2e` (incluye `e2e/` y `e2e-real/`) | Correcto                         | Automatizado |
 
 ## 2. Pruebas automatizadas
 
 ### Backend
 
-| Suite | Resultado | Contra | Nivel |
-|---|---:|---|---|
-| Unitarias (`Plannyt.Api.UnitTests`) | 229/229 | En memoria/mocks | Automatizado |
-| Integración (`Plannyt.Api.IntegrationTests`) | 86/86 | PostgreSQL 18.4 real vía Testcontainers | **Automatizado, real** |
+| Suite                                        | Resultado | Contra                                  | Nivel                  |
+| -------------------------------------------- | --------: | --------------------------------------- | ---------------------- |
+| Unitarias (`Plannyt.Api.UnitTests`)          |   229/229 | En memoria/mocks                        | Automatizado           |
+| Integración (`Plannyt.Api.IntegrationTests`) |     86/86 | PostgreSQL 18.4 real vía Testcontainers | **Automatizado, real** |
 
 Crecimiento respecto al baseline (`docs/qa/baseline-before-audit.md`,
 2026-07-29): 214→229 unitarias, 75→86 integración. El incremento corresponde
@@ -53,20 +53,20 @@ manual real en navegador (ver sección 4).
 
 ### Frontend
 
-| Suite | Resultado | Contra | Nivel |
-|---|---:|---|---|
-| Unitarias (`npm run test:coverage`) | 88/88, 13 archivos | Angular TestBed/mocks | Automatizado |
-| E2E con mocks (`npm run e2e`) | 127 aprobadas, 2 omitidas intencionalmente, 0 fallidas, de 129, en modo estricto con vigilancia de consola | `/api/**` interceptado (`plannyt.fixture.ts`) | Automatizado, API simulada |
-| E2E real (`npm run e2e:real`) | Flujo A implementado (12 pasos); ejecución automatizada intermitente en este equipo | API y PostgreSQL reales, sin mocks | **Implementado; ver limitación #1** |
+| Suite                               |                                                                                                  Resultado | Contra                                        | Nivel                               |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------: | --------------------------------------------- | ----------------------------------- |
+| Unitarias (`npm run test:coverage`) |                                                                                         88/88, 13 archivos | Angular TestBed/mocks                         | Automatizado                        |
+| E2E con mocks (`npm run e2e`)       | 127 aprobadas, 2 omitidas intencionalmente, 0 fallidas, de 129, en modo estricto con vigilancia de consola | `/api/**` interceptado (`plannyt.fixture.ts`) | Automatizado, API simulada          |
+| E2E real (`npm run e2e:real`)       |                        Flujo A implementado (12 pasos); ejecución automatizada intermitente en este equipo | API y PostgreSQL reales, sin mocks            | **Implementado; ver limitación #1** |
 
 Cobertura frontend medida en esta corrida:
 
-| Métrica | Cobertura | Compuerta |
-|---|---:|---:|
-| Statements | 90.09% | 85% |
-| Branches | 86.20% | 85% |
-| Functions | 88.36% | 85% |
-| Lines | 91.81% | 85% |
+| Métrica    | Cobertura | Compuerta |
+| ---------- | --------: | --------: |
+| Statements |    90.09% |       85% |
+| Branches   |    86.20% |       85% |
+| Functions  |    88.36% |       85% |
+| Lines      |    91.81% |       85% |
 
 Todas las métricas superan la compuerta configurada de 85%. Comparado con el
 baseline (89.55/85.55/88.25/91.21), la cobertura se mantuvo o mejoró en las
@@ -133,12 +133,12 @@ evitando exactamente los pasos rotos.
 
 Totales tras este bloque:
 
-| Suite | Resultado | Contra | Nivel |
-|---|---:|---|---|
-| Backend unitarias | 240/240 | En memoria/mocks | Automatizado |
-| Backend integración | 89/89 | PostgreSQL real vía Testcontainers | **Automatizado, real** |
-| Frontend unitarias | 89/89 | Angular TestBed/mocks | Automatizado |
-| E2E con mocks | 127 aprobadas, 2 omitidas, 0 fallidas de 129, modo estricto | `/api/**` interceptado | Automatizado, sin regresión |
+| Suite               |                                                   Resultado | Contra                             | Nivel                       |
+| ------------------- | ----------------------------------------------------------: | ---------------------------------- | --------------------------- |
+| Backend unitarias   |                                                     240/240 | En memoria/mocks                   | Automatizado                |
+| Backend integración |                                                       89/89 | PostgreSQL real vía Testcontainers | **Automatizado, real**      |
+| Frontend unitarias  |                                                       89/89 | Angular TestBed/mocks              | Automatizado                |
+| E2E con mocks       | 127 aprobadas, 2 omitidas, 0 fallidas de 129, modo estricto | `/api/**` interceptado             | Automatizado, sin regresión |
 
 Cobertura frontend: 90.10% statements, 86.20% branches, 88.39% functions,
 91.82% lines — las cuatro por encima de la compuerta de 85% y en línea con
@@ -163,12 +163,12 @@ en vez de detectarla.
 
 Totales tras este bloque:
 
-| Suite | Resultado | Contra | Nivel |
-|---|---:|---|---|
-| Backend unitarias | 240/240 | En memoria/mocks | Automatizado |
-| Backend integración | 92/92 | PostgreSQL real vía Testcontainers | **Automatizado, real** |
-| Frontend unitarias | 89/89 | Angular TestBed/mocks | Automatizado |
-| E2E con mocks | 133 aprobadas, 2 omitidas, 0 fallidas de 135, modo estricto | `/api/**` interceptado | Automatizado, sin regresión |
+| Suite               |                                                   Resultado | Contra                             | Nivel                       |
+| ------------------- | ----------------------------------------------------------: | ---------------------------------- | --------------------------- |
+| Backend unitarias   |                                                     240/240 | En memoria/mocks                   | Automatizado                |
+| Backend integración |                                                       92/92 | PostgreSQL real vía Testcontainers | **Automatizado, real**      |
+| Frontend unitarias  |                                                       89/89 | Angular TestBed/mocks              | Automatizado                |
+| E2E con mocks       | 133 aprobadas, 2 omitidas, 0 fallidas de 135, modo estricto | `/api/**` interceptado             | Automatizado, sin regresión |
 
 Cobertura frontend: 90.13% statements, 86.20% branches, 88.49% functions,
 91.85% lines — las cuatro por encima de la compuerta de 85% y en línea con
@@ -176,12 +176,12 @@ el bloque anterior.
 
 ## 3. Dependencias y seguridad
 
-| Verificación | Resultado |
-|---|---|
-| `dotnet list package --vulnerable --include-transitive` | Sin paquetes vulnerables en API, unitarias ni integración |
-| `npm audit` | 3 alertas moderadas, misma cadena documentada en QA-004 (diferido, solo desarrollo) |
-| Migraciones (`dotnet ef migrations has-pending-model-changes`) | Sin cambios pendientes del modelo |
-| Secretos en archivos rastreados | Sin coincidencias de patrones de credenciales reales |
+| Verificación                                                   | Resultado                                                                           |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `dotnet list package --vulnerable --include-transitive`        | Sin paquetes vulnerables en API, unitarias ni integración                           |
+| `npm audit`                                                    | 3 alertas moderadas, misma cadena documentada en QA-004 (diferido, solo desarrollo) |
+| Migraciones (`dotnet ef migrations has-pending-model-changes`) | Sin cambios pendientes del modelo                                                   |
+| Secretos en archivos rastreados                                | Sin coincidencias de patrones de credenciales reales                                |
 
 ## 4. Defectos
 
@@ -190,12 +190,12 @@ defectos (QA-001 a QA-025; QA-001 a QA-015 al cierre del tag, QA-016 a
 QA-019 en la primera continuación post-tag, QA-020 a QA-025 en la segunda).
 
 | Severidad | Corregidos | Diferidos | Abiertos |
-|---|---:|---:|---:|
-| Crítica | 3 | 0 | 0 |
-| Alta | 6 | 0 | 0 |
-| Media | 13 | 1 | 0 |
-| Baja | 2 | 0 | 0 |
-| **Total** | **24** | **1** | **0** |
+| --------- | ---------: | --------: | -------: |
+| Crítica   |          3 |         0 |        0 |
+| Alta      |          6 |         0 |        0 |
+| Media     |         13 |         1 |        0 |
+| Baja      |          2 |         0 |        0 |
+| **Total** |     **24** |     **1** |    **0** |
 
 El único defecto diferido (QA-004, dependencia npm moderada de desarrollo)
 tiene justificación documentada y no representa exposición en el bundle
@@ -278,3 +278,14 @@ justificación documentada, 0 abiertos. `CON-001` no aportó ningún defecto
 propio: su flujo completo (plan de pagos, anticipo, readiness,
 confirmación) funcionó correctamente de punta a punta contra datos reales
 en el primer recorrido.
+
+La tercera sesión de continuación cubrió `GST-001` e `INV-002` contra
+API/PostgreSQL reales: alta de grupos/invitados/etiquetas, importación CSV
+inválida y válida, exportación, duplicados, edición de invitación,
+aprobación desde portal, publicación, enlace público móvil, regeneración y
+revocación de token. Encontró un defecto adicional (QA-026): el portal del
+cliente mostraba acciones de gestión/importación a `ClientApprover` aunque
+el backend las rechazaba con 403. Quedó corregido con gating por rol en la
+vista del portal y prueba unitaria específica. El total acumulado queda en
+26 defectos, 25 corregidos con evidencia y prueba de regresión, 1 diferido
+con justificación documentada, 0 abiertos.

@@ -5,11 +5,11 @@ Actualizado: 2026-07-31
 ## Resumen actual
 
 | Severidad | Abiertos | Corregidos | Diferidos |
-|---|---:|---:|---:|
-| Crítica | 0 | 3 | 0 |
-| Alta | 0 | 6 | 0 |
-| Media | 0 | 13 | 1 |
-| Baja | 0 | 2 | 0 |
+| --------- | -------: | ---------: | --------: |
+| Crítica   |        0 |          3 |         0 |
+| Alta      |        0 |          6 |         0 |
+| Media     |        0 |         13 |         1 |
+| Baja      |        0 |          2 |         0 |
 
 ## QA-001 — El seed demo no inicia con la cuenta cliente preexistente
 
@@ -211,7 +211,7 @@ Actualizado: 2026-07-31
 - **Solución aplicada:** Evento efímero en `storage`, sin token ni dato
   personal; cada pestaña limpia su estado en memoria y navega al acceso.
 - **Prueba de regresión:** `clears local state when another tab broadcasts
-  logout`, prueba de revocación backend y recorrido manual en dos pestañas.
+logout`, prueba de revocación backend y recorrido manual en dos pestañas.
 - **Commit:** `3d0236f`.
 - **Estado:** Corregido.
 
@@ -618,8 +618,8 @@ Actualizado: 2026-07-31
 - **Módulo:** Backend / Frontend — contratación, cálculo de disponibilidad
   ("readiness").
 - **Ruta:** `/app/events/:id/contracting`; `GET
-  .../events/{eventId}/contracting-readiness`; `POST
-  .../events/{eventId}/confirm` (409).
+.../events/{eventId}/contracting-readiness`; `POST
+.../events/{eventId}/confirm` (409).
 - **Rol:** Cualquier rol con `contracts.view` o `events.confirm`.
 - **Precondición:** Un evento con propuesta aceptada al que le falta el
   contrato, las firmas o el anticipo.
@@ -688,7 +688,7 @@ Actualizado: 2026-07-31
 - **Resultado anterior:** No existía ningún botón ni control para cancelar
   un contrato. El backend ya tenía todo completo —
   `ContractService.CancelAsync`, el endpoint `POST
-  /contracts/{id}/cancel`, la regla de dominio `Contract.Cancel` (bloquea
+/contracts/{id}/cancel`, la regla de dominio `Contract.Cancel` (bloquea
   Completado/Firmado, exige motivo de 1 a 1000 caracteres) y la revocación
   automática de solicitudes de firma pendientes al cancelar — pero ningún
   componente Angular lo invocaba nunca, y ninguna prueba (unitaria,
@@ -727,7 +727,7 @@ Actualizado: 2026-07-31
 - **Severidad:** Alta.
 - **Módulo:** Frontend / Backend — contratación / firmas.
 - **Ruta:** `/app/contracts/:id`; `DELETE
-  .../contracts/{contractId}/requests/{requestId}`.
+.../contracts/{contractId}/requests/{requestId}`.
 - **Rol:** Cualquier rol con `signatures.revoke-request`.
 - **Precondición:** Un firmante con un enlace de firma activo (creado, aún
   no usado ni vencido).
@@ -793,7 +793,7 @@ Actualizado: 2026-07-31
   firmado).
 - **Resultado anterior:** No existía ningún control en la interfaz que
   mostrara la evidencia de firma. El endpoint `GET
-  /contracts/{id}/evidence` (`SignatureService.GetEvidenceAsync`) ya
+/contracts/{id}/evidence` (`SignatureService.GetEvidenceAsync`) ya
   devolvía, por cada firma, el método, el nombre y correo declarados del
   firmante, la fecha y el SHA-256 del documento firmado — datos ya
   probados por integración en `ContractingFlowTests` desde antes de esta
@@ -871,7 +871,7 @@ Actualizado: 2026-07-31
 - **Severidad:** Media.
 - **Módulo:** Frontend / Backend — plantillas de contrato.
 - **Ruta:** `/app/contract-templates`; `DELETE
-  .../contract-templates/{templateId}`.
+.../contract-templates/{templateId}`.
 - **Rol:** Cualquier rol con `contract-templates.manage`.
 - **Precondición:** Una plantilla existente cargada en el editor.
 - **Pasos:** Seleccionar una plantilla de la biblioteca y buscar la forma de
@@ -881,7 +881,7 @@ Actualizado: 2026-07-31
   El backend ya tenía completo `ContractTemplateService.ArchiveAsync` (un
   archivado suave: excluye la plantilla de `GetAllAsync` sin borrar
   contratos que ya la usaron) y el endpoint `DELETE
-  /contract-templates/{templateId}`, pero ni `ApiService` tenía un método
+/contract-templates/{templateId}`, pero ni `ApiService` tenía un método
   para llamarlo ni `ContractTemplatesPage` tenía ningún control, y ninguna
   prueba backend ejercitaba el grupo completo de endpoints de plantillas
   (crear, actualizar, previsualizar ni archivar) antes de esta corrección.
@@ -903,5 +903,50 @@ Actualizado: 2026-07-31
   en la biblioteca, la archiva (204) y confirma que desaparece de
   `GetAllAsync`. `api.service.spec.ts` cubre el nuevo método. Verificado en
   navegador real.
+- **Commit:** Pendiente.
+- **Estado:** Corregido.
+
+## QA-026 — El portal mostraba acciones de invitados/importación a roles que el backend rechaza
+
+- **Severidad:** Media.
+- **Módulo:** Frontend — portal del cliente / invitados e invitación digital.
+- **Ruta:** `/portal/events/:id/guest-experience`.
+- **Rol:** `ClientApprover`.
+- **Precondición:** Cliente con acceso activo al evento como aprobador de
+  diseño, sin permisos de gestión de invitados (`guests.create/update/archive`,
+  `guests.import`, `invitation-groups.*`, `guest-links.mark-shared`).
+- **Pasos:** Entrar al portal como `ClientApprover`, abrir "Invitados e
+  invitación digital", revisar la pestaña "Lista", abrir "Importar" y subir un
+  CSV.
+- **Resultado anterior:** El portal mostraba los formularios "Agregar o editar
+  datos", botones de editar/archivar grupo e invitado, la pestaña "Importar" y
+  "Marcar compartido" aunque el backend respondía 403 para esas operaciones.
+  En el recorrido real, el intento de analizar un CSV desde `ClientApprover`
+  recibió 403 en
+  `/api/client-portal/events/{eventId}/guest-experience/imports/analyze`.
+- **Resultado esperado:** La interfaz del portal debe exponer sólo las acciones
+  que el rol puede ejecutar: `ClientApprover` puede revisar/aprobar diseño y
+  consultar enlaces, pero no gestionar invitados ni importar listas; roles como
+  `ClientGuestManager` sí deben ver y ejecutar esas acciones.
+- **Evidencia:** Reproducido contra el evento real
+  `70269a5e-215e-4582-b9d8-ac5e710b5ce2`. Después de la corrección,
+  `ClientApprover` ya no ve "Importar", formularios de lista ni botones de
+  edición; `ClientGuestManager` sí ve la pestaña "Importar", descargó
+  `guest-import-template.xlsx` en inglés y confirmó un CSV en español con 2
+  filas válidas (`Portal Manager QA`), creando 1 grupo y 2 invitados.
+- **Causa:** La vista del portal no tenía gating por rol/capacidad y asumía
+  que cualquier acceso de portal podía usar toda la superficie colaborativa.
+  `MeEventAccess` todavía sólo expone el rol, no la lista efectiva de permisos.
+- **Solución aplicada:** `PortalGuestExperiencePage` deriva capacidades desde
+  el rol del acceso al evento: oculta importación, formularios y botones de
+  editar/archivar/marcar compartido para roles sin gestión de invitados, y
+  oculta aprobar/solicitar cambios de diseño para roles sin aprobación.
+  Además, los métodos sensibles retornan sin llamar al API cuando el rol no
+  tiene la capacidad correspondiente.
+- **Prueba de regresión:** Nuevo
+  `portal-guest-experience.page.spec.ts`: verifica que `ClientApprover` no ve
+  importación ni edición de invitados pero sí aprobación de diseño, y que
+  `ClientGuestManager` ve gestión/importación sin aprobación de diseño. Build
+  Angular y prueba unitaria específica ejecutados correctamente.
 - **Commit:** Pendiente.
 - **Estado:** Corregido.

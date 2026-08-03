@@ -64,18 +64,18 @@ este sprint ni de su continuación.
 
 ## 3. Commits de este sprint
 
-| Commit | Resumen |
-|---|---|
-| `f52998b` | Estabilizo el entorno y los contratos de la API (baseline, seed demo, OpenAPI, JSON malformado) |
-| `3d0236f` | Corrijo restauración y revocación de sesiones (QA-008, QA-009, QA-010) |
-| `5715c71` | Mejoro accesibilidad y actualización de la PWA (QA-011, QA-012) |
-| `6206da1` | Aplico mínimo privilegio y caché privada en la API (QA-013, QA-014) |
-| `65b765e` | Estabilizo la regresión integral del frontend |
-| `2534d5b` | Evito envíos RSVP antes de cargar el formulario (QA-002) |
-| `98b0b95` | Documento la corrección QA-002 y el estado real de huecos de permisos |
-| `dae79ed` | Agrego infraestructura E2E contra API/PostgreSQL reales y Flujo A |
-| `0df2a63` | Agrego los documentos finales obligatorios del Sprint 2B.4 |
-| *(siguiente)* | Corrijo InvalidStateError de navegación y agrego vigilancia de consola a E2E (QA-015) |
+| Commit        | Resumen                                                                                         |
+| ------------- | ----------------------------------------------------------------------------------------------- |
+| `f52998b`     | Estabilizo el entorno y los contratos de la API (baseline, seed demo, OpenAPI, JSON malformado) |
+| `3d0236f`     | Corrijo restauración y revocación de sesiones (QA-008, QA-009, QA-010)                          |
+| `5715c71`     | Mejoro accesibilidad y actualización de la PWA (QA-011, QA-012)                                 |
+| `6206da1`     | Aplico mínimo privilegio y caché privada en la API (QA-013, QA-014)                             |
+| `65b765e`     | Estabilizo la regresión integral del frontend                                                   |
+| `2534d5b`     | Evito envíos RSVP antes de cargar el formulario (QA-002)                                        |
+| `98b0b95`     | Documento la corrección QA-002 y el estado real de huecos de permisos                           |
+| `dae79ed`     | Agrego infraestructura E2E contra API/PostgreSQL reales y Flujo A                               |
+| `0df2a63`     | Agrego los documentos finales obligatorios del Sprint 2B.4                                      |
+| _(siguiente)_ | Corrijo InvalidStateError de navegación y agrego vigilancia de consola a E2E (QA-015)           |
 
 Los commits `55e1b91` y anteriores corresponden a Sprint 2B.2/2B.3
 (remediación crítica de RSVP y motor de preguntas), ya reportados en
@@ -89,11 +89,11 @@ Ver `docs/qa/defect-register.md` para el detalle completo de cada uno
 Resumen por severidad:
 
 | Severidad | Total | Corregidos | Diferidos |
-|---|---:|---:|---:|
-| Crítica | 1 | 1 | 0 |
-| Alta | 2 | 2 | 0 |
-| Media | 10 | 9 | 1 |
-| Baja | 2 | 2 | 0 |
+| --------- | ----: | ---------: | --------: |
+| Crítica   |     1 |          1 |         0 |
+| Alta      |     2 |          2 |         0 |
+| Media     |    10 |          9 |         1 |
+| Baja      |     2 |          2 |         0 |
 
 El defecto crítico (QA-014) corregía que los siete roles del portal del
 cliente recibían el mismo conjunto de 29 permisos, permitiendo mutaciones
@@ -147,13 +147,13 @@ Esta limitación se declara explícitamente y no se presenta como resuelta.
 
 ## 7. Totales de pruebas
 
-| Suite | Resultado | Contra |
-|---|---:|---|
-| Backend unitarias | 229/229 | En memoria |
-| Backend integración | 86/86 | PostgreSQL real (Testcontainers) |
-| Frontend unitarias | 88/88 | Angular TestBed |
-| E2E con mocks | 127 aprobadas / 2 omitidas / 0 fallidas (129 total), modo estricto con vigilancia de consola | API interceptada |
-| E2E reales | Flujo A implementado; 5 de 6 flujos pendientes | API/PostgreSQL reales |
+| Suite               |                                                                                    Resultado | Contra                           |
+| ------------------- | -------------------------------------------------------------------------------------------: | -------------------------------- |
+| Backend unitarias   |                                                                                      229/229 | En memoria                       |
+| Backend integración |                                                                                        86/86 | PostgreSQL real (Testcontainers) |
+| Frontend unitarias  |                                                                                        88/88 | Angular TestBed                  |
+| E2E con mocks       | 127 aprobadas / 2 omitidas / 0 fallidas (129 total), modo estricto con vigilancia de consola | API interceptada                 |
+| E2E reales          |                                               Flujo A implementado; 5 de 6 flujos pendientes | API/PostgreSQL reales            |
 
 Cobertura frontend: 90.09% statements, 86.20% branches, 88.36% functions,
 91.81% lines — las cuatro por encima de la compuerta de 85%.
@@ -233,12 +233,12 @@ en `docs/qa/defect-register.md`.
 
 ### Totales acumulados tras este bloque
 
-| Suite | Resultado | Contra |
-|---|---:|---|
-| Backend unitarias | 240/240 (+11 respecto al tag) | En memoria |
-| Backend integración | 89/89 (+3 respecto al tag) | PostgreSQL real (Testcontainers) |
-| Frontend unitarias | 89/89 (+1 respecto al tag) | Angular TestBed |
-| E2E con mocks | 127 aprobadas / 2 omitidas / 0 fallidas (129 total), modo estricto | API interceptada, sin regresión |
+| Suite               |                                                          Resultado | Contra                           |
+| ------------------- | -----------------------------------------------------------------: | -------------------------------- |
+| Backend unitarias   |                                      240/240 (+11 respecto al tag) | En memoria                       |
+| Backend integración |                                         89/89 (+3 respecto al tag) | PostgreSQL real (Testcontainers) |
+| Frontend unitarias  |                                         89/89 (+1 respecto al tag) | Angular TestBed                  |
+| E2E con mocks       | 127 aprobadas / 2 omitidas / 0 fallidas (129 total), modo estricto | API interceptada, sin regresión  |
 
 Cobertura frontend: 90.10% statements, 86.20% branches, 88.39% functions,
 91.82% lines — igual o por encima del tag en las cuatro métricas, todas
@@ -299,12 +299,12 @@ Detalle completo, causa raíz, solución y prueba de regresión de cada uno en
 
 ### Totales acumulados tras este bloque
 
-| Suite | Resultado | Contra |
-|---|---:|---|
-| Backend unitarias | 240/240 (sin cambio respecto al bloque anterior) | En memoria |
-| Backend integración | 92/92 (+3 respecto al bloque anterior) | PostgreSQL real (Testcontainers) |
-| Frontend unitarias | 89/89 (sin cambio; casos nuevos dentro de bloques existentes) | Angular TestBed |
-| E2E con mocks | 133 aprobadas / 2 omitidas / 0 fallidas (135 total), modo estricto | API interceptada, sin regresión |
+| Suite               |                                                          Resultado | Contra                           |
+| ------------------- | -----------------------------------------------------------------: | -------------------------------- |
+| Backend unitarias   |                   240/240 (sin cambio respecto al bloque anterior) | En memoria                       |
+| Backend integración |                             92/92 (+3 respecto al bloque anterior) | PostgreSQL real (Testcontainers) |
+| Frontend unitarias  |      89/89 (sin cambio; casos nuevos dentro de bloques existentes) | Angular TestBed                  |
+| E2E con mocks       | 133 aprobadas / 2 omitidas / 0 fallidas (135 total), modo estricto | API interceptada, sin regresión  |
 
 ### Estado de Git de este bloque
 
@@ -313,3 +313,70 @@ Detalle completo, causa raíz, solución y prueba de regresión de cada uno en
 etiquetados** — pendiente de instrucción explícita del usuario en una
 sesión futura, según el mandato invariable de
 `docs/qa/next-session-prompt.md`.
+
+## 13. Tercera sesión de continuación: Invitados e invitación digital (GST-001, INV-002)
+
+Sesión posterior al cierre de Contratación. Mandato sin cambios: recorrido
+manual módulo por módulo en navegador real contra API/PostgreSQL reales.
+Bloque cubierto: invitados/grupos/etiquetas/importación/exportación
+(`GST-001`) e invitación digital con revisión cliente, publicación y
+enlaces privados (`INV-002`).
+
+### Evidencia del recorrido real
+
+- Evento creado desde UI:
+  `70269a5e-215e-4582-b9d8-ac5e710b5ce2` ("Boda QA Invitados
+  1785774298535"), luego confirmado desde el detalle para cumplir la regla
+  de publicación de invitaciones.
+- En `/app/events/:id/guests`: creación real de grupo "Familia Núñez QA",
+  etiqueta "QA VIP" e invitada "María Núñez"; importación CSV inválida con
+  1 fila válida y 1 con error (botón de confirmación deshabilitado);
+  importación CSV válida con encabezados en español (2 invitados creados);
+  exportación CSV; revisión de duplicados sin coincidencias.
+- En `/app/events/:id/invitations`: diseño creado desde plantilla
+  "Romántica", portada editada a "Boda QA Invitación Aprobable", autosave
+  verificado y versión enviada a revisión.
+- En portal como `ClientApprover`: invitación de acceso aceptada, evento
+  visible, diseño aprobado desde `/portal/events/:id/guest-experience` con
+  comentario "Aprobado por auditoría INV-002 desde portal".
+- En planner: publicación bloqueada correctamente mientras el evento estaba
+  `Preliminary` (409 esperado por regla de negocio), transición
+  `Preliminary → Confirmed` aplicada por UI (200) y publicación exitosa.
+- Enlaces privados: enlace público móvil abierto en `/i/:token` sin filtrar
+  nota interna ni correo de control; marcado como compartido; regeneración
+  verificada con el token anterior mostrando "Hay un enlace más reciente";
+  revocación verificada con el token nuevo mostrando "Este enlace fue
+  revocado".
+- Portal como `ClientGuestManager`: pestaña "Importar" visible, descarga
+  real de `guest-import-template.xlsx` en inglés y confirmación de CSV en
+  español con 2 filas válidas, creando el grupo "Portal Manager QA" y 2
+  invitados.
+
+### Defecto encontrado en este bloque
+
+- **QA-026 (Media):** el portal mostraba acciones de gestión de
+  invitados/importación a `ClientApprover`, aunque el backend las rechazaba
+  con 403. Se corrigió el gating por rol en
+  `PortalGuestExperiencePage`: `ClientApprover` conserva revisión/aprobación
+  de diseño y lectura de enlaces, pero no ve importación ni formularios de
+  invitados; `ClientGuestManager` sí ve y ejecuta esas acciones. Detalle
+  completo en `docs/qa/defect-register.md`.
+
+### Verificación ejecutada
+
+| Suite                          |            Resultado | Contra                                    |
+| ------------------------------ | -------------------: | ----------------------------------------- |
+| Frontend unitarias específicas |                  2/2 | Angular TestBed / Vitest                  |
+| Frontend build                 |             Correcto | Angular production build                  |
+| Navegador real                 | Correcto tras QA-026 | Angular 4210 + API real + PostgreSQL real |
+
+Comandos ejecutados:
+
+- `npm test -- --watch=false --include src/app/features/portal/portal-guest-experience.page.spec.ts`
+- `npm run build`
+
+### Estado de Git de este bloque
+
+Cambios pendientes sin commit al cierre de esta sección: corrección
+frontend de `QA-026`, prueba de regresión y documentación de avance. No se
+publicó ni etiquetó nada.

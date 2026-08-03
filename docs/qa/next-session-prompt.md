@@ -154,45 +154,37 @@ siguen aplicando:
      columna "Estado final" por fila. **Esta es la lista maestra de
      trabajo pendiente.**
   3. `docs/qa/defect-register.md` — defectos ya conocidos, para no
-     duplicar hallazgos (ahora QA-001 a QA-025).
+     duplicar hallazgos (ahora QA-001 a QA-026).
   4. `docs/qa/permission-audit.md` — matriz de permisos y sus huecos.
   5. `docs/qa/manual-smoke-checklist.md` — qué revisar en cada tipo de
      control cuando se prueba algo manualmente.
-  6. `docs/sprint-reports/sprint-2b4.md` (secciones 11 y 12) y
-     `docs/qa/final-regression-report.md` (secciones 2ter y 2quater) —
-     resumen de ambas sesiones de continuación con más detalle que este
+  6. `docs/sprint-reports/sprint-2b4.md` (secciones 11, 12 y 13) y
+     `docs/qa/final-regression-report.md` — resumen de las sesiones de
+     continuación con más detalle que este
      archivo.
 
 ## Qué sigue (orden sugerido, no obligatorio)
 
 `functional-inventory.md` sigue teniendo estas filas en `Parcial` o
 `Revisado mixto` con partes sin cubrir, en el orden razonable de la tabla.
-Contratación (`CON-001` a `CON-004`) ya quedó completa esta sesión — el
-siguiente bloque lógico es Invitados/RSVP, tal como decía el brief
-anterior:
+Contratación (`CON-001` a `CON-004`) e Invitados/Invitación digital
+(`GST-001`, `INV-002`) ya quedaron recorridos con navegador real. El
+siguiente bloque lógico es RSVP:
 
-1. **`GST-001`, `INV-002`** (Invitados e invitación digital,
-   `/app/events/:id/guests`, `/app/events/:id/invitations`): crear
-   grupo/invitado a mano, importar CSV (con fila inválida para probar el
-   reporte de errores por fila exacta), etiquetas, editar la invitación
-   digital por bloques, enviar a revisión, aprobar desde el portal,
-   publicar, generar/copiar/regenerar/revocar enlaces. Son las últimas dos
-   filas grandes en `Parcial` — necesarias antes de poder probar RSVP real
-   porque RSVP necesita un grupo, un invitado y un enlace.
-2. **`RSV-002`, `RSV-003`, `RSV-004`** (RSVP profesional: dashboard,
+1. **`RSV-002`, `RSV-003`, `RSV-004`** (RSVP profesional: dashboard,
    configuración, editor de formulario) y luego **`RSV-001`** (RSVP
    público) — probar el wizard público completo en viewport móvil,
    acompañante, menú, transporte, tal como pide el checklist de humo
    sección 7.
-3. **`ORG-001`, `ORG-002`** (Equipo, Organización): invitar, copiar enlace,
+2. **`ORG-001`, `ORG-002`** (Equipo, Organización): invitar, copiar enlace,
    revocar invitación, revocar miembro, editar organización.
-4. **`NAV-003`, `POR-002`, `POR-004`, `POR-007`** (Portal del cliente).
+3. **`NAV-003`, `POR-002`, `POR-004`, `POR-007`** (Portal del cliente).
    Nota: el evento "Boda de María José y Roberto" ahora tiene un contrato
    en estado Cancelado (ver "Datos de prueba" abajo) — sirve para probar
    cómo el portal proyecta un contrato cancelado, pero no sirve para
    probar "firmar como cliente" desde el portal (`POR-007`); usa el
    contrato completado de "XV de Fernanda" para eso, o genera uno nuevo.
-5. Transversales: `NAV-004`, `DOC-001`, `CSV-001`, `AUD-001`, `REC-001`,
+4. Transversales: `NAV-004`, `DOC-001`, `CSV-001`, `AUD-001`, `REC-001`,
    `TRA-001`, `HOS-001`, `SEN-001`.
 
 No hace falta seguir este orden exacto si algo más lógico surge durante el
@@ -233,6 +225,16 @@ siempre:
   organización de eventos") sigue intacta. Se creó y se eliminó una
   plantilla desechable ("Plantilla temporal QA CON-004") para probar
   QA-025 — no queda rastro visible salvo en la auditoría/base de datos.
+- Evento "Boda QA Invitados 1785774298535"
+  (`70269a5e-215e-4582-b9d8-ac5e710b5ce2`): creado desde UI y confirmado
+  durante el recorrido de `GST-001`/`INV-002`. Tiene grupos/invitados reales
+  ("Familia Núñez QA", "Familia Importación QA", "Portal Manager QA"),
+  diseño publicado "Boda QA Invitación Aprobable" y enlaces de invitación
+  probados (uno reemplazado, uno revocado y uno activo durante la sesión).
+  Cuentas de portal creadas: `cliente.inv002.1785774753803@plannyt-test.invalid`
+  / `ClienteInv002#2026` (`ClientApprover`) y
+  `cliente.guestmanager.1785775745516@plannyt-test.invalid` /
+  `ClienteGuestManager#2026` (`ClientGuestManager`).
 - **Sin recorrer todavía, quedó anotado durante esta sesión:** la ruta
   `/contracts/manual` (`POST .../contracts/manual`, `CreateManualContractRequest`)
   existe en el backend para crear un contrato sin pasar por una propuesta,

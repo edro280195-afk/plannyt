@@ -1,8 +1,16 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api/api.service';
+import { AuthService } from '../../core/auth/auth.service';
 import { getApiErrorMessage } from '../../core/errors/api-error';
 import {
   GUEST_IMPORT_FORMAT_OPTIONS,
@@ -21,6 +29,7 @@ import {
   GuestImportTemplateLanguage,
   GuestType,
   InvitationGroupType,
+  EventAccessRole,
   PortalGuest,
   PortalGuestWorkspace,
   PortalInvitationGroup,
@@ -49,9 +58,11 @@ import { ToastService } from '../../core/ui/toast.service';
         <button type="button" [class.is-active]="tab() === 'design'" (click)="tab.set('design')">
           Diseño
         </button>
-        <button type="button" [class.is-active]="tab() === 'import'" (click)="tab.set('import')">
-          Importar
-        </button>
+        @if (canImportGuests()) {
+          <button type="button" [class.is-active]="tab() === 'import'" (click)="tab.set('import')">
+            Importar
+          </button>
+        }
         <button type="button" [class.is-active]="tab() === 'links'" (click)="openLinks()">
           Enlaces
         </button>
@@ -69,22 +80,24 @@ import { ToastService } from '../../core/ui/toast.service';
                   </div>
                   <div class="button-row">
                     <strong>{{ group.namedGuestCount }}/{{ group.allowedGuestCount }}</strong>
-                    <button
-                      class="icon-button"
-                      type="button"
-                      aria-label="Editar grupo"
-                      (click)="editGroup(group)"
-                    >
-                      ✎
-                    </button>
-                    <button
-                      class="icon-button"
-                      type="button"
-                      aria-label="Archivar grupo"
-                      (click)="archiveGroup(group)"
-                    >
-                      ×
-                    </button>
+                    @if (canManageGuests()) {
+                      <button
+                        class="icon-button"
+                        type="button"
+                        aria-label="Editar grupo"
+                        (click)="editGroup(group)"
+                      >
+                        ✎
+                      </button>
+                      <button
+                        class="icon-button"
+                        type="button"
+                        aria-label="Archivar grupo"
+                        (click)="archiveGroup(group)"
+                      >
+                        ×
+                      </button>
+                    }
                   </div>
                 </div>
                 @for (guest of guestsFor(group.id); track guest.id) {
@@ -99,129 +112,139 @@ import { ToastService } from '../../core/ui/toast.service';
                     @if (guest.isVip) {
                       <span class="tag-chip tag-chip--rose">VIP</span>
                     }
-                    <button
-                      class="icon-button"
-                      type="button"
-                      aria-label="Editar invitado"
-                      (click)="editGuest(guest)"
-                    >
-                      ✎
-                    </button>
-                    <button
-                      class="icon-button"
-                      type="button"
-                      aria-label="Archivar invitado"
-                      (click)="archiveGuest(guest)"
-                    >
-                      ×
-                    </button>
+                    @if (canManageGuests()) {
+                      <button
+                        class="icon-button"
+                        type="button"
+                        aria-label="Editar invitado"
+                        (click)="editGuest(guest)"
+                      >
+                        ✎
+                      </button>
+                      <button
+                        class="icon-button"
+                        type="button"
+                        aria-label="Archivar invitado"
+                        (click)="archiveGuest(guest)"
+                      >
+                        ×
+                      </button>
+                    }
                   </div>
                 }
               </div>
             } @empty {
               <div class="empty-state">
                 <h3>Sin grupos compartidos</h3>
-                <p>Agrega el primero desde el formulario.</p>
+                <p>
+                  {{
+                    canManageGuests()
+                      ? 'Agrega el primero desde el formulario.'
+                      : 'La organización todavía no comparte grupos.'
+                  }}
+                </p>
               </div>
             }
           </article>
 
-          <aside class="panel stack">
-            <div>
-              <span class="eyebrow">Colaborar</span>
-              <h2>Agregar o editar datos</h2>
-            </div>
-            <form [formGroup]="groupForm" (ngSubmit)="saveGroup()" class="form-stack">
-              <h3>{{ editingGroupId() ? 'Editar grupo' : 'Nuevo grupo' }}</h3>
-              <label>Nombre <input formControlName="displayName" /></label>
-              <div class="form-grid">
-                <label
-                  >Tipo
-                  <select formControlName="groupType">
-                    @for (type of groupTypes; track type) {
-                      <option [value]="type">{{ type }}</option>
-                    }
-                  </select>
+          @if (canManageGuests()) {
+            <aside class="panel stack">
+              <div>
+                <span class="eyebrow">Colaborar</span>
+                <h2>Agregar o editar datos</h2>
+              </div>
+              <form [formGroup]="groupForm" (ngSubmit)="saveGroup()" class="form-stack">
+                <h3>{{ editingGroupId() ? 'Editar grupo' : 'Nuevo grupo' }}</h3>
+                <label>Nombre <input formControlName="displayName" /></label>
+                <div class="form-grid">
+                  <label
+                    >Tipo
+                    <select formControlName="groupType">
+                      @for (type of groupTypes; track type) {
+                        <option [value]="type">{{ type }}</option>
+                      }
+                    </select>
+                  </label>
+                  <label
+                    >Capacidad <input type="number" min="1" formControlName="allowedGuestCount"
+                  /></label>
+                </div>
+                <label class="check-line">
+                  <input type="checkbox" formControlName="allowUnnamedCompanions" />
+                  <span>Permitir acompañantes sin nombre</span>
                 </label>
-                <label
-                  >Capacidad <input type="number" min="1" formControlName="allowedGuestCount"
-                /></label>
-              </div>
-              <label class="check-line">
-                <input type="checkbox" formControlName="allowUnnamedCompanions" />
-                <span>Permitir acompañantes sin nombre</span>
-              </label>
-              @if (groupForm.controls.allowUnnamedCompanions.value) {
-                <label
-                  >Máximo sin nombre
-                  <input type="number" min="0" formControlName="maxUnnamedCompanions"
-                /></label>
-              }
-              <div class="button-row">
-                <button class="btn btn--secondary" type="submit">
-                  {{ editingGroupId() ? 'Guardar grupo' : 'Crear grupo' }}
-                </button>
-                @if (editingGroupId()) {
-                  <button class="btn btn--ghost" type="button" (click)="cancelGroupEdit()">
-                    Cancelar
-                  </button>
+                @if (groupForm.controls.allowUnnamedCompanions.value) {
+                  <label
+                    >Máximo sin nombre
+                    <input type="number" min="0" formControlName="maxUnnamedCompanions"
+                  /></label>
                 }
-              </div>
-            </form>
-
-            <form [formGroup]="guestForm" (ngSubmit)="saveGuest()" class="form-stack">
-              <h3>{{ editingGuestId() ? 'Editar invitado' : 'Nuevo invitado' }}</h3>
-              <label
-                >Grupo
-                <select formControlName="invitationGroupId">
-                  <option value="">Selecciona</option>
-                  @for (group of workspace()?.groups ?? []; track group.id) {
-                    <option [value]="group.id">{{ group.displayName }}</option>
+                <div class="button-row">
+                  <button class="btn btn--secondary" type="submit">
+                    {{ editingGroupId() ? 'Guardar grupo' : 'Crear grupo' }}
+                  </button>
+                  @if (editingGroupId()) {
+                    <button class="btn btn--ghost" type="button" (click)="cancelGroupEdit()">
+                      Cancelar
+                    </button>
                   }
-                </select>
-              </label>
-              <div class="form-grid">
-                <label>Nombre <input formControlName="firstName" /></label>
-                <label>Apellido <input formControlName="lastName" /></label>
-              </div>
-              <div class="form-grid">
+                </div>
+              </form>
+
+              <form [formGroup]="guestForm" (ngSubmit)="saveGuest()" class="form-stack">
+                <h3>{{ editingGuestId() ? 'Editar invitado' : 'Nuevo invitado' }}</h3>
                 <label
-                  >Relación
-                  <select formControlName="guestType">
-                    @for (type of guestTypes; track type) {
-                      <option [value]="type">{{ type }}</option>
+                  >Grupo
+                  <select formControlName="invitationGroupId">
+                    <option value="">Selecciona</option>
+                    @for (group of workspace()?.groups ?? []; track group.id) {
+                      <option [value]="group.id">{{ group.displayName }}</option>
                     }
                   </select>
                 </label>
-                <label
-                  >Edad
-                  <select formControlName="ageCategory">
-                    @for (age of ageCategories; track age) {
-                      <option [value]="age">{{ ageLabel(age) }}</option>
-                    }
-                  </select>
-                </label>
-              </div>
-              <label class="check-line"
-                ><input type="checkbox" formControlName="isPrimaryContact" /><span
-                  >Contacto principal</span
-                ></label
-              >
-              <label class="check-line"
-                ><input type="checkbox" formControlName="isVip" /><span>VIP</span></label
-              >
-              <div class="button-row">
-                <button class="btn btn--primary" type="submit">
-                  {{ editingGuestId() ? 'Guardar invitado' : 'Agregar invitado' }}
-                </button>
-                @if (editingGuestId()) {
-                  <button class="btn btn--ghost" type="button" (click)="cancelGuestEdit()">
-                    Cancelar
+                <div class="form-grid">
+                  <label>Nombre <input formControlName="firstName" /></label>
+                  <label>Apellido <input formControlName="lastName" /></label>
+                </div>
+                <div class="form-grid">
+                  <label
+                    >Relación
+                    <select formControlName="guestType">
+                      @for (type of guestTypes; track type) {
+                        <option [value]="type">{{ type }}</option>
+                      }
+                    </select>
+                  </label>
+                  <label
+                    >Edad
+                    <select formControlName="ageCategory">
+                      @for (age of ageCategories; track age) {
+                        <option [value]="age">{{ ageLabel(age) }}</option>
+                      }
+                    </select>
+                  </label>
+                </div>
+                <label class="check-line"
+                  ><input type="checkbox" formControlName="isPrimaryContact" /><span
+                    >Contacto principal</span
+                  ></label
+                >
+                <label class="check-line"
+                  ><input type="checkbox" formControlName="isVip" /><span>VIP</span></label
+                >
+                <div class="button-row">
+                  <button class="btn btn--primary" type="submit">
+                    {{ editingGuestId() ? 'Guardar invitado' : 'Agregar invitado' }}
                   </button>
-                }
-              </div>
-            </form>
-          </aside>
+                  @if (editingGuestId()) {
+                    <button class="btn btn--ghost" type="button" (click)="cancelGuestEdit()">
+                      Cancelar
+                    </button>
+                  }
+                </div>
+              </form>
+            </aside>
+          }
         </section>
 
         @if (duplicates().length > 0) {
@@ -286,7 +309,7 @@ import { ToastService } from '../../core/ui/toast.service';
                   >
                     Comentar
                   </button>
-                  @if (design.status === 'InReview') {
+                  @if (design.status === 'InReview' && canApproveDesign()) {
                     <div class="button-row">
                       <button
                         class="btn btn--primary"
@@ -473,7 +496,7 @@ import { ToastService } from '../../core/ui/toast.service';
                 <button
                   class="btn btn--ghost"
                   type="button"
-                  [disabled]="link.status !== 'Active'"
+                  [disabled]="link.status !== 'Active' || !canManageGuests()"
                   (click)="markShared(link)"
                 >
                   Marcar compartido
@@ -492,12 +515,37 @@ import { ToastService } from '../../core/ui/toast.service';
   `,
 })
 export class PortalGuestExperiencePage {
+  private static readonly GuestManagerRoles = new Set<EventAccessRole>([
+    'ClientAuthority',
+    'ClientPrimary',
+    'ClientCollaborator',
+    'ClientGuestManager',
+  ]);
+  private static readonly DesignApproverRoles = new Set<EventAccessRole>([
+    'ClientAuthority',
+    'ClientPrimary',
+    'ClientApprover',
+  ]);
   private readonly api = inject(ApiService);
+  private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly toast = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly eventId = this.route.snapshot.paramMap.get('id') ?? '';
+  protected readonly currentRole = computed(
+    () =>
+      this.auth.me()?.eventAccesses.find((access) => access.eventId === this.eventId)?.role ?? null,
+  );
+  protected readonly canManageGuests = computed(() => {
+    const role = this.currentRole();
+    return role !== null && PortalGuestExperiencePage.GuestManagerRoles.has(role);
+  });
+  protected readonly canImportGuests = this.canManageGuests;
+  protected readonly canApproveDesign = computed(() => {
+    const role = this.currentRole();
+    return role !== null && PortalGuestExperiencePage.DesignApproverRoles.has(role);
+  });
   protected readonly workspace = signal<PortalGuestWorkspace | null>(null);
   protected readonly analysis = signal<GuestImportAnalysis | null>(null);
   protected readonly importResult = signal<GuestImportResult | null>(null);
@@ -569,6 +617,7 @@ export class PortalGuestExperiencePage {
   }
 
   protected saveGroup(): void {
+    if (!this.canManageGuests()) return;
     if (this.groupForm.invalid) return;
     const value = this.groupForm.getRawValue();
     const request = {
@@ -590,6 +639,7 @@ export class PortalGuestExperiencePage {
   }
 
   protected editGroup(group: PortalInvitationGroup): void {
+    if (!this.canManageGuests()) return;
     this.editingGroupId.set(group.id);
     this.groupForm.reset({
       displayName: group.displayName,
@@ -612,6 +662,7 @@ export class PortalGuestExperiencePage {
   }
 
   protected archiveGroup(group: PortalInvitationGroup): void {
+    if (!this.canManageGuests()) return;
     if (!window.confirm(`¿Archivar el grupo “${group.displayName}”?`)) return;
     this.api.archivePortalInvitationGroup(this.eventId, group.id).subscribe({
       next: () => {
@@ -623,6 +674,7 @@ export class PortalGuestExperiencePage {
   }
 
   protected saveGuest(): void {
+    if (!this.canManageGuests()) return;
     if (this.guestForm.invalid) return;
     const value = this.guestForm.getRawValue();
     const request = {
@@ -650,6 +702,7 @@ export class PortalGuestExperiencePage {
   }
 
   protected editGuest(guest: PortalGuest): void {
+    if (!this.canManageGuests()) return;
     this.editingGuestId.set(guest.id);
     this.guestForm.reset({
       invitationGroupId: guest.invitationGroupId ?? '',
@@ -676,6 +729,7 @@ export class PortalGuestExperiencePage {
   }
 
   protected archiveGuest(guest: PortalGuest): void {
+    if (!this.canManageGuests()) return;
     const displayName = `${guest.firstName} ${guest.lastName}`.trim();
     if (!window.confirm(`¿Archivar a “${displayName}”?`)) return;
     this.api.archivePortalGuest(this.eventId, guest.id).subscribe({
@@ -688,6 +742,7 @@ export class PortalGuestExperiencePage {
   }
 
   protected review(versionId: string, action: 'comments' | 'approve' | 'request-changes'): void {
+    if (action !== 'comments' && !this.canApproveDesign()) return;
     const design = this.workspace()?.design;
     if (!design) return;
     const message = this.reviewForm.controls.message.value.trim();
@@ -708,6 +763,7 @@ export class PortalGuestExperiencePage {
   }
 
   protected analyze(event: Event): void {
+    if (!this.canImportGuests()) return;
     const file = (event.target as HTMLInputElement).files?.[0];
     if (!file) return;
     this.importResult.set(null);
@@ -718,6 +774,7 @@ export class PortalGuestExperiencePage {
   }
 
   protected confirmImport(importId: string): void {
+    if (!this.canImportGuests()) return;
     this.api.confirmPortalGuestImport(this.eventId, importId).subscribe({
       next: (result) => {
         this.importResult.set(result);
@@ -742,14 +799,15 @@ export class PortalGuestExperiencePage {
 
   protected eventValue(event: Event): string {
     const target = event.target;
-    return target instanceof HTMLInputElement
-      || target instanceof HTMLSelectElement
-      || target instanceof HTMLTextAreaElement
+    return target instanceof HTMLInputElement ||
+      target instanceof HTMLSelectElement ||
+      target instanceof HTMLTextAreaElement
       ? target.value
       : '';
   }
 
   protected downloadTemplate(): void {
+    if (!this.canImportGuests()) return;
     const format = this.templateFormat();
     const language = this.templateLanguage();
     this.api.downloadPortalGuestImportTemplate(this.eventId, format, language).subscribe({
@@ -792,6 +850,7 @@ export class PortalGuestExperiencePage {
   }
 
   protected markShared(link: GuestAccessLink): void {
+    if (!this.canManageGuests()) return;
     this.api.markPortalGuestLinkShared(this.eventId, link.id).subscribe({
       next: (updated) => {
         this.links.update((links) =>
