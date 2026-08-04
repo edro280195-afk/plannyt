@@ -118,6 +118,19 @@ Actualizado: 2026-08-03
 - **Prueba de regresión:** `npm ci`, build, tests y `npm audit`.
 - **Commit:** `f52998b`.
 - **Estado:** Diferido.
+- **Actualización 2026-08-03:** `npm audit` mostraba 6 vulnerabilidades (4
+  moderadas, 2 altas) al iniciar esta sesión, no 3 — el ecosistema npm había
+  publicado avisos nuevos para dependencias transitivas ya instaladas desde
+  el baseline (`brace-expansion` alta, `fast-uri` alta, `hono` moderada,
+  además de la cadena original). `npm audit fix` (sin `--force`, sin tocar
+  `@angular/cli` ni ningún paquete directo) resolvió las tres nuevas sin
+  cambios de versión mayor; sólo cambió `package-lock.json`. Verificado con
+  `npm run build` y `npm test -- --watch=false` posteriores, ambos
+  correctos. La cadena original (`@angular/cli` → `@modelcontextprotocol/sdk`
+  → `@hono/node-server`) sigue exactamente igual y diferida por la misma
+  razón: `npm audit fix --force` seguiría exigiendo degradar Angular CLI.
+  `npm audit --omit=dev` confirma 0 vulnerabilidades en la cadena de
+  producción, antes y después.
 
 ## QA-005 — README fija una versión .NET distinta de `global.json`
 

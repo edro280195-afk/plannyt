@@ -216,6 +216,48 @@ suite completa de cobertura — sólo corridas acotadas con `--include`, que no
 disparan la compuerta. Detalle completo, evidencia y decisión de no bajar el
 umbral en `docs/qa/defect-register.md` QA-031.
 
+## 9. La corrida completa de E2E con mocks (135 escenarios) no es reproducible de forma limpia en este equipo de desarrollo
+
+**Prioridad: Media — posible misma causa raíz que el punto 1.**
+
+Se intentaron tres corridas de `npm run e2e` (o un subconjunto dirigido) en
+la quinta sesión de continuación, con resultados distintos entre sí: 4
+fallas de 135, luego 11 fallas de 135, luego 3 fallas de 66 (subconjunto
+dirigido a las pruebas que habían fallado antes). Ninguna corrida quedó
+limpia; ninguna reprodujo exactamente el mismo conjunto de fallas. Las
+pruebas afectadas (`commercial-flow.spec.ts`, `guest-experience-flow.spec.ts`,
+y en una corrida también `accessibility.spec.ts`, `critical-flows.spec.ts`,
+`contracting-flow.spec.ts`) son todas secuencias largas de varios pasos de
+UI encadenados, y las fallas se concentraron desproporcionadamente en el
+proyecto de Playwright que se ejecuta al final de cada corrida —el patrón
+esperable de degradación de recursos acumulada durante una corrida paralela
+de varios minutos con 7 workers, no el de una regresión de código.
+
+`git log` acotado a los archivos de esas pruebas y al código de producción
+que ejercitan confirma que ningún commit de la sesión que encontró esto, ni
+de las dos sesiones de continuación anteriores, tocó esas rutas. Reejecutar
+las pruebas sospechosas de forma aislada o en lotes pequeños las hizo pasar
+limpio en dos de tres intentos adicionales.
+
+No se investigó más a fondo por desproporción de esfuerzo frente al resto
+del mandato de la sesión (recorrido manual módulo por módulo). Es
+plausible que comparta causa raíz con la intermitencia ya documentada de
+`e2e-real` en este mismo equipo (punto 1) — ambas son fallas de
+infraestructura no deterministas sin causa raíz confirmada, específicas de
+correr Playwright con paralelismo alto en esta máquina. Detalle completo de
+las tres corridas en `docs/qa/final-regression-report.md`.
+
+### Próximos pasos recomendados (no ejecutados esta sesión)
+
+1. Ejecutar la suite completa en otro equipo o en CI para determinar si el
+   patrón se reproduce fuera de esta máquina (mismo paso ya recomendado
+   para el punto 1).
+2. Si se reproduce, perfilar el uso de memoria/CPU durante una corrida
+   completa para identificar el punto de degradación.
+3. Considerar reducir el número de workers (`--workers=3` o similar) como
+   mitigación práctica mientras se investiga la causa raíz, y confirmar si
+   eso por sí solo estabiliza la corrida.
+
 ## Resumen de prioridades
 
 | # | Limitación | Prioridad |
@@ -228,9 +270,11 @@ umbral en `docs/qa/defect-register.md` QA-031.
 | 6 | Dependencia npm moderada sin fix compatible | Baja (diferido, QA-004) |
 | 7 | Sin compuerta de cobertura backend global | Baja (alcance existente) |
 | 8 | Compuerta de cobertura frontend (85%) incumplida desde hace 3 sesiones | Media (QA-031, abierto) |
+| 9 | Corrida completa de E2E con mocks no reproducible limpia en este equipo | Media (nuevo, posible misma causa que el punto 1) |
 
 Ninguna de estas limitaciones se presenta como corregida en
 `docs/qa/defect-register.md`. Los elementos 2–4 son extensiones razonables
 de trabajo ya empezado (la matriz de portal, el inventario estático, las
 pruebas de tenant cruzado en API); el elemento 1 es el de mayor impacto y
-mayor esfuerzo restante. El elemento 8 es un hallazgo nuevo de esta sesión.
+mayor esfuerzo restante. Los elementos 8 y 9 son hallazgos nuevos de esta
+sesión.

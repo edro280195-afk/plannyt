@@ -1,6 +1,6 @@
 # Reporte del Sprint 2B.4 — Auditoría funcional integral, estabilización y regresión
 
-Actualizado: 2026-08-03 (incluye continuaciones post-tag hasta RSVP; ver secciones 11 a 14)
+Actualizado: 2026-08-03 (incluye continuaciones post-tag hasta Equipo/Organización/Portal; ver secciones 11 a 15)
 
 ## 1. Resumen ejecutivo
 
@@ -45,6 +45,20 @@ configuración, editor, wizard público con acompañante, menú, transporte,
 hospedaje, datos sensibles, dashboard profesional y portal. Total acumulado:
 **30 defectos identificados, 29 corregidos con evidencia y prueba de
 regresión, 1 diferido, 0 abiertos.**
+
+**Quinta sesión de continuación (Equipo, Organización y Portal del cliente,
+ver sección 15):** 3 hallazgos adicionales (QA-031 a QA-033) al recorrer
+`ORG-001`, `ORG-002`, `NAV-003`, `POR-002`, `POR-004` y `POR-007`. Dos se
+corrigieron (QA-032: listado de miembros del equipo respondía 500 siempre;
+QA-033: bucle infinito de enrutamiento que congelaba el navegador para una
+cuenta sin ningún acceso activo). El tercero (QA-031: compuerta de cobertura
+frontend incumplida) quedó documentado y abierto por desproporción de
+esfuerzo. Esta sesión también relanzó, por primera vez desde el bloque de
+Contratación, la suite E2E completa con mocks (135 escenarios) — ver sección
+15 para el resultado y el análisis de un patrón de fallas intermitentes bajo
+carga que no se atribuye a una regresión funcional. Total acumulado: **33
+defectos identificados, 31 corregidos con evidencia y prueba de regresión, 1
+diferido, 1 abierto.**
 
 No se avanzó a Sprint 2C ni a ninguno de sus módulos en ningún momento de
 este sprint ni de su continuación.
@@ -465,3 +479,140 @@ Comandos ejecutados:
 
 Cambios de `QA-027` a `QA-030`, pruebas y documentación listos para commit
 local. No se publicó ni etiquetó nada.
+
+## 15. Quinta sesión de continuación: Equipo, Organización y Portal del cliente (ORG-001, ORG-002, NAV-003, POR-002, POR-004, POR-007)
+
+Sesión posterior al cierre de RSVP. Mandato sin cambios: recorrido manual
+módulo por módulo en navegador real contra API/PostgreSQL reales, según
+`docs/qa/next-session-prompt.md`. Bloque cubierto: el resto de Equipo y
+Organización (`ORG-001`, `ORG-002`) y un primer recorrido del Portal del
+cliente (`NAV-003`, `POR-002`, `POR-004`, `POR-007`).
+
+### Defectos y hallazgos de este bloque
+
+- **QA-031 (Media, abierto):** la compuerta de cobertura frontend (85%)
+  llevaba tres sesiones incumplida sin detectarse — las continuaciones de
+  Contratación, Invitados/Invitación y RSVP sólo corrieron pruebas
+  acotadas con `--include`, nunca `npm run test:coverage` completo. La
+  medición actual es 70.56%/69.59%/74.44%/74.01%, arrastrada principalmente
+  por `portal-guest-experience.page.ts` (43.63%/16.27%). No se bajó el
+  umbral; queda documentado como abierto en vez de oculto.
+- **QA-032 (Alta, corregido):** `GET .../members` (listado del equipo)
+  respondía 500 **siempre**, para cualquier organización, porque EF Core no
+  podía traducir un `OrderBy` encadenado después de proyectar directamente a
+  un `record` dentro de un `Join`. Nunca se detectó porque ninguna prueba
+  automatizada llamaba al endpoint real de listado. Se reordenó la consulta
+  (ordenar antes de proyectar) y se agregó una prueba de integración nueva
+  que falla contra el código anterior y pasa después.
+- **QA-033 (Alta, corregido):** una cuenta autenticada sin ninguna
+  organización activa y sin ningún acceso de portal — el estado exacto que
+  queda justo después de revocarle su única membresía, un caso que la propia
+  sección 17 de la encomienda exige probar — quedaba atrapada en un bucle
+  infinito entre `professionalGuard` y `portalGuard`, que se redirigían
+  mutuamente sin condición de salida. La pestaña del navegador quedó
+  congelada e irrecuperable en dos pruebas independientes (ni siquiera
+  `navigate` para forzar una recarga respondió tras 300 segundos). Una
+  prueba unitaria existente de los guards afirmaba como correcto exactamente
+  el par de redirecciones que producía el ciclo, sin combinarlas nunca en
+  secuencia — el mismo patrón que QA-020. Se corrigió para que cada guard
+  considere la otra área antes de redirigir, y ambos casos "sin ningún
+  acceso" caen a `/auth/login` con un aviso en vez de a la otra ruta
+  protegida.
+- **Vulnerabilidades npm no relacionadas con código propio:** `npm audit`
+  mostró 6 alertas (4 moderadas, 2 altas) al iniciar la sesión, tres más de
+  las documentadas en QA-004. `npm audit fix` (sin `--force`, sin tocar
+  `@angular/cli`) resolvió las tres nuevas sin cambios de versión mayor;
+  sólo cambió `package-lock.json`. La cadena original de QA-004 permanece
+  diferida por la misma razón de siempre. `npm audit --omit=dev` confirmó 0
+  vulnerabilidades en la cadena de producción, antes y después.
+
+Detalle completo, causa raíz, solución y evidencia de cada uno en
+`docs/qa/defect-register.md`.
+
+### Evidencia del recorrido real
+
+- `ORG-001`: listado de miembros (encontró QA-032), invitar con rol
+  Assistant, copiar enlace, revocar invitación antes de aceptarse, registro
+  real de un nuevo miembro vía `register-and-accept`, permisos ocultos en la
+  UI para Assistant **y** rechazados por el backend con una llamada directa
+  desde el componente inyectado (403 confirmado en `invitations` y en
+  `members/{id}` DELETE), protección del último Owner (409 con mensaje
+  claro), revocar miembro (encontró QA-033 al iniciar sesión con la cuenta
+  recién revocada), responsivo en 375×812.
+- `ORG-002`: edición con acentos, símbolos y espacios al inicio/final con
+  recorte real confirmado, validación de nombre vacío verificada contra el
+  estado real de Angular (no sólo el atributo `disabled` del DOM), "cerrar
+  todas mis sesiones" real (redirige a login sin colgarse), y una prueba de
+  integración nueva que confirma 403 real para el rol Finance intentando
+  `PUT /organizations/{id}` (no existía ninguna prueba de ese endpoint,
+  positiva ni negativa).
+- Portal del cliente, cuenta `cliente.inv002.1785774753803@plannyt-test.invalid`
+  (`ClientAuthority`/`ClientApprover` según el evento): `NAV-003` navegado
+  completo; `POR-002` con estados vacíos correctos (participantes,
+  documentos) y sin datos internos visibles; `POR-004` con grupos, conteos y
+  flags de menú/transporte/hospedaje correctos y sin datos sensibles;
+  `POR-007` con lista vacía, lista con el contrato completado
+  `C-20260731-169AB4`, detalle sin metadata técnica, y descargas de PDF y
+  documento final verificadas con 200 reales. No se recorrió "firmar" por no
+  contar con un contrato pendiente de firma en los datos de prueba
+  disponibles — ver `docs/qa/next-session-prompt.md`.
+
+### Regresión completa y fragilidad de temporización bajo ejecución paralela
+
+Como esta sesión modificó los guards de enrutamiento (`auth.guards.ts`),
+superficie amplia que afecta la navegación de toda la aplicación, se
+relanzó `npm run e2e` (135 escenarios) por primera vez desde la segunda
+sesión de continuación (Contratación). Se hicieron **tres** intentos, con
+resultados distintos entre sí:
+
+1. 135 escenarios, con la API y Angular de desarrollo manual corriendo en
+   paralelo: **4 fallas** (`commercial-flow.spec.ts` en tres
+   proyectos/viewports, `guest-experience-flow.spec.ts` en uno).
+2. 135 escenarios, sin los procesos manuales: **11 fallas**, un conjunto
+   distinto y más amplio (`commercial-flow.spec.ts`,
+   `guest-experience-flow.spec.ts`, `critical-flows.spec.ts` ×3,
+   `accessibility.spec.ts`, `contracting-flow.spec.ts`), 8 de las 11
+   concentradas en el proyecto que se ejecuta al final de la corrida.
+3. 66 escenarios (sólo los 5 archivos que habían fallado en algún momento):
+   **3 fallas**, de nuevo un subconjunto distinto.
+
+Ninguna corrida quedó limpia; ninguna reprodujo el mismo conjunto de
+fallas que otra. `git log` acotado a los archivos de esas 5 pruebas y al
+código de producción que ejercitan confirma que ningún commit de esta
+sesión ni de las dos anteriores tocó esas rutas — los cambios de código de
+esta sesión (`OrganizationService.cs`, `auth.guards.ts`) no interceptan
+ninguna de ellas. El patrón (fallas no deterministas, concentradas en
+pruebas largas y secuenciales, y desproporcionadamente en el proyecto que
+corre al final de una ejecución paralela de varios minutos) es consistente
+con degradación de recursos bajo carga, no con una regresión de código, y
+posiblemente comparte causa raíz con la intermitencia ya documentada de
+`e2e-real` en este mismo equipo.
+
+Se documenta honestamente como un hallazgo de infraestructura de pruebas
+sin cerrar (nuevo punto 9 de `docs/qa/known-limitations.md`), no como "0
+fallas" ni como una regresión funcional confirmada que exija revertir algo.
+Ver `docs/qa/final-regression-report.md` para la tabla completa de las tres
+corridas.
+
+### Totales acumulados tras este bloque
+
+| Suite               |                                                          Resultado | Contra                           |
+| ------------------- | -------------------------------------------------------------------: | --------------------------------- |
+| Backend unitarias   |                                     257/257 (sin cambio respecto al bloque anterior) | En memoria                       |
+| Backend integración |                                        98/98 (+3 respecto al bloque anterior: QA-032 y `UpdateOrganization_*`) | PostgreSQL real (Testcontainers) |
+| Frontend unitarias  |            94/94 (+1: caso nuevo de `auth.guards.spec.ts` para QA-033) | Angular TestBed/Vitest           |
+| Frontend build      |                                                              Correcto | Angular production build         |
+| E2E con mocks       | Sin corrida limpia en 3 intentos (4, 11 y 3 fallas no deterministas de 135/135/66); ver "Fragilidad de temporización" arriba y `docs/qa/final-regression-report.md` | API interceptada |
+
+Cobertura frontend: sigue bajo la compuerta de 85% (QA-031, abierto);
+70.56%/69.59%/74.44%/74.01% al momento de escribir esto, sin cambios
+relevantes tras los ajustes puntuales de esta sesión.
+
+### Estado de Git de este bloque
+
+Un commit local nuevo sobre `1101d99`: `13a944f` ("Corrijo listado de
+miembros y bucle infinito de guards (QA-032, QA-033)"). Pendiente un
+segundo commit con la actualización de `package-lock.json` (fix de
+vulnerabilidades npm no relacionadas con código propio) y los documentos
+finales de cierre de esta sesión. **No publicado ni etiquetado**, según el
+mandato invariable de `docs/qa/next-session-prompt.md`.
